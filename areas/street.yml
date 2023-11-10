@@ -1,0 +1,13 @@
+---
+uuid: 4fa9986a-2e7c-48b9-a294-8a1533ae3585
+name: Center Street
+description: A long road curves around the outsuuide of the arena
+rooms:
+  - uuid: 68357a14-e157-41ce-8865-c6150e10fd79
+    name: Outsuuide the entrance to the arena.
+    exits: 
+      east: 8546d8c7-5fac-4b5f-8201-673790c87835
+  - uuid: 8546d8c7-5fac-4b5f-8201-673790c87835
+    name: Down the street.
+    exits:
+      west: 68357a14-e157-41ce-8865-c6150e10fd79
