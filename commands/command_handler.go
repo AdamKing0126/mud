@@ -2,7 +2,6 @@ package commands
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"mud/areas"
 	"mud/player"
@@ -14,7 +13,7 @@ type CommandParser struct {
 	arguments   []string
 }
 
-type CommandHandler func(*sql.DB, *player.Player, *areas.Area, string, []string)
+type CommandHandler func(*sql.DB, *player.Player, string, []string)
 
 func NewCommandParser(commandString string) *CommandParser {
 	// Split the command string into the command name and arguments.
@@ -50,156 +49,182 @@ var CommandHandlers map[string]CommandHandler = map[string]CommandHandler{
 }
 
 func curryMovePlayerCommand(direction string) CommandHandler {
-	return func(db *sql.DB, player *player.Player, area *areas.Area, commandName string, arguments []string) {
-		HandleMovePlayerCommand(db, player, area, commandName, append(arguments, direction))
+	return func(db *sql.DB, player *player.Player, commandName string, arguments []string) {
+		HandleMovePlayerCommand(db, player, commandName, append(arguments, direction))
 	}
 }
 
-func getRoomFromArea(roomUUID string, area *areas.Area, db *sql.DB) (*areas.Room, error) {
-	var room *areas.Room
-	for i := range area.Rooms {
-		if area.Rooms[i].UUID == roomUUID {
-			room = &area.Rooms[i]
-		}
+func getRoom(roomUUID string, db *sql.DB) (*areas.Room, error) {
+	query := `
+		SELECT r.UUID, r.area_uuid, r.name, r.description,
+			r.exit_north, r.exit_south, r.exit_east, r.exit_west,
+			r.exit_up, r.exit_down,
+			a.UUID AS area_uuid, a.name AS area_name, a.description AS area_description
+		FROM rooms r
+		LEFT JOIN areas a ON r.area_uuid = a.UUID
+		WHERE r.UUID = ?`
+
+	room_rows, err := db.Query(query, roomUUID)
+	if err != nil {
+		return nil, err
 	}
-	if room != nil {
-		// if we don't have a room, it might be that this room is outside
-		// the current area.  So do a search.
-		room_rows, err := db.Query("SELECT UUID, area_uuid, name, description, exit_north, exit_south, exit_east, exit_west, exit_up, exit_down from rooms where uuid=?", roomUUID)
-		if err != nil {
-			return nil, err
-		}
 
-		defer room_rows.Close()
-		if !room_rows.Next() {
-			return nil, fmt.Errorf("room with UUID %s does not exits", roomUUID)
-		}
-
-		room = &areas.Room{
-			UUID: roomUUID,
-		}
-
-		err = room_rows.Scan(&room.UUID, &room.AreaUUID, &room.Name, &room.Description, &room.ExitNorth, &room.ExitSouth, &room.ExitWest, &room.ExitEast, &room.ExitUp, &room.ExitDown)
-		if err != nil {
-			return nil, err
-		}
-		return room, nil
+	defer room_rows.Close()
+	if !room_rows.Next() {
+		return nil, fmt.Errorf("room with UUID %s does not exist", roomUUID)
 	}
-	return nil, errors.New("uh oh")
+
+	var northExitUUID, southExitUUID, eastExitUUID, westExitUUID, upExitUUID, downExitUUID string
+	room := &areas.Room{Exits: areas.ExitInfo{}}
+	err = room_rows.Scan(
+		&room.UUID, &room.AreaUUID, &room.Name, &room.Description,
+		&northExitUUID, &southExitUUID, &eastExitUUID, &westExitUUID,
+		&upExitUUID, &downExitUUID,
+		&room.Area.UUID, &room.Area.Name, &room.Area.Description,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if northExitUUID != "" {
+		room.Exits.North = &areas.Room{UUID: northExitUUID}
+	}
+
+	if southExitUUID != "" {
+		room.Exits.South = &areas.Room{UUID: southExitUUID}
+	}
+
+	if westExitUUID != "" {
+		room.Exits.West = &areas.Room{UUID: westExitUUID}
+	}
+
+	if eastExitUUID != "" {
+		room.Exits.East = &areas.Room{UUID: eastExitUUID}
+	}
+
+	if downExitUUID != "" {
+		room.Exits.Down = &areas.Room{UUID: downExitUUID}
+	}
+
+	if upExitUUID != "" {
+		room.Exits.Up = &areas.Room{UUID: upExitUUID}
+	}
+
+	return room, nil
 }
 
-func HandleMovePlayerCommand(db *sql.DB, player *player.Player, area *areas.Area, command string, arguments []string) {
-	currentRoom, err := getRoomFromArea(player.Room, area, db)
+func HandleMovePlayerCommand(db *sql.DB, player *player.Player, command string, arguments []string) {
+	currentRoom, err := getRoom(player.Room, db)
 	if err != nil {
 		fmt.Fprintf(player.Conn, "%v", err)
 		return
 	}
 	switch command {
 	case "north":
-		if currentRoom.ExitNorth == "" {
+		if currentRoom.Exits.North == nil {
 			fmt.Fprintf(player.Conn, "You cannot go that way.\n")
 
 		} else {
 			fmt.Fprintf(player.Conn, "=======================\n\n")
-			player.SetLocation(db, currentRoom.ExitNorth)
+			player.SetLocation(db, currentRoom.Exits.North.UUID)
 			var lookArgs []string
-			HandleLookCommand(db, player, area, "look", lookArgs)
+			HandleLookCommand(db, player, "look", lookArgs)
 		}
 	case "south":
-		if currentRoom.ExitSouth == "" {
+		if currentRoom.Exits.South == nil {
 			fmt.Fprintf(player.Conn, "You cannot go that way.\n")
 
 		} else {
 			fmt.Fprintf(player.Conn, "=======================\n\n")
-			player.SetLocation(db, currentRoom.ExitSouth)
+			player.SetLocation(db, currentRoom.Exits.South.UUID)
 			var lookArgs []string
-			HandleLookCommand(db, player, area, "look", lookArgs)
+			HandleLookCommand(db, player, "look", lookArgs)
 		}
 	case "west":
-		if currentRoom.ExitWest == "" {
+		if currentRoom.Exits.West == nil {
 			fmt.Fprintf(player.Conn, "You cannot go that way.\n")
 
 		} else {
 			fmt.Fprintf(player.Conn, "=======================\n\n")
-			player.SetLocation(db, currentRoom.ExitWest)
+			player.SetLocation(db, currentRoom.Exits.West.UUID)
 			var lookArgs []string
-			HandleLookCommand(db, player, area, "look", lookArgs)
+			HandleLookCommand(db, player, "look", lookArgs)
 		}
 	case "east":
-		if currentRoom.ExitEast == "" {
+		if currentRoom.Exits.East == nil {
 			fmt.Fprintf(player.Conn, "You cannot go that way.\n")
 
 		} else {
 			fmt.Fprintf(player.Conn, "=======================\n\n")
-			player.SetLocation(db, currentRoom.ExitEast)
+			player.SetLocation(db, currentRoom.Exits.East.UUID)
 			var lookArgs []string
-			HandleLookCommand(db, player, area, "look", lookArgs)
+			HandleLookCommand(db, player, "look", lookArgs)
 		}
 	case "up":
-		if currentRoom.ExitUp == "" {
+		if currentRoom.Exits.Up == nil {
 			fmt.Fprintf(player.Conn, "You cannot go that way.\n")
 
 		} else {
 			fmt.Fprintf(player.Conn, "=======================\n\n")
-			player.SetLocation(db, currentRoom.ExitUp)
+			player.SetLocation(db, currentRoom.Exits.Up.UUID)
 			var lookArgs []string
-			HandleLookCommand(db, player, area, "look", lookArgs)
+			HandleLookCommand(db, player, "look", lookArgs)
 		}
 	default:
-		if currentRoom.ExitDown == "" {
+		if currentRoom.Exits.Down == nil {
 			fmt.Fprintf(player.Conn, "You cannot go that way.\n")
 		} else {
 			fmt.Fprintf(player.Conn, "=======================\n\n")
-			player.SetLocation(db, currentRoom.ExitDown)
+			player.SetLocation(db, currentRoom.Exits.Down.UUID)
 			var lookArgs []string
-			HandleLookCommand(db, player, area, "look", lookArgs)
+			HandleLookCommand(db, player, "look", lookArgs)
 		}
 	}
 }
 
-func HandleExitsCommand(db *sql.DB, player *player.Player, area *areas.Area, command string, arguments []string) {
-	currentRoom, err := getRoomFromArea(player.Room, area, db)
+func HandleExitsCommand(db *sql.DB, player *player.Player, command string, arguments []string) {
+	currentRoom, err := getRoom(player.Room, db)
 	if err != nil {
 		fmt.Fprintf(player.Conn, "%v", err)
 		return
 	}
-	if currentRoom.ExitNorth != "" {
-		northExit, err := getRoomFromArea(currentRoom.ExitNorth, area, db)
+	if currentRoom.Exits.North != nil {
+		northExit, err := getRoom(currentRoom.Exits.North.UUID, db)
 		if err != nil {
 			fmt.Fprintf(player.Conn, "%v", err)
 		}
 		fmt.Fprintf(player.Conn, "North: %s\n", northExit.Name)
 	}
-	if currentRoom.ExitSouth != "" {
-		southExit, err := getRoomFromArea(currentRoom.ExitSouth, area, db)
+	if currentRoom.Exits.South != nil {
+		southExit, err := getRoom(currentRoom.Exits.South.UUID, db)
 		if err != nil {
 			fmt.Fprintf(player.Conn, "%v", err)
 		}
 		fmt.Fprintf(player.Conn, "South: %s\n", southExit.Name)
 	}
-	if currentRoom.ExitWest != "" {
-		westExit, err := getRoomFromArea(currentRoom.ExitWest, area, db)
+	if currentRoom.Exits.West != nil {
+		westExit, err := getRoom(currentRoom.Exits.West.UUID, db)
 		if err != nil {
 			fmt.Fprintf(player.Conn, "%v", err)
 		}
 		fmt.Fprintf(player.Conn, "West: %s\n", westExit.Name)
 	}
-	if currentRoom.ExitEast != "" {
-		eastExit, err := getRoomFromArea(currentRoom.ExitEast, area, db)
+	if currentRoom.Exits.East != nil {
+		eastExit, err := getRoom(currentRoom.Exits.East.UUID, db)
 		if err != nil {
 			fmt.Fprintf(player.Conn, "%v", err)
 		}
 		fmt.Fprintf(player.Conn, "East: %s\n", eastExit.Name)
 	}
-	if currentRoom.ExitUp != "" {
-		upExit, err := getRoomFromArea(currentRoom.ExitUp, area, db)
+	if currentRoom.Exits.Up != nil {
+		upExit, err := getRoom(currentRoom.Exits.Up.UUID, db)
 		if err != nil {
 			fmt.Fprintf(player.Conn, "%v", err)
 		}
 		fmt.Fprintf(player.Conn, "Up: %s\n", upExit.Name)
 	}
-	if currentRoom.ExitDown != "" {
-		downExit, err := getRoomFromArea(currentRoom.ExitDown, area, db)
+	if currentRoom.Exits.Down != nil {
+		downExit, err := getRoom(currentRoom.Exits.Down.UUID, db)
 		if err != nil {
 			fmt.Fprintf(player.Conn, "%v", err)
 		}
@@ -207,12 +232,12 @@ func HandleExitsCommand(db *sql.DB, player *player.Player, area *areas.Area, com
 	}
 }
 
-func HandleLogoutCommand(db *sql.DB, player *player.Player, area *areas.Area, command string, arguments []string) {
+func HandleLogoutCommand(db *sql.DB, player *player.Player, command string, arguments []string) {
 	fmt.Fprintf(player.Conn, "Goodbye!\n")
 	player.Conn.Close()
 }
 
-func HandleHelloCommand(db *sql.DB, player *player.Player, area *areas.Area, command string, arguments []string) {
+func HandleHelloCommand(db *sql.DB, player *player.Player, command string, arguments []string) {
 	playerName := player.Name
 	if playerName == "" {
 		playerName = "somebody"
@@ -221,23 +246,23 @@ func HandleHelloCommand(db *sql.DB, player *player.Player, area *areas.Area, com
 	fmt.Fprintf(player.Conn, "Hello, %s!\n", playerName)
 }
 
-func HandleLookCommand(db *sql.DB, player *player.Player, area *areas.Area, command string, arguments []string) {
-	currentRoom, err := getRoomFromArea(player.Room, area, db)
+func HandleLookCommand(db *sql.DB, player *player.Player, command string, arguments []string) {
+	currentRoom, err := getRoom(player.Room, db)
 	if err != nil {
 		fmt.Fprintf(player.Conn, "%v", err)
 		return
 	}
 
 	if len(arguments) == 0 {
-		fmt.Fprintf(player.Conn, "%s\n", area.Name)
-		fmt.Fprintf(player.Conn, "%s\n", area.Description)
+		fmt.Fprintf(player.Conn, "%s\n", currentRoom.Area.Name)
+		fmt.Fprintf(player.Conn, "%s\n", currentRoom.Area.Description)
 		fmt.Fprintf(player.Conn, "%s\n", currentRoom.Name)
 		fmt.Fprintf(player.Conn, "%s\n", currentRoom.Description)
 	} else if len(arguments) == 1 {
 		switch arguments[0] {
 		case "north":
-			if currentRoom.ExitNorth != "" {
-				northExit, err := getRoomFromArea(currentRoom.ExitNorth, area, db)
+			if currentRoom.Exits.North != nil {
+				northExit, err := getRoom(currentRoom.Exits.North.UUID, db)
 				if err != nil {
 					fmt.Fprintf(player.Conn, "%v", err)
 				}
@@ -246,8 +271,8 @@ func HandleLookCommand(db *sql.DB, player *player.Player, area *areas.Area, comm
 				fmt.Fprintf(player.Conn, "You don't see anything in that direction\n")
 			}
 		case "south":
-			if currentRoom.ExitSouth != "" {
-				southExit, err := getRoomFromArea(currentRoom.ExitSouth, area, db)
+			if currentRoom.Exits.South != nil {
+				southExit, err := getRoom(currentRoom.Exits.South.UUID, db)
 				if err != nil {
 					fmt.Fprintf(player.Conn, "%v", err)
 				}
@@ -256,8 +281,8 @@ func HandleLookCommand(db *sql.DB, player *player.Player, area *areas.Area, comm
 				fmt.Fprintf(player.Conn, "You don't see anything in that direction\n")
 			}
 		case "east":
-			if currentRoom.ExitEast != "" {
-				eastExit, err := getRoomFromArea(currentRoom.ExitEast, area, db)
+			if currentRoom.Exits.East != nil {
+				eastExit, err := getRoom(currentRoom.Exits.East.UUID, db)
 				if err != nil {
 					fmt.Fprintf(player.Conn, "%v", err)
 				}
@@ -266,8 +291,8 @@ func HandleLookCommand(db *sql.DB, player *player.Player, area *areas.Area, comm
 				fmt.Fprintf(player.Conn, "You don't see anything in that direction\n")
 			}
 		case "west":
-			if currentRoom.ExitWest != "" {
-				westExit, err := getRoomFromArea(currentRoom.ExitWest, area, db)
+			if currentRoom.Exits.West != nil {
+				westExit, err := getRoom(currentRoom.Exits.West.UUID, db)
 				if err != nil {
 					fmt.Fprintf(player.Conn, "%v", err)
 				}
@@ -276,8 +301,8 @@ func HandleLookCommand(db *sql.DB, player *player.Player, area *areas.Area, comm
 				fmt.Fprintf(player.Conn, "You don't see anything in that direction\n")
 			}
 		case "up":
-			if currentRoom.ExitUp != "" {
-				upExit, err := getRoomFromArea(currentRoom.ExitUp, area, db)
+			if currentRoom.Exits.Up != nil {
+				upExit, err := getRoom(currentRoom.Exits.Up.UUID, db)
 				if err != nil {
 					fmt.Fprintf(player.Conn, "%v", err)
 				}
@@ -286,8 +311,8 @@ func HandleLookCommand(db *sql.DB, player *player.Player, area *areas.Area, comm
 				fmt.Fprintf(player.Conn, "You don't see anything in that direction\n")
 			}
 		case "down":
-			if currentRoom.ExitDown != "" {
-				downExit, err := getRoomFromArea(currentRoom.ExitDown, area, db)
+			if currentRoom.Exits.Down != nil {
+				downExit, err := getRoom(currentRoom.Exits.Down.UUID, db)
 				if err != nil {
 					fmt.Fprintf(player.Conn, "%v", err)
 				}

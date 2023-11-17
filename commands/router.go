@@ -3,7 +3,6 @@ package commands
 import (
 	"database/sql"
 	"fmt"
-	"mud/areas"
 	"mud/player"
 	"strings"
 	"sync"
@@ -34,7 +33,7 @@ func RegisterCommands(router *CommandRouter, commands map[string]CommandHandler)
 	}
 }
 
-func (r *CommandRouter) HandleCommand(db *sql.DB, player *player.Player, area *areas.Area, command []byte) {
+func (r *CommandRouter) HandleCommand(db *sql.DB, player *player.Player, command []byte) {
 	// Convert the command []byte to a string and trim the extra characters off.
 	commandString := strings.ToLower(strings.TrimSpace(string(command)))
 
@@ -56,5 +55,5 @@ func (r *CommandRouter) HandleCommand(db *sql.DB, player *player.Player, area *a
 	}
 
 	// Handle the command.
-	handler(db, player, area, commandName, arguments)
+	handler(db, player, commandName, arguments)
 }

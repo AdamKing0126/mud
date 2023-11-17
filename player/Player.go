@@ -39,6 +39,8 @@ func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
 	player.Area = area.UUID
 	player.Room = roomUUID
 
+	area_rows.Close()
+
 	stmt, err := db.Prepare("UPDATE players SET area = ?, room = ? WHERE uuid = ?")
 	if err != nil {
 		return err
@@ -52,7 +54,6 @@ func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
 	}
 
 	stmt.Close()
-
 	return nil
 }
 

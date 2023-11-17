@@ -9,6 +9,7 @@ rooms:
     exits:
       south: 3efa0a8a-09ce-4d77-b340-31b374fabef8
       west: f883e17b-c322-4198-b753-5552b6dd03df
+      east: 68357a14-e157-41ce-8865-c6150e10fd79
 
   - uuid: 3efa0a8a-09ce-4d77-b340-31b374fabef8
     name: Gladiator Quarters

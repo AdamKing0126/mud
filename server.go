@@ -45,12 +45,7 @@ func handleConnection(conn net.Conn, router *commands.CommandRouter, db *sql.DB)
 		// player.SetLocation(db, 1)
 	}
 
-	area, err := areas.LoadAreaFromDB(db, player.Area)
-	if err != nil {
-		fmt.Fprintf(conn, "Error retrieving area from database: %v\n", err)
-	}
-
-	router.HandleCommand(db, player, area, bytes.NewBufferString("look").Bytes())
+	router.HandleCommand(db, player, bytes.NewBufferString("look").Bytes())
 
 	for {
 		buf := make([]byte, 1024)
@@ -60,7 +55,7 @@ func handleConnection(conn net.Conn, router *commands.CommandRouter, db *sql.DB)
 			break
 		}
 
-		router.HandleCommand(db, player, area, buf[:n])
+		router.HandleCommand(db, player, buf[:n])
 	}
 }
 

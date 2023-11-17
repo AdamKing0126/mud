@@ -16,6 +16,12 @@ type Area struct {
 	Rooms       []Room
 }
 
+type AreaInfo struct {
+	UUID        string
+	Name        string
+	Description string
+}
+
 type AreaImport struct {
 	UUID        string       `yaml:"uuid"`
 	Name        string       `yaml:"name"`
@@ -125,7 +131,7 @@ func LoadAreaFromDB(db *sql.DB, areaUUID string) (*Area, error) {
 
 	for room_rows.Next() {
 		var room Room
-		err := room_rows.Scan(&room.UUID, &room.AreaUUID, &room.Name, &room.Description, &room.ExitNorth, &room.ExitSouth, &room.ExitWest, &room.ExitEast, &room.ExitUp, &room.ExitDown)
+		err := room_rows.Scan(&room.UUID, &room.AreaUUID, &room.Name, &room.Description, &room.Exits.North, &room.Exits.South, &room.Exits.West, &room.Exits.East, &room.Exits.Up, &room.Exits.Down)
 		if err != nil {
 			return nil, err
 		}

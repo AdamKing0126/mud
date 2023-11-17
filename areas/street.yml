@@ -7,6 +7,7 @@ rooms:
     name: Outsuuide the entrance to the arena.
     exits: 
       east: 8546d8c7-5fac-4b5f-8201-673790c87835
+      west: 189a729d-4e40-4184-a732-e2c45c66ff46
   - uuid: 8546d8c7-5fac-4b5f-8201-673790c87835
     name: Down the street.
     exits:

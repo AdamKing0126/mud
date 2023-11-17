@@ -5,12 +5,17 @@ type Room struct {
 	AreaUUID    string
 	Name        string
 	Description string
-	ExitNorth   string
-	ExitSouth   string
-	ExitWest    string
-	ExitEast    string
-	ExitUp      string
-	ExitDown    string
+	Area        AreaInfo
+	Exits       ExitInfo
+}
+
+type ExitInfo struct {
+	North *Room
+	South *Room
+	West  *Room
+	East  *Room
+	Up    *Room
+	Down  *Room
 }
 
 type RoomImport struct {
