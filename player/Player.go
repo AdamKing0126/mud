@@ -10,6 +10,10 @@ import (
 	"github.com/google/uuid"
 )
 
+func NewPlayer(conn net.Conn) *Player {
+	return &Player{Conn: conn}
+}
+
 type Player struct {
 	UUID   string
 	Name   string
@@ -17,6 +21,34 @@ type Player struct {
 	Area   string
 	Health int
 	Conn   net.Conn
+}
+
+func (player *Player) GetUUID() string {
+	return player.UUID
+}
+
+func (player *Player) GetName() string {
+	return player.Name
+}
+
+func (player *Player) GetRoom() string {
+	return player.Room
+}
+
+func (player *Player) GetArea() string {
+	return player.Area
+}
+
+func (player *Player) GetHealth() int {
+	return player.Health
+}
+
+func (player *Player) GetConn() net.Conn {
+	return player.Conn
+}
+
+func (player *Player) Logout() {
+	player.Conn.Close()
 }
 
 func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
@@ -27,7 +59,7 @@ func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
 	defer area_rows.Close()
 
 	if !area_rows.Next() {
-		return fmt.Errorf("room with UUID %d does not have an area", roomUUID)
+		return fmt.Errorf("room with UUID %s does not have an area", roomUUID)
 	}
 
 	area := &areas.Area{}

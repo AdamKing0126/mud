@@ -7,6 +7,7 @@ import (
 	"log"
 	"mud/areas"
 	"mud/commands"
+	"mud/interfaces"
 	"mud/player"
 	"net"
 	"strings"
@@ -15,12 +16,16 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func handleConnection(conn net.Conn, router *commands.CommandRouter, db *sql.DB) {
+type CommandRouterInterface interface {
+	HandleCommand(db *sql.DB, player interfaces.PlayerInterface, command []byte)
+}
+
+func handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB) {
 	defer conn.Close()
 
-	player := &player.Player{Conn: conn}
+	player := player.NewPlayer(conn)
 
-	if player.Name == "" {
+	if player.GetName() == "" {
 		fmt.Fprintf(conn, "Welcome! Please enter your player name: ")
 		buf := make([]byte, 1024)
 		n, err := conn.Read(buf)
@@ -42,7 +47,6 @@ func handleConnection(conn net.Conn, router *commands.CommandRouter, db *sql.DB)
 	if player.Area == "" || player.Room == "" {
 		player.Area = "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9"
 		player.Room = "189a729d-4e40-4184-a732-e2c45c66ff46"
-		// player.SetLocation(db, 1)
 	}
 
 	router.HandleCommand(db, player, bytes.NewBufferString("look").Bytes())

@@ -11,4 +11,5 @@ rooms:
   - uuid: 8546d8c7-5fac-4b5f-8201-673790c87835
     name: Down the street.
     exits:
+      north: e3bcf5aa-874b-4c6a-9f39-8da2e897f9b1
       west: 68357a14-e157-41ce-8865-c6150e10fd79

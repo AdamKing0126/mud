@@ -3,10 +3,14 @@ package commands
 import (
 	"database/sql"
 	"fmt"
-	"mud/player"
+	"mud/interfaces"
 	"strings"
 	"sync"
 )
+
+type CommandRouterInterface interface {
+	HandleCommand(db *sql.DB, player interfaces.PlayerInterface, command []byte)
+}
 
 type CommandRouter struct {
 	Handlers map[string]CommandHandler
@@ -33,7 +37,8 @@ func RegisterCommands(router *CommandRouter, commands map[string]CommandHandler)
 	}
 }
 
-func (r *CommandRouter) HandleCommand(db *sql.DB, player *player.Player, command []byte) {
+func (r *CommandRouter) HandleCommand(db *sql.DB, player interfaces.PlayerInterface, command []byte) {
+	playerConn := player.GetConn()
 	// Convert the command []byte to a string and trim the extra characters off.
 	commandString := strings.ToLower(strings.TrimSpace(string(command)))
 
@@ -50,7 +55,7 @@ func (r *CommandRouter) HandleCommand(db *sql.DB, player *player.Player, command
 
 	handler, ok := r.Handlers[commandName]
 	if !ok {
-		fmt.Fprintf(player.Conn, "Unknown command: %s\n", command)
+		fmt.Fprintf(playerConn, "Unknown command: %s\n", command)
 		return
 	}
 

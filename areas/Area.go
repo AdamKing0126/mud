@@ -54,7 +54,7 @@ func SeedAreasAndRooms(db *sql.DB) {
 		log.Fatalf("Failed to create Areas/Rooms:  %v", err)
 	}
 
-	areaSeeds := []string{"areas/arena.yml", "areas/street.yml"}
+	areaSeeds := []string{"areas/arena.yml", "areas/street.yml", "areas/glade.yml"}
 
 	for _, areaSeed := range areaSeeds {
 		// Read the YAML file.

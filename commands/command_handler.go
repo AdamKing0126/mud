@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"mud/areas"
-	"mud/player"
+	"mud/interfaces"
 	"strings"
 )
 
@@ -13,13 +13,24 @@ type CommandParser struct {
 	arguments   []string
 }
 
-type CommandHandler func(*sql.DB, *player.Player, string, []string)
+type CommandHandler func(*sql.DB, interfaces.PlayerInterface, string, []string)
 
 func NewCommandParser(commandString string) *CommandParser {
+	commandString = strings.ToLower(commandString)
+
 	// Split the command string into the command name and arguments.
 	commandParts := strings.Split(commandString, " ")
 	commandName := commandParts[0]
 	arguments := commandParts[1:]
+	// look for partial commands ie "n" for "north"
+	for fullCommand := range CommandHandlers {
+		if strings.HasPrefix(strings.ToLower(fullCommand), commandParts[0]) {
+			return &CommandParser{
+				commandName: fullCommand,
+				arguments:   arguments,
+			}
+		}
+	}
 
 	return &CommandParser{
 		commandName: commandName,
@@ -36,21 +47,20 @@ func (p *CommandParser) GetArguments() []string {
 }
 
 var CommandHandlers map[string]CommandHandler = map[string]CommandHandler{
-	"logout": HandleLogoutCommand,
-	"hello":  HandleHelloCommand,
-	"look":   HandleLookCommand,
-	"exits":  HandleExitsCommand,
 	"north":  curryMovePlayerCommand("north"),
 	"south":  curryMovePlayerCommand("south"),
 	"west":   curryMovePlayerCommand("west"),
 	"east":   curryMovePlayerCommand("east"),
 	"up":     curryMovePlayerCommand("up"),
 	"down":   curryMovePlayerCommand("down"),
+	"look":   HandleLookCommand,
+	"logout": HandleLogoutCommand,
+	"exits":  HandleExitsCommand,
 }
 
 func curryMovePlayerCommand(direction string) CommandHandler {
-	return func(db *sql.DB, player *player.Player, commandName string, arguments []string) {
-		HandleMovePlayerCommand(db, player, commandName, append(arguments, direction))
+	return func(db *sql.DB, player interfaces.PlayerInterface, commandName string, arguments []string) {
+		HandleMovePlayerCommand(db, player, commandName, arguments)
 	}
 }
 
@@ -113,218 +123,223 @@ func getRoom(roomUUID string, db *sql.DB) (*areas.Room, error) {
 	return room, nil
 }
 
-func HandleMovePlayerCommand(db *sql.DB, player *player.Player, command string, arguments []string) {
-	currentRoom, err := getRoom(player.Room, db)
+func HandleMovePlayerCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string) {
+	roomUUID := player.GetRoom()
+	playerConn := player.GetConn()
+	currentRoom, err := getRoom(roomUUID, db)
 	if err != nil {
-		fmt.Fprintf(player.Conn, "%v", err)
+		fmt.Fprintf(playerConn, "%v", err)
 		return
 	}
 	switch command {
 	case "north":
 		if currentRoom.Exits.North == nil {
-			fmt.Fprintf(player.Conn, "You cannot go that way.\n")
+			fmt.Fprintf(playerConn, "You cannot go that way.\n")
 
 		} else {
-			fmt.Fprintf(player.Conn, "=======================\n\n")
+			fmt.Fprintf(playerConn, "=======================\n\n")
 			player.SetLocation(db, currentRoom.Exits.North.UUID)
 			var lookArgs []string
 			HandleLookCommand(db, player, "look", lookArgs)
+			// fmt.Fprintf(playerConn
+			// router.HandleCommand(router, db, player, arguments)
 		}
 	case "south":
 		if currentRoom.Exits.South == nil {
-			fmt.Fprintf(player.Conn, "You cannot go that way.\n")
+			fmt.Fprintf(playerConn, "You cannot go that way.\n")
 
 		} else {
-			fmt.Fprintf(player.Conn, "=======================\n\n")
+			fmt.Fprintf(playerConn, "=======================\n\n")
 			player.SetLocation(db, currentRoom.Exits.South.UUID)
 			var lookArgs []string
 			HandleLookCommand(db, player, "look", lookArgs)
 		}
 	case "west":
 		if currentRoom.Exits.West == nil {
-			fmt.Fprintf(player.Conn, "You cannot go that way.\n")
+			fmt.Fprintf(playerConn, "You cannot go that way.\n")
 
 		} else {
-			fmt.Fprintf(player.Conn, "=======================\n\n")
+			fmt.Fprintf(playerConn, "=======================\n\n")
 			player.SetLocation(db, currentRoom.Exits.West.UUID)
 			var lookArgs []string
 			HandleLookCommand(db, player, "look", lookArgs)
 		}
 	case "east":
 		if currentRoom.Exits.East == nil {
-			fmt.Fprintf(player.Conn, "You cannot go that way.\n")
+			fmt.Fprintf(playerConn, "You cannot go that way.\n")
 
 		} else {
-			fmt.Fprintf(player.Conn, "=======================\n\n")
+			fmt.Fprintf(playerConn, "=======================\n\n")
 			player.SetLocation(db, currentRoom.Exits.East.UUID)
 			var lookArgs []string
 			HandleLookCommand(db, player, "look", lookArgs)
 		}
 	case "up":
 		if currentRoom.Exits.Up == nil {
-			fmt.Fprintf(player.Conn, "You cannot go that way.\n")
+			fmt.Fprintf(playerConn, "You cannot go that way.\n")
 
 		} else {
-			fmt.Fprintf(player.Conn, "=======================\n\n")
+			fmt.Fprintf(playerConn, "=======================\n\n")
 			player.SetLocation(db, currentRoom.Exits.Up.UUID)
 			var lookArgs []string
 			HandleLookCommand(db, player, "look", lookArgs)
 		}
 	default:
 		if currentRoom.Exits.Down == nil {
-			fmt.Fprintf(player.Conn, "You cannot go that way.\n")
+			fmt.Fprintf(playerConn, "You cannot go that way.\n")
 		} else {
-			fmt.Fprintf(player.Conn, "=======================\n\n")
+			fmt.Fprintf(playerConn, "=======================\n\n")
 			player.SetLocation(db, currentRoom.Exits.Down.UUID)
 			var lookArgs []string
 			HandleLookCommand(db, player, "look", lookArgs)
 		}
 	}
+
+	if len(arguments) > 0 {
+		// TODO
+	}
 }
 
-func HandleExitsCommand(db *sql.DB, player *player.Player, command string, arguments []string) {
-	currentRoom, err := getRoom(player.Room, db)
+func HandleExitsCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string) {
+	roomUUID := player.GetRoom()
+	playerConn := player.GetConn()
+	currentRoom, err := getRoom(roomUUID, db)
 	if err != nil {
-		fmt.Fprintf(player.Conn, "%v", err)
+		fmt.Fprintf(playerConn, "%v", err)
 		return
 	}
 	if currentRoom.Exits.North != nil {
 		northExit, err := getRoom(currentRoom.Exits.North.UUID, db)
 		if err != nil {
-			fmt.Fprintf(player.Conn, "%v", err)
+			fmt.Fprintf(playerConn, "%v", err)
 		}
-		fmt.Fprintf(player.Conn, "North: %s\n", northExit.Name)
+		fmt.Fprintf(playerConn, "North: %s\n", northExit.Name)
 	}
 	if currentRoom.Exits.South != nil {
 		southExit, err := getRoom(currentRoom.Exits.South.UUID, db)
 		if err != nil {
-			fmt.Fprintf(player.Conn, "%v", err)
+			fmt.Fprintf(playerConn, "%v", err)
 		}
-		fmt.Fprintf(player.Conn, "South: %s\n", southExit.Name)
+		fmt.Fprintf(playerConn, "South: %s\n", southExit.Name)
 	}
 	if currentRoom.Exits.West != nil {
 		westExit, err := getRoom(currentRoom.Exits.West.UUID, db)
 		if err != nil {
-			fmt.Fprintf(player.Conn, "%v", err)
+			fmt.Fprintf(playerConn, "%v", err)
 		}
-		fmt.Fprintf(player.Conn, "West: %s\n", westExit.Name)
+		fmt.Fprintf(playerConn, "West: %s\n", westExit.Name)
 	}
 	if currentRoom.Exits.East != nil {
 		eastExit, err := getRoom(currentRoom.Exits.East.UUID, db)
 		if err != nil {
-			fmt.Fprintf(player.Conn, "%v", err)
+			fmt.Fprintf(playerConn, "%v", err)
 		}
-		fmt.Fprintf(player.Conn, "East: %s\n", eastExit.Name)
+		fmt.Fprintf(playerConn, "East: %s\n", eastExit.Name)
 	}
 	if currentRoom.Exits.Up != nil {
 		upExit, err := getRoom(currentRoom.Exits.Up.UUID, db)
 		if err != nil {
-			fmt.Fprintf(player.Conn, "%v", err)
+			fmt.Fprintf(playerConn, "%v", err)
 		}
-		fmt.Fprintf(player.Conn, "Up: %s\n", upExit.Name)
+		fmt.Fprintf(playerConn, "Up: %s\n", upExit.Name)
 	}
 	if currentRoom.Exits.Down != nil {
 		downExit, err := getRoom(currentRoom.Exits.Down.UUID, db)
 		if err != nil {
-			fmt.Fprintf(player.Conn, "%v", err)
+			fmt.Fprintf(playerConn, "%v", err)
 		}
-		fmt.Fprintf(player.Conn, "Down: %s\n", downExit.Name)
+		fmt.Fprintf(playerConn, "Down: %s\n", downExit.Name)
 	}
 }
 
-func HandleLogoutCommand(db *sql.DB, player *player.Player, command string, arguments []string) {
-	fmt.Fprintf(player.Conn, "Goodbye!\n")
-	player.Conn.Close()
+func HandleLogoutCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string) {
+	playerConn := player.GetConn()
+	fmt.Fprintf(playerConn, "Goodbye!\n")
+	player.Logout()
 }
 
-func HandleHelloCommand(db *sql.DB, player *player.Player, command string, arguments []string) {
-	playerName := player.Name
-	if playerName == "" {
-		playerName = "somebody"
-	}
-
-	fmt.Fprintf(player.Conn, "Hello, %s!\n", playerName)
-}
-
-func HandleLookCommand(db *sql.DB, player *player.Player, command string, arguments []string) {
-	currentRoom, err := getRoom(player.Room, db)
+func HandleLookCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string) {
+	roomUUID := player.GetRoom()
+	playerConn := player.GetConn()
+	currentRoom, err := getRoom(roomUUID, db)
 	if err != nil {
-		fmt.Fprintf(player.Conn, "%v", err)
+		fmt.Fprintf(playerConn, "%v", err)
 		return
 	}
 
 	if len(arguments) == 0 {
-		fmt.Fprintf(player.Conn, "%s\n", currentRoom.Area.Name)
-		fmt.Fprintf(player.Conn, "%s\n", currentRoom.Area.Description)
-		fmt.Fprintf(player.Conn, "%s\n", currentRoom.Name)
-		fmt.Fprintf(player.Conn, "%s\n", currentRoom.Description)
+		fmt.Fprintf(playerConn, "%s\n", currentRoom.Area.Name)
+		fmt.Fprintf(playerConn, "%s\n", currentRoom.Area.Description)
+		fmt.Fprintf(playerConn, "-----------------------\n\n")
+		fmt.Fprintf(playerConn, "%s\n", currentRoom.Name)
+		fmt.Fprintf(playerConn, "%s\n", currentRoom.Description)
 	} else if len(arguments) == 1 {
 		switch arguments[0] {
 		case "north":
 			if currentRoom.Exits.North != nil {
 				northExit, err := getRoom(currentRoom.Exits.North.UUID, db)
 				if err != nil {
-					fmt.Fprintf(player.Conn, "%v", err)
+					fmt.Fprintf(playerConn, "%v", err)
 				}
-				fmt.Fprintf(player.Conn, "You look North. You see %s\n", northExit.Name)
+				fmt.Fprintf(playerConn, "You look North. You see %s\n", northExit.Name)
 			} else {
-				fmt.Fprintf(player.Conn, "You don't see anything in that direction\n")
+				fmt.Fprintf(playerConn, "You don't see anything in that direction\n")
 			}
 		case "south":
 			if currentRoom.Exits.South != nil {
 				southExit, err := getRoom(currentRoom.Exits.South.UUID, db)
 				if err != nil {
-					fmt.Fprintf(player.Conn, "%v", err)
+					fmt.Fprintf(playerConn, "%v", err)
 				}
-				fmt.Fprintf(player.Conn, "You look South. You see %s\n", southExit.Name)
+				fmt.Fprintf(playerConn, "You look South. You see %s\n", southExit.Name)
 			} else {
-				fmt.Fprintf(player.Conn, "You don't see anything in that direction\n")
+				fmt.Fprintf(playerConn, "You don't see anything in that direction\n")
 			}
 		case "east":
 			if currentRoom.Exits.East != nil {
 				eastExit, err := getRoom(currentRoom.Exits.East.UUID, db)
 				if err != nil {
-					fmt.Fprintf(player.Conn, "%v", err)
+					fmt.Fprintf(playerConn, "%v", err)
 				}
-				fmt.Fprintf(player.Conn, "You look East. You see %s\n", eastExit.Name)
+				fmt.Fprintf(playerConn, "You look East. You see %s\n", eastExit.Name)
 			} else {
-				fmt.Fprintf(player.Conn, "You don't see anything in that direction\n")
+				fmt.Fprintf(playerConn, "You don't see anything in that direction\n")
 			}
 		case "west":
 			if currentRoom.Exits.West != nil {
 				westExit, err := getRoom(currentRoom.Exits.West.UUID, db)
 				if err != nil {
-					fmt.Fprintf(player.Conn, "%v", err)
+					fmt.Fprintf(playerConn, "%v", err)
 				}
-				fmt.Fprintf(player.Conn, "You look West. You see %s\n", westExit.Name)
+				fmt.Fprintf(playerConn, "You look West. You see %s\n", westExit.Name)
 			} else {
-				fmt.Fprintf(player.Conn, "You don't see anything in that direction\n")
+				fmt.Fprintf(playerConn, "You don't see anything in that direction\n")
 			}
 		case "up":
 			if currentRoom.Exits.Up != nil {
 				upExit, err := getRoom(currentRoom.Exits.Up.UUID, db)
 				if err != nil {
-					fmt.Fprintf(player.Conn, "%v", err)
+					fmt.Fprintf(playerConn, "%v", err)
 				}
-				fmt.Fprintf(player.Conn, "You look Up. You see %s\n", upExit.Name)
+				fmt.Fprintf(playerConn, "You look Up. You see %s\n", upExit.Name)
 			} else {
-				fmt.Fprintf(player.Conn, "You don't see anything in that direction\n")
+				fmt.Fprintf(playerConn, "You don't see anything in that direction\n")
 			}
 		case "down":
 			if currentRoom.Exits.Down != nil {
 				downExit, err := getRoom(currentRoom.Exits.Down.UUID, db)
 				if err != nil {
-					fmt.Fprintf(player.Conn, "%v", err)
+					fmt.Fprintf(playerConn, "%v", err)
 				}
-				fmt.Fprintf(player.Conn, "You look Down. You see %s\n", downExit.Name)
+				fmt.Fprintf(playerConn, "You look Down. You see %s\n", downExit.Name)
 			} else {
-				fmt.Fprintf(player.Conn, "You don't see anything in that direction\n")
+				fmt.Fprintf(playerConn, "You don't see anything in that direction\n")
 			}
 		default:
-			fmt.Fprintf(player.Conn, "You don't see that.\n")
+			fmt.Fprintf(playerConn, "You don't see that.\n")
 		}
 
 	} else {
-		fmt.Fprintf(player.Conn, "I don't know how to do that yet.\n")
+		fmt.Fprintf(playerConn, "I don't know how to do that yet.\n")
 	}
 }
