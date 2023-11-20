@@ -1,0 +1,86 @@
+---
+uuid: a001e33f-eb2d-4f58-8a29-96c1c53f85ab
+name: Enchanted Forest
+description: A mystical forest with ancient trees and magical creatures.
+rooms:
+  - uuid: e3bcf5aa-874b-4c6a-9f39-8da2e897f9b1
+    name: Forest Entrance
+    description: The starting point of your journey into the enchanted forest.
+    exits:
+      north: 8b2c2b1e-c308-43b0-9164-1d9a06c0bc7f
+      south: 8546d8c7-5fac-4b5f-8201-673790c87835
+      east: 1361fb0f-1100-4e8e-b5f1-dbc52eb06baa
+      west: 5a2c89de-25ce-4b43-af77-5b0b49c8f32f
+
+  - uuid: 8b2c2b1e-c308-43b0-9164-1d9a06c0bc7f
+    name: Whispering Grove
+    description: Trees in this grove seem to whisper ancient secrets.
+    exits:
+      south: e3bcf5aa-874b-4c6a-9f39-8da2e897f9b1
+      east: 40e42f85-9f0c-4d4a-8e0d-2893e5a9246a
+
+  - uuid: 1361fb0f-1100-4e8e-b5f1-dbc52eb06baa
+    name: Moonlit Clearing
+    description: A peaceful clearing bathed in the light of the full moon.
+    exits:
+      west: e3bcf5aa-874b-4c6a-9f39-8da2e897f9b1
+      north: a7e2c5a2-5c8d-4b92-95c0-c9d5043bdc2a
+
+  - uuid: 40e42f85-9f0c-4d4a-8e0d-2893e5a9246a
+    name: Sylvan Path
+    description: A narrow path winding through the heart of the enchanted forest.
+    exits:
+      west: 8b2c2b1e-c308-43b0-9164-1d9a06c0bc7f
+      east: a7e2c5a2-5c8d-4b92-95c0-c9d5043bdc2a
+
+  - uuid: a7e2c5a2-5c8d-4b92-95c0-c9d5043bdc2a
+    name: Fae Fountain
+    description: A magical fountain where fairies gather to dance.
+    exits:
+      south: 1361fb0f-1100-4e8e-b5f1-dbc52eb06baa
+      west: 40e42f85-9f0c-4d4a-8e0d-2893e5a9246a
+
+  - uuid: 5a2c89de-25ce-4b43-af77-5b0b49c8f32f
+    name: Twilight Glade
+    description: A glade bathed in the soft glow of twilight.
+    exits:
+      east: e3bcf5aa-874b-4c6a-9f39-8da2e897f9b1
+      north: 30841c4d-510a-4e8a-b60b-0b99a5127b12
+
+  - uuid: 30841c4d-510a-4e8a-b60b-0b99a5127b12
+    name: Starlit Pool
+    description: A tranquil pool reflecting the starry night sky.
+    exits:
+      south: 5a2c89de-25ce-4b43-af77-5b0b49c8f32f
+      east: 684eb49d-490a-4e9f-a2c2-3325d89f9df6
+
+  - uuid: 684eb49d-490a-4e9f-a2c2-3325d89f9df6
+    name: Celestial Bridge
+    description: A bridge made of moonlight connecting two mystical realms.
+    exits:
+      west: 30841c4d-510a-4e8a-b60b-0b99a5127b12
+      north: 34f3b2d0-20cb-44ec-9c9c-0c4f44dbf9cd
+
+  - uuid: 34f3b2d0-20cb-44ec-9c9c-0c4f44dbf9cd
+    name: Astral Gateway
+    description: A gateway to the astral planes, shimmering with energy.
+    exits:
+      south: 684eb49d-490a-4e9f-a2c2-3325d89f9df6
+      east: 54a3d7f4-6d9e-47e7-95da-14b0b4700f9a
+
+  - uuid: 54a3d7f4-6d9e-47e7-95da-14b0b4700f9a
+    name: Ethereal Nexus
+    description: The nexus of magical energies, pulsating with otherworldly power.
+    exits:
+      west: 34f3b2d0-20cb-44ec-9c9c-0c4f44dbf9cd
+      north: bbea2857-d33e-4a3f-9ce4-45ff1b04d2b2
+
+  - uuid: bbea2857-d33e-4a3f-9ce4-45ff1b04d2b2
+    name: Arcane Archive
+    description: A library containing ancient scrolls and mystical tomes.
+    exits:
+      south: 54a3d7f4-6d9e-47e7-95da-14b0b4700f9a
+      east: 9a0ec7da-42d2-4e96-9a4b-35c94e926a9f
+
+  - uuid: 9a0ec7da-42d2-4e96-9a4b-35c94e926a9f
+    name: Portal Chamber
