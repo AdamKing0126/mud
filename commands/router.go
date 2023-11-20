@@ -42,23 +42,26 @@ func (r *CommandRouter) HandleCommand(db *sql.DB, player interfaces.PlayerInterf
 	// Convert the command []byte to a string and trim the extra characters off.
 	commandString := strings.ToLower(strings.TrimSpace(string(command)))
 
-	// Parse the command string.
-	commandParser := NewCommandParser(commandString)
+	commandBlocks := strings.Split(commandString, ";")
+	for _, command := range commandBlocks {
+		// Parse the command string.
+		commandParser := NewCommandParser(strings.TrimSpace(command))
 
-	// Get the command name and arguments.
-	commandName := commandParser.GetCommandName()
-	arguments := commandParser.GetArguments()
+		// Get the command name and arguments.
+		commandName := commandParser.GetCommandName()
+		arguments := commandParser.GetArguments()
 
-	// Check if the command is registered.
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+		// Check if the command is registered.
+		r.mu.RLock()
+		defer r.mu.RUnlock()
 
-	handler, ok := r.Handlers[commandName]
-	if !ok {
-		fmt.Fprintf(playerConn, "Unknown command: %s\n", command)
-		return
+		handler, ok := r.Handlers[commandName]
+		if !ok {
+			fmt.Fprintf(playerConn, "Unknown command: %s\n", command)
+			return
+		}
+
+		// Handle the command.
+		handler(db, player, commandName, arguments)
 	}
-
-	// Handle the command.
-	handler(db, player, commandName, arguments)
 }
