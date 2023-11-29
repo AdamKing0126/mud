@@ -8,7 +8,7 @@ import (
 	"mud/areas"
 	"mud/commands"
 	"mud/interfaces"
-	"mud/player"
+	"mud/players"
 	"net"
 	"strings"
 	"sync"
@@ -17,13 +17,13 @@ import (
 )
 
 type CommandRouterInterface interface {
-	HandleCommand(db *sql.DB, player interfaces.PlayerInterface, command []byte)
+	HandleCommand(db *sql.DB, player interfaces.PlayerInterface, command []byte, currentChannel chan interfaces.ActionInterface, updateChannel func(string))
 }
 
-func handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB) {
+func handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, areaChannels map[string]chan interfaces.ActionInterface) {
 	defer conn.Close()
 
-	player := player.NewPlayer(conn)
+	player := players.NewPlayer(conn)
 
 	if player.GetName() == "" {
 		fmt.Fprintf(conn, "Welcome! Please enter your player name: ")
@@ -49,7 +49,13 @@ func handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB) 
 		player.Room = "189a729d-4e40-4184-a732-e2c45c66ff46"
 	}
 
-	router.HandleCommand(db, player, bytes.NewBufferString("look").Bytes())
+	ch := areaChannels[player.Area]
+
+	updateChannel := func(newArea string) {
+		ch = areaChannels[newArea]
+	}
+
+	router.HandleCommand(db, player, bytes.NewBufferString("look").Bytes(), ch, updateChannel)
 
 	for {
 		buf := make([]byte, 1024)
@@ -59,7 +65,7 @@ func handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB) 
 			break
 		}
 
-		router.HandleCommand(db, player, buf[:n])
+		router.HandleCommand(db, player, buf[:n], ch, updateChannel)
 	}
 }
 
@@ -74,7 +80,7 @@ func main() {
 		}
 		fmt.Println("Database opened successfully")
 	}
-	player.SeedPlayers(db)
+	players.SeedPlayers(db)
 	areas.SeedAreasAndRooms(db)
 
 	defer db.Close()
@@ -99,6 +105,28 @@ func main() {
 
 	wg := sync.WaitGroup{}
 
+	areaChannels := make(map[string]chan interfaces.ActionInterface)
+	rows, err := db.Query("SELECT uuid FROM areas")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	areaInstances := make(map[string]interfaces.AreaInterface)
+
+	for rows.Next() {
+		var uuid string
+		err := rows.Scan(&uuid)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		areaInstances[uuid] = areas.NewArea()
+		areaChannels[uuid] = make(chan interfaces.ActionInterface)
+		go areaInstances[uuid].Run(db, areaChannels[uuid])
+	}
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -108,7 +136,7 @@ func main() {
 
 		wg.Add(1)
 
-		go handleConnection(conn, router, db)
+		go handleConnection(conn, router, db, areaChannels)
 	}
 
 	wg.Wait()

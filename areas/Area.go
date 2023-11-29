@@ -5,15 +5,71 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"mud/interfaces"
+	"time"
 
+	"github.com/google/uuid"
 	"gopkg.in/yaml.v2"
 )
+
+type Action struct {
+	Player  interfaces.PlayerInterface
+	Command string
+}
+
+func (a *Action) GetPlayer() interfaces.PlayerInterface {
+	return a.Player
+}
+
+func (a *Action) GetCommand() string {
+	return a.Command
+}
 
 type Area struct {
 	UUID        string
 	Name        string
 	Description string
 	Rooms       []Room
+	Channel     chan Action
+}
+
+func (a *Area) GetUUID() string {
+	return a.UUID
+}
+
+func (a *Area) GetName() string {
+	return a.Name
+}
+
+func (a *Area) GetDescription() string {
+	return a.Description
+}
+
+func (a *Area) Run(db *sql.DB, ch chan interfaces.ActionInterface) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	playerActions := make(map[interfaces.PlayerInterface][]interfaces.ActionInterface)
+
+	for {
+		select {
+		case action := <-ch:
+			player := action.GetPlayer()
+			playerActions[player] = append(playerActions[player], action)
+		case <-ticker.C:
+			// Process one action for each player
+			for player, actions := range playerActions {
+				if len(actions) > 0 {
+					action := actions[0]
+					playerActions[player] = actions[1:]
+
+					fmt.Println("Running command: ", action.GetCommand())
+				} else {
+					fmt.Println("No commands to run for player.")
+				}
+			}
+		}
+	}
 }
 
 type AreaInfo struct {
@@ -27,6 +83,10 @@ type AreaImport struct {
 	Name        string       `yaml:"name"`
 	Description string       `yaml:"description"`
 	Rooms       []RoomImport `yaml:"rooms"`
+}
+
+func NewArea() interfaces.AreaInterface {
+	return &Area{}
 }
 
 func SeedAreasAndRooms(db *sql.DB) {
@@ -48,6 +108,21 @@ func SeedAreasAndRooms(db *sql.DB) {
 		  exit_west VARCHAR(36),
 		  exit_up VARCHAR(36),
 		  exit_down VARCHAR(36)
+		);
+
+		CREATE TABLE IF NOT EXISTS items (
+			uuid VARCHAR(36) PRIMARY KEY,
+			name TEXT,
+			description TEXT
+		);
+
+		CREATE TABLE IF NOT EXISTS item_locations (
+			item_uuid VARCHAR(36),
+			room_uuid VARCHAR(36) NULL,
+			player_uuid VARCHAR(36) NULL,
+			PRIMARY KEY (item_uuid),
+			FOREIGN KEY (room_uuid) REFERENCES rooms(uuid),
+			FOREIGN KEY (player_uuid) REFERENCES players(uuid)
 		);
 	`)
 	if err != nil {
@@ -91,6 +166,16 @@ func SeedAreasAndRooms(db *sql.DB) {
 				}
 			}
 
+			item_uuid := uuid.New().String()
+			_, item_err := db.Exec("INSERT INTO items (uuid, name, description) VALUES (?, ?, ?)", item_uuid, "sword", "A sword")
+			if item_err != nil {
+				log.Fatalf("Failed to insert item: %v", item_err)
+			}
+
+			_, item_location_err := db.Exec("INSERT INTO item_locations (item_uuid, room_uuid, player_uuid) VALUES (?, ?, NULL)", item_uuid, area.Rooms[0].UUID)
+			if item_location_err != nil {
+				log.Fatalf("Failed to insert item location: %v", item_location_err)
+			}
 		}
 	}
 }

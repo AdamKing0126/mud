@@ -2,7 +2,7 @@ package sql_database
 
 import (
 	"database/sql"
-	"mud/player"
+	"mud/players"
 )
 
 // Database abstraction layer
@@ -32,15 +32,15 @@ func (db *SQLiteDatabase) Exec(query string, args ...interface{}) (sql.Result, e
 	return db.db.Exec(query, args...)
 }
 
-func GetPlayer(db Database, id int) (*player.Player, error) {
-	row := db.Query("SELECT id, name, location, health FROM players WHERE id = ?", id)
-	if err := row.Err(); err != nil {
+func GetPlayer(db Database, id int) (*players.Player, error) {
+	row, err := db.Query("SELECT id, name, location, health FROM players WHERE id = ?", id)
+	if err != nil {
 		return nil, err
 	}
 	defer row.Close()
 
-	player := &player.Player{}
-	if err := row.Scan(&player.ID, &player.Name, &player.Location, &player.Health); err != nil {
+	player := &players.Player{}
+	if err := row.Scan(&player.UUID, &player.Name, &player.Room, &player.Area, &player.Health); err != nil {
 		return nil, err
 	}
 

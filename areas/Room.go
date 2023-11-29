@@ -1,5 +1,9 @@
 package areas
 
+import (
+	"mud/interfaces"
+)
+
 type Room struct {
 	UUID        string
 	AreaUUID    string
@@ -7,6 +11,7 @@ type Room struct {
 	Description string
 	Area        AreaInfo
 	Exits       ExitInfo
+	Items       []interfaces.ItemInterface
 }
 
 type ExitInfo struct {

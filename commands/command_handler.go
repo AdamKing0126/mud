@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mud/areas"
 	"mud/interfaces"
+	"mud/items"
 	"strings"
 )
 
@@ -13,7 +14,7 @@ type CommandParser struct {
 	arguments   []string
 }
 
-type CommandHandler func(*sql.DB, interfaces.PlayerInterface, string, []string)
+type CommandHandler func(*sql.DB, interfaces.PlayerInterface, string, []string, chan interfaces.ActionInterface, func(string)) interface{}
 
 func NewCommandParser(commandString string) *CommandParser {
 	commandString = strings.ToLower(commandString)
@@ -47,20 +48,37 @@ func (p *CommandParser) GetArguments() []string {
 }
 
 var CommandHandlers map[string]CommandHandler = map[string]CommandHandler{
-	"north":  curryMovePlayerCommand("north"),
-	"south":  curryMovePlayerCommand("south"),
-	"west":   curryMovePlayerCommand("west"),
-	"east":   curryMovePlayerCommand("east"),
-	"up":     curryMovePlayerCommand("up"),
-	"down":   curryMovePlayerCommand("down"),
-	"look":   HandleLookCommand,
-	"logout": HandleLogoutCommand,
-	"exits":  HandleExitsCommand,
+	"north":     curryMovePlayerCommand("north"),
+	"south":     curryMovePlayerCommand("south"),
+	"west":      curryMovePlayerCommand("west"),
+	"east":      curryMovePlayerCommand("east"),
+	"up":        curryMovePlayerCommand("up"),
+	"down":      curryMovePlayerCommand("down"),
+	"look":      HandleLookCommand,
+	"logout":    HandleLogoutCommand,
+	"exits":     HandleExitsCommand,
+	"take":      HandleTakeCommand,
+	"drop":      HandleDropCommand,
+	"inventory": HandleInventoryCommand,
+	"foo":       QueueCommandHandler(HandleFooCommand),
+}
+
+func QueueCommandHandler(handler CommandHandler) CommandHandler {
+	return func(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) interface{} {
+		return func() {
+			fmt.Println("Queueing command: ", command)
+			currentChannel <- &areas.Action{Player: player, Command: command}
+			if function, ok := handler(db, player, command, arguments, currentChannel, updateChannel).(func()); ok {
+				function()
+			}
+		}
+	}
 }
 
 func curryMovePlayerCommand(direction string) CommandHandler {
-	return func(db *sql.DB, player interfaces.PlayerInterface, commandName string, arguments []string) {
-		HandleMovePlayerCommand(db, player, commandName, arguments)
+	return func(db *sql.DB, player interfaces.PlayerInterface, commandName string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) interface{} {
+		HandleMovePlayerCommand(db, player, commandName, arguments, currentChannel, updateChannel)
+		return nil
 	}
 }
 
@@ -120,11 +138,22 @@ func getRoom(roomUUID string, db *sql.DB) (*areas.Room, error) {
 		room.Exits.Up = &areas.Room{UUID: upExitUUID}
 	}
 
+	items, err := items.GetItemsInRoom(db, roomUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	itemInterfaces := make([]interfaces.ItemInterface, len(items))
+	copy(itemInterfaces, items)
+
+	room.Items = itemInterfaces
+
 	return room, nil
 }
 
-func HandleMovePlayerCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string) {
+func HandleMovePlayerCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	roomUUID := player.GetRoom()
+	areaUUID := player.GetArea()
 	playerConn := player.GetConn()
 	currentRoom, err := getRoom(roomUUID, db)
 	if err != nil {
@@ -140,9 +169,7 @@ func HandleMovePlayerCommand(db *sql.DB, player interfaces.PlayerInterface, comm
 			fmt.Fprintf(playerConn, "=======================\n\n")
 			player.SetLocation(db, currentRoom.Exits.North.UUID)
 			var lookArgs []string
-			HandleLookCommand(db, player, "look", lookArgs)
-			// fmt.Fprintf(playerConn
-			// router.HandleCommand(router, db, player, arguments)
+			HandleLookCommand(db, player, "look", lookArgs, currentChannel, updateChannel)
 		}
 	case "south":
 		if currentRoom.Exits.South == nil {
@@ -152,7 +179,7 @@ func HandleMovePlayerCommand(db *sql.DB, player interfaces.PlayerInterface, comm
 			fmt.Fprintf(playerConn, "=======================\n\n")
 			player.SetLocation(db, currentRoom.Exits.South.UUID)
 			var lookArgs []string
-			HandleLookCommand(db, player, "look", lookArgs)
+			HandleLookCommand(db, player, "look", lookArgs, currentChannel, updateChannel)
 		}
 	case "west":
 		if currentRoom.Exits.West == nil {
@@ -162,7 +189,7 @@ func HandleMovePlayerCommand(db *sql.DB, player interfaces.PlayerInterface, comm
 			fmt.Fprintf(playerConn, "=======================\n\n")
 			player.SetLocation(db, currentRoom.Exits.West.UUID)
 			var lookArgs []string
-			HandleLookCommand(db, player, "look", lookArgs)
+			HandleLookCommand(db, player, "look", lookArgs, currentChannel, updateChannel)
 		}
 	case "east":
 		if currentRoom.Exits.East == nil {
@@ -172,7 +199,7 @@ func HandleMovePlayerCommand(db *sql.DB, player interfaces.PlayerInterface, comm
 			fmt.Fprintf(playerConn, "=======================\n\n")
 			player.SetLocation(db, currentRoom.Exits.East.UUID)
 			var lookArgs []string
-			HandleLookCommand(db, player, "look", lookArgs)
+			HandleLookCommand(db, player, "look", lookArgs, currentChannel, updateChannel)
 		}
 	case "up":
 		if currentRoom.Exits.Up == nil {
@@ -182,7 +209,7 @@ func HandleMovePlayerCommand(db *sql.DB, player interfaces.PlayerInterface, comm
 			fmt.Fprintf(playerConn, "=======================\n\n")
 			player.SetLocation(db, currentRoom.Exits.Up.UUID)
 			var lookArgs []string
-			HandleLookCommand(db, player, "look", lookArgs)
+			HandleLookCommand(db, player, "look", lookArgs, currentChannel, updateChannel)
 		}
 	default:
 		if currentRoom.Exits.Down == nil {
@@ -191,22 +218,22 @@ func HandleMovePlayerCommand(db *sql.DB, player interfaces.PlayerInterface, comm
 			fmt.Fprintf(playerConn, "=======================\n\n")
 			player.SetLocation(db, currentRoom.Exits.Down.UUID)
 			var lookArgs []string
-			HandleLookCommand(db, player, "look", lookArgs)
+			HandleLookCommand(db, player, "look", lookArgs, currentChannel, updateChannel)
 		}
 	}
 
-	if len(arguments) > 0 {
-		// TODO
+	if areaUUID != player.GetArea() {
+		updateChannel(player.GetArea())
 	}
 }
 
-func HandleExitsCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string) {
+func HandleExitsCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) interface{} {
 	roomUUID := player.GetRoom()
 	playerConn := player.GetConn()
 	currentRoom, err := getRoom(roomUUID, db)
 	if err != nil {
 		fmt.Fprintf(playerConn, "%v", err)
-		return
+		return nil
 	}
 	if currentRoom.Exits.North != nil {
 		northExit, err := getRoom(currentRoom.Exits.North.UUID, db)
@@ -250,29 +277,40 @@ func HandleExitsCommand(db *sql.DB, player interfaces.PlayerInterface, command s
 		}
 		fmt.Fprintf(playerConn, "Down: %s\n", downExit.Name)
 	}
+
+	return nil
 }
 
-func HandleLogoutCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string) {
+func HandleLogoutCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) interface{} {
 	playerConn := player.GetConn()
 	fmt.Fprintf(playerConn, "Goodbye!\n")
 	player.Logout()
+	return nil
 }
 
-func HandleLookCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string) {
+func HandleLookCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) interface{} {
 	roomUUID := player.GetRoom()
 	playerConn := player.GetConn()
 	currentRoom, err := getRoom(roomUUID, db)
 	if err != nil {
 		fmt.Fprintf(playerConn, "%v", err)
-		return
+		return nil
 	}
 
 	if len(arguments) == 0 {
+
 		fmt.Fprintf(playerConn, "%s\n", currentRoom.Area.Name)
 		fmt.Fprintf(playerConn, "%s\n", currentRoom.Area.Description)
 		fmt.Fprintf(playerConn, "-----------------------\n\n")
 		fmt.Fprintf(playerConn, "%s\n", currentRoom.Name)
 		fmt.Fprintf(playerConn, "%s\n", currentRoom.Description)
+
+		if len(currentRoom.Items) > 0 {
+			fmt.Fprintf(playerConn, "You see the following items:\n")
+			for _, item := range currentRoom.Items {
+				fmt.Fprintf(playerConn, "%s\n", item.GetName())
+			}
+		}
 	} else if len(arguments) == 1 {
 		switch arguments[0] {
 		case "north":
@@ -336,10 +374,108 @@ func HandleLookCommand(db *sql.DB, player interfaces.PlayerInterface, command st
 				fmt.Fprintf(playerConn, "You don't see anything in that direction\n")
 			}
 		default:
-			fmt.Fprintf(playerConn, "You don't see that.\n")
-		}
+			itemName := arguments[0]
+			found := false
+			itemsForPlayer, err := items.GetItemsForPlayer(db, player.GetUUID())
+			if err != nil {
+				fmt.Fprintf(playerConn, "%v", err)
+			}
 
+			items := append(currentRoom.Items, itemsForPlayer...)
+			for _, item := range items {
+				if item.GetName() == itemName {
+					fmt.Fprintf(playerConn, "%s\n", item.GetDescription())
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				fmt.Fprintf(playerConn, "You don't see that.\n")
+			}
+		}
 	} else {
 		fmt.Fprintf(playerConn, "I don't know how to do that yet.\n")
+	}
+	return nil
+}
+
+func HandleTakeCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) interface{} {
+	roomUUID := player.GetRoom()
+	playerConn := player.GetConn()
+	currentRoom, err := getRoom(roomUUID, db)
+	if err != nil {
+		fmt.Fprintf(playerConn, "%v", err)
+		return nil
+	}
+
+	if len(currentRoom.Items) > 0 {
+		for _, item := range currentRoom.Items {
+			if item.GetName() == arguments[0] {
+				query := "UPDATE item_locations SET room_uuid = '', player_uuid = ? WHERE item_uuid = ?"
+				_, err := db.Exec(query, player.GetUUID(), item.GetUUID())
+				if err != nil {
+					fmt.Fprintf(playerConn, "Failed to update item location: %v\n", err)
+				}
+				fmt.Fprintf(playerConn, "You take the %s.\n", item.GetName())
+				break
+			}
+		}
+	} else {
+		fmt.Fprintf(playerConn, "You don't see that here.\n")
+	}
+	return nil
+}
+
+func HandleDropCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) interface{} {
+	roomUUID := player.GetRoom()
+	playerConn := player.GetConn()
+
+	playerItems, err := items.GetItemsForPlayer(db, player.GetUUID())
+	if err != nil {
+		fmt.Fprintf(playerConn, "%v", err)
+		return nil
+	}
+
+	if len(playerItems) > 0 {
+		for _, item := range playerItems {
+			if item.GetName() == arguments[0] {
+				query := "UPDATE item_locations SET room_uuid = ?, player_uuid = NULL WHERE item_uuid = ?"
+				_, err := db.Exec(query, roomUUID, item.GetUUID())
+				if err != nil {
+					fmt.Fprintf(playerConn, "Failed to update item location: %v\n", err)
+				}
+				fmt.Fprintf(playerConn, "You drop the %s.\n", item.GetName())
+				break
+			}
+		}
+	} else {
+		fmt.Fprintf(playerConn, "You don't have that item.\n")
+	}
+	return nil
+}
+
+func HandleInventoryCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) interface{} {
+	playerConn := player.GetConn()
+	playerItems, err := items.GetItemsForPlayer(db, player.GetUUID())
+	if err != nil {
+		fmt.Fprintf(playerConn, "%v", err)
+	}
+
+	fmt.Fprintf(playerConn, "You are carrying:\n")
+
+	if len(playerItems) == 0 {
+		fmt.Fprintf(playerConn, "Nothing\n")
+	} else {
+		for _, item := range playerItems {
+			fmt.Fprintf(playerConn, "%s\n", item.GetName())
+		}
+	}
+	return nil
+}
+
+func HandleFooCommand(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) interface{} {
+	return func() {
+		fmt.Println("Handling 'foo' command: ", player.GetName())
 	}
 }

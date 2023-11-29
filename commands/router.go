@@ -9,7 +9,7 @@ import (
 )
 
 type CommandRouterInterface interface {
-	HandleCommand(db *sql.DB, player interfaces.PlayerInterface, command []byte)
+	HandleCommand(db *sql.DB, player interfaces.PlayerInterface, command []byte, currentChannel chan interfaces.ActionInterface, updateChannel func(string))
 }
 
 type CommandRouter struct {
@@ -37,7 +37,7 @@ func RegisterCommands(router *CommandRouter, commands map[string]CommandHandler)
 	}
 }
 
-func (r *CommandRouter) HandleCommand(db *sql.DB, player interfaces.PlayerInterface, command []byte) {
+func (r *CommandRouter) HandleCommand(db *sql.DB, player interfaces.PlayerInterface, command []byte, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	playerConn := player.GetConn()
 	// Convert the command []byte to a string and trim the extra characters off.
 	commandString := strings.ToLower(strings.TrimSpace(string(command)))
@@ -61,7 +61,13 @@ func (r *CommandRouter) HandleCommand(db *sql.DB, player interfaces.PlayerInterf
 			return
 		}
 
+		if commandHandler, ok := handler.(CommandHandler); ok {
+			commandHandler(db, player, command, arguments, currentChannel, updateChannel)
+		} else if function, ok := handler.(func()); ok {
+			function()
+		}
+
 		// Handle the command.
-		handler(db, player, commandName, arguments)
+		// handler(db, player, commandName, arguments, currentChannel, updateChannel)
 	}
 }
