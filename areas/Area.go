@@ -6,24 +6,10 @@ import (
 	"io/ioutil"
 	"log"
 	"mud/interfaces"
-	"time"
 
 	"github.com/google/uuid"
 	"gopkg.in/yaml.v2"
 )
-
-type Action struct {
-	Player  interfaces.PlayerInterface
-	Command string
-}
-
-func (a *Action) GetPlayer() interfaces.PlayerInterface {
-	return a.Player
-}
-
-func (a *Action) GetCommand() string {
-	return a.Command
-}
 
 type Area struct {
 	UUID        string
@@ -43,33 +29,6 @@ func (a *Area) GetName() string {
 
 func (a *Area) GetDescription() string {
 	return a.Description
-}
-
-func (a *Area) Run(db *sql.DB, ch chan interfaces.ActionInterface) {
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	playerActions := make(map[interfaces.PlayerInterface][]interfaces.ActionInterface)
-
-	for {
-		select {
-		case action := <-ch:
-			player := action.GetPlayer()
-			playerActions[player] = append(playerActions[player], action)
-		case <-ticker.C:
-			// Process one action for each player
-			for player, actions := range playerActions {
-				if len(actions) > 0 {
-					action := actions[0]
-					playerActions[player] = actions[1:]
-
-					fmt.Println("Running command: ", action.GetCommand())
-				} else {
-					fmt.Println("No commands to run for player.")
-				}
-			}
-		}
-	}
 }
 
 type AreaInfo struct {
