@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"mud/interfaces"
+	"mud/utils"
 	"strings"
 	"sync"
 )
@@ -13,25 +14,25 @@ type CommandRouterInterface interface {
 }
 
 type CommandRouter struct {
-	Handlers map[string]CommandHandler
+	Handlers map[string]utils.CommandHandler
 	mu       sync.RWMutex
 }
 
 func NewCommandRouter() *CommandRouter {
 	return &CommandRouter{
-		Handlers: make(map[string]CommandHandler),
+		Handlers: make(map[string]utils.CommandHandler),
 		mu:       sync.RWMutex{},
 	}
 }
 
-func (r *CommandRouter) RegisterHandler(command string, handler CommandHandler) {
+func (r *CommandRouter) RegisterHandler(command string, handler utils.CommandHandler) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	r.Handlers[command] = handler
 }
 
-func RegisterCommands(router *CommandRouter, commands map[string]CommandHandler) {
+func RegisterCommands(router *CommandRouter, commands map[string]utils.CommandHandler) {
 	for command, handler := range commands {
 		router.RegisterHandler(command, handler)
 	}
@@ -45,7 +46,7 @@ func (r *CommandRouter) HandleCommand(db *sql.DB, player interfaces.PlayerInterf
 	commandBlocks := strings.Split(commandString, ";")
 	for _, command := range commandBlocks {
 		// Parse the command string.
-		commandParser := NewCommandParser(strings.TrimSpace(command))
+		commandParser := utils.NewCommandParser(strings.TrimSpace(command), CommandHandlers)
 
 		// Get the command name and arguments.
 		commandName := commandParser.GetCommandName()
@@ -61,13 +62,6 @@ func (r *CommandRouter) HandleCommand(db *sql.DB, player interfaces.PlayerInterf
 			return
 		}
 
-		if commandHandler, ok := handler.(CommandHandler); ok {
-			commandHandler(db, player, command, arguments, currentChannel, updateChannel)
-		} else if function, ok := handler.(func()); ok {
-			function()
-		}
-
-		// Handle the command.
-		// handler(db, player, commandName, arguments, currentChannel, updateChannel)
+		handler.Execute(db, player, command, arguments, currentChannel, updateChannel)
 	}
 }
