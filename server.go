@@ -7,6 +7,7 @@ import (
 	"log"
 	"mud/areas"
 	"mud/commands"
+	"mud/display"
 	"mud/interfaces"
 	"mud/players"
 	"net"
@@ -37,12 +38,21 @@ func handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, 
 	}
 
 	// Retrieve player info from the database
-	err := db.QueryRow("SELECT uuid, area, room, health FROM players WHERE name = ?", player.Name).
-		Scan(&player.UUID, &player.Area, &player.Room, &player.Health)
+	var colorProfileUUID string
+	err := db.QueryRow("SELECT uuid, area, room, health, color_profile FROM players WHERE name = ?", player.Name).
+		Scan(&player.UUID, &player.Area, &player.Room, &player.Health, &colorProfileUUID)
 	if err != nil {
 		fmt.Fprintf(conn, "Error retrieving player info: %v\n", err)
 		return
 	}
+
+	colorProfile, err := players.NewColorProfileFromDB(db, colorProfileUUID)
+	if err != nil {
+		fmt.Fprintf(conn, "Error retrieving color profile: %v\n", err)
+		return
+	}
+
+	player.ColorProfile = colorProfile
 
 	if player.Area == "" || player.Room == "" {
 		player.Area = "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9"
@@ -80,6 +90,8 @@ func main() {
 		}
 		fmt.Println("Database opened successfully")
 	}
+
+	display.SeedColorProfiles(db)
 	players.SeedPlayers(db)
 	areas.SeedAreasAndRooms(db)
 

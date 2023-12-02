@@ -2,9 +2,15 @@ package utils
 
 import (
 	"database/sql"
+	"math"
 	"mud/interfaces"
 	"strings"
 )
+
+type CommandHandlerWithPriority struct {
+	Handler  CommandHandler
+	Priority int
+}
 
 type CommandHandler interface {
 	Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string))
@@ -15,19 +21,23 @@ type CommandParser struct {
 	arguments   []string
 }
 
-func NewCommandParser(commandString string, CommandHandlers map[string]CommandHandler) *CommandParser {
+func NewCommandParser(commandString string, CommandHandlers map[string]CommandHandlerWithPriority) *CommandParser {
 	// Split the command string into the command name and arguments.
 	commandParts := strings.Split(commandString, " ")
 	commandName := commandParts[0]
 	arguments := commandParts[1:]
+
 	// look for partial commands ie "n" for "north"
-	for fullCommand := range CommandHandlers {
-		if strings.HasPrefix(strings.ToLower(fullCommand), commandParts[0]) {
-			return &CommandParser{
-				commandName: fullCommand,
-				arguments:   arguments,
-			}
+	bestMatch := ""
+	highestPriority := math.MaxInt32
+	for fullCommand, handlerWithPriority := range CommandHandlers {
+		if strings.HasPrefix(strings.ToLower(fullCommand), commandParts[0]) && handlerWithPriority.Priority < highestPriority {
+			bestMatch = fullCommand
+			highestPriority = handlerWithPriority.Priority
 		}
+	}
+	if bestMatch != "" {
+		commandName = bestMatch
 	}
 
 	return &CommandParser{

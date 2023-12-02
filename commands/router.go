@@ -32,9 +32,9 @@ func (r *CommandRouter) RegisterHandler(command string, handler utils.CommandHan
 	r.Handlers[command] = handler
 }
 
-func RegisterCommands(router *CommandRouter, commands map[string]utils.CommandHandler) {
-	for command, handler := range commands {
-		router.RegisterHandler(command, handler)
+func RegisterCommands(router *CommandRouter, commands map[string]utils.CommandHandlerWithPriority) {
+	for command, handlerWithPriority := range commands {
+		router.RegisterHandler(command, handlerWithPriority.Handler)
 	}
 }
 

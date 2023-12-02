@@ -4,25 +4,26 @@ import (
 	"database/sql"
 	"fmt"
 	"mud/areas"
+	"mud/display"
 	"mud/interfaces"
 	"mud/items"
 	"mud/utils"
 )
 
-var CommandHandlers = map[string]utils.CommandHandler{
-	"north":     &MovePlayerCommandHandler{Direction: "north"},
-	"south":     &MovePlayerCommandHandler{Direction: "south"},
-	"west":      &MovePlayerCommandHandler{Direction: "west"},
-	"east":      &MovePlayerCommandHandler{Direction: "east"},
-	"up":        &MovePlayerCommandHandler{Direction: "up"},
-	"down":      &MovePlayerCommandHandler{Direction: "down"},
-	"look":      &LookCommandHandler{},
-	"logout":    &LogoutCommandHandler{},
-	"exits":     &ExitsCommandHandler{},
-	"take":      &TakeCommandHandler{},
-	"drop":      &DropCommandHandler{},
-	"inventory": &InventoryCommandHandler{},
-	"foo":       &FooCommandHandler{},
+var CommandHandlers = map[string]utils.CommandHandlerWithPriority{
+	"north":     {Handler: &MovePlayerCommandHandler{Direction: "north"}, Priority: 1},
+	"south":     {Handler: &MovePlayerCommandHandler{Direction: "south"}, Priority: 1},
+	"west":      {Handler: &MovePlayerCommandHandler{Direction: "west"}, Priority: 1},
+	"east":      {Handler: &MovePlayerCommandHandler{Direction: "east"}, Priority: 1},
+	"up":        {Handler: &MovePlayerCommandHandler{Direction: "up"}, Priority: 1},
+	"down":      {Handler: &MovePlayerCommandHandler{Direction: "down"}, Priority: 1},
+	"look":      {Handler: &LookCommandHandler{}, Priority: 2},
+	"logout":    {Handler: &LogoutCommandHandler{}, Priority: 10},
+	"exits":     {Handler: &ExitsCommandHandler{}, Priority: 2},
+	"take":      {Handler: &TakeCommandHandler{}, Priority: 2},
+	"drop":      {Handler: &DropCommandHandler{}, Priority: 2},
+	"inventory": {Handler: &InventoryCommandHandler{}, Priority: 2},
+	"foo":       {Handler: &FooCommandHandler{}, Priority: 2},
 }
 
 func getRoom(roomUUID string, db *sql.DB) (*areas.Room, error) {
@@ -107,7 +108,7 @@ func (h *MovePlayerCommandHandler) Execute(db *sql.DB, player interfaces.PlayerI
 	if err != nil {
 		fmt.Fprintf(playerConn, "%v", err)
 	}
-	switch command {
+	switch h.Direction {
 	case "north":
 		if currentRoom.Exits.North == nil {
 			fmt.Fprintf(playerConn, "You cannot go that way.\n")
@@ -247,9 +248,9 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 
 	if len(arguments) == 0 {
 
-		fmt.Fprintf(playerConn, "%s\n", currentRoom.Area.Name)
-		fmt.Fprintf(playerConn, "%s\n", currentRoom.Area.Description)
-		fmt.Fprintf(playerConn, "-----------------------\n\n")
+		display.PrintWithColor(player, fmt.Sprintf("%s\n", currentRoom.Area.Name), "primary")
+		display.PrintWithColor(player, fmt.Sprintf("%s\n", currentRoom.Area.Description), "secondary")
+		display.PrintWithColor(player, "-----------------------\n\n", "secondary")
 		fmt.Fprintf(playerConn, "%s\n", currentRoom.Name)
 		fmt.Fprintf(playerConn, "%s\n", currentRoom.Description)
 

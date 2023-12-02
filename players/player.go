@@ -3,11 +3,10 @@ package players
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"mud/areas"
+	"mud/display"
+	"mud/interfaces"
 	"net"
-
-	"github.com/google/uuid"
 )
 
 func NewPlayer(conn net.Conn) *Player {
@@ -15,13 +14,14 @@ func NewPlayer(conn net.Conn) *Player {
 }
 
 type Player struct {
-	UUID     string
-	Name     string
-	Room     string
-	Area     string
-	Health   int
-	Conn     net.Conn
-	Commands []string
+	UUID         string
+	Name         string
+	Room         string
+	Area         string
+	Health       int
+	Conn         net.Conn
+	Commands     []string
+	ColorProfile interfaces.ColorProfileInterface
 }
 
 func (player *Player) GetUUID() string {
@@ -54,6 +54,10 @@ func (player *Player) Logout() {
 
 func (p *Player) GetCommands() []string {
 	return p.Commands
+}
+
+func (p *Player) GetColorProfile() interfaces.ColorProfileInterface {
+	return p.ColorProfile
 }
 
 func (p *Player) SetCommands(commands []string) {
@@ -98,50 +102,44 @@ func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
 	return nil
 }
 
-func SeedPlayers(db *sql.DB) {
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS players (
-			uuid VARCHAR(36) PRIMARY KEY,
-			name TEXT,
-			room VARCHAR(36),
-			area VARCHAR(36),
-			health INTEGER
-		);
-	`)
+type ColorProfile struct {
+	UUID        string
+	Name        string
+	Primary     string
+	Secondary   string
+	Warning     string
+	Danger      string
+	Title       string
+	Description string
+}
+
+func (c *ColorProfile) GetUUID() string {
+	return c.UUID
+}
+
+func (c *ColorProfile) GetColor(colorUse string) string {
+	switch colorUse {
+	case "primary":
+		return c.Primary
+	case "secondary":
+		return c.Secondary
+	case "warning":
+		return c.Warning
+	case "danger":
+		return c.Danger
+	case "title":
+		return c.Title
+	default:
+		return display.Reset
+	}
+}
+
+func NewColorProfileFromDB(db *sql.DB, uuid string) (interfaces.ColorProfileInterface, error) {
+	var colorProfile ColorProfile
+	err := db.QueryRow("SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color FROM color_profiles WHERE uuid = ?", uuid).
+		Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
 	if err != nil {
-		log.Fatalf("Failed to create players table: %v", err)
+		return nil, err
 	}
-
-	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM players").Scan(&count)
-	if err != nil {
-		log.Fatalf("Failed to query player count: %v", err)
-	}
-
-	if count == 0 {
-		// Define the player data
-		players := []Player{
-			{
-				Name:   "Reg",
-				Area:   "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9",
-				Room:   "189a729d-4e40-4184-a732-e2c45c66ff46",
-				Health: 100,
-			},
-			{
-				Name:   "Admin",
-				Area:   "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9",
-				Room:   "189a729d-4e40-4184-a732-e2c45c66ff46",
-				Health: 100,
-			},
-		}
-
-		// Insert players into the database
-		for _, p := range players {
-			_, err := db.Exec("INSERT INTO players (uuid, name, area, room, health) VALUES (?, ?, ?, ?, ?)",
-				uuid.New(), p.Name, p.Area, p.Room, p.Health)
-			if err != nil {
-				log.Fatalf("Failed to insert player: %v", err)
-			}
-		}
-	}
+	return &colorProfile, nil
 }

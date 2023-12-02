@@ -16,4 +16,5 @@ type PlayerInterface interface {
 	Logout()
 	GetCommands() []string
 	SetCommands([]string)
+	GetColorProfile() ColorProfileInterface
 }
