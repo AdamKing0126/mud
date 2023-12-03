@@ -8,6 +8,7 @@ import (
 	"mud/interfaces"
 	"mud/items"
 	"mud/utils"
+	"strings"
 )
 
 var CommandHandlers = map[string]utils.CommandHandlerWithPriority{
@@ -18,6 +19,7 @@ var CommandHandlers = map[string]utils.CommandHandlerWithPriority{
 	"up":        {Handler: &MovePlayerCommandHandler{Direction: "up"}, Priority: 1},
 	"down":      {Handler: &MovePlayerCommandHandler{Direction: "down"}, Priority: 1},
 	"look":      {Handler: &LookCommandHandler{}, Priority: 2},
+	"area":      {Handler: &AreaCommandHandler{}, Priority: 2},
 	"logout":    {Handler: &LogoutCommandHandler{}, Priority: 10},
 	"exits":     {Handler: &ExitsCommandHandler{}, Priority: 2},
 	"take":      {Handler: &TakeCommandHandler{}, Priority: 2},
@@ -96,78 +98,41 @@ func getRoom(roomUUID string, db *sql.DB) (*areas.Room, error) {
 }
 
 type MovePlayerCommandHandler struct {
-	Direction   string
-	LookHandler *LookCommandHandler
+	Direction string
+}
+
+func movePlayerToDirection(db *sql.DB, player interfaces.PlayerInterface, room *areas.Room, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
+	if room.UUID == "" {
+		display.PrintWithColor(player, "You cannot go that way.", "primary")
+	} else {
+		lookHandler := &LookCommandHandler{}
+		display.PrintWithColor(player, "=======================\n\n", "secondary")
+		player.SetLocation(db, room.UUID)
+		var lookArgs []string
+		lookHandler.Execute(db, player, "look", lookArgs, currentChannel, updateChannel)
+	}
 }
 
 func (h *MovePlayerCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	roomUUID := player.GetRoom()
 	areaUUID := player.GetArea()
-	playerConn := player.GetConn()
 	currentRoom, err := getRoom(roomUUID, db)
 	if err != nil {
-		fmt.Fprintf(playerConn, "%v", err)
+		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 	}
 	switch h.Direction {
 	case "north":
-		if currentRoom.Exits.North == nil {
-			fmt.Fprintf(playerConn, "You cannot go that way.\n")
-
-		} else {
-			fmt.Fprintf(playerConn, "=======================\n\n")
-			player.SetLocation(db, currentRoom.Exits.North.UUID)
-			var lookArgs []string
-			h.LookHandler.Execute(db, player, "look", lookArgs, currentChannel, updateChannel)
-		}
+		movePlayerToDirection(db, player, currentRoom.Exits.North, currentChannel, updateChannel)
 	case "south":
-		if currentRoom.Exits.South == nil {
-			fmt.Fprintf(playerConn, "You cannot go that way.\n")
-
-		} else {
-			fmt.Fprintf(playerConn, "=======================\n\n")
-			player.SetLocation(db, currentRoom.Exits.South.UUID)
-			var lookArgs []string
-			h.LookHandler.Execute(db, player, "look", lookArgs, currentChannel, updateChannel)
-		}
+		movePlayerToDirection(db, player, currentRoom.Exits.South, currentChannel, updateChannel)
 	case "west":
-		if currentRoom.Exits.West == nil {
-			fmt.Fprintf(playerConn, "You cannot go that way.\n")
-
-		} else {
-			fmt.Fprintf(playerConn, "=======================\n\n")
-			player.SetLocation(db, currentRoom.Exits.West.UUID)
-			var lookArgs []string
-			h.LookHandler.Execute(db, player, "look", lookArgs, currentChannel, updateChannel)
-		}
+		movePlayerToDirection(db, player, currentRoom.Exits.West, currentChannel, updateChannel)
 	case "east":
-		if currentRoom.Exits.East == nil {
-			fmt.Fprintf(playerConn, "You cannot go that way.\n")
-
-		} else {
-			fmt.Fprintf(playerConn, "=======================\n\n")
-			player.SetLocation(db, currentRoom.Exits.East.UUID)
-			var lookArgs []string
-			h.LookHandler.Execute(db, player, "look", lookArgs, currentChannel, updateChannel)
-		}
+		movePlayerToDirection(db, player, currentRoom.Exits.East, currentChannel, updateChannel)
 	case "up":
-		if currentRoom.Exits.Up == nil {
-			fmt.Fprintf(playerConn, "You cannot go that way.\n")
-
-		} else {
-			fmt.Fprintf(playerConn, "=======================\n\n")
-			player.SetLocation(db, currentRoom.Exits.Up.UUID)
-			var lookArgs []string
-			h.LookHandler.Execute(db, player, "look", lookArgs, currentChannel, updateChannel)
-		}
+		movePlayerToDirection(db, player, currentRoom.Exits.Up, currentChannel, updateChannel)
 	default:
-		if currentRoom.Exits.Down == nil {
-			fmt.Fprintf(playerConn, "You cannot go that way.\n")
-		} else {
-			fmt.Fprintf(playerConn, "=======================\n\n")
-			player.SetLocation(db, currentRoom.Exits.Down.UUID)
-			var lookArgs []string
-			h.LookHandler.Execute(db, player, "look", lookArgs, currentChannel, updateChannel)
-		}
+		movePlayerToDirection(db, player, currentRoom.Exits.Down, currentChannel, updateChannel)
 	}
 
 	if areaUUID != player.GetArea() {
@@ -175,7 +140,9 @@ func (h *MovePlayerCommandHandler) Execute(db *sql.DB, player interfaces.PlayerI
 	}
 }
 
-type ExitsCommandHandler struct{}
+type ExitsCommandHandler struct {
+	ShowOnlyDirections bool
+}
 
 func (h *ExitsCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	roomUUID := player.GetRoom()
@@ -183,48 +150,37 @@ func (h *ExitsCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterf
 	currentRoom, err := getRoom(roomUUID, db)
 	if err != nil {
 		fmt.Fprintf(playerConn, "%v", err)
+		return
 	}
-	if currentRoom.Exits.North != nil {
-		northExit, err := getRoom(currentRoom.Exits.North.UUID, db)
-		if err != nil {
-			fmt.Fprintf(playerConn, "%v", err)
-		}
-		fmt.Fprintf(playerConn, "North: %s\n", northExit.Name)
+
+	exits := map[string]*areas.Room{
+		"North": currentRoom.Exits.North,
+		"South": currentRoom.Exits.South,
+		"West":  currentRoom.Exits.West,
+		"East":  currentRoom.Exits.East,
+		"Up":    currentRoom.Exits.Up,
+		"Down":  currentRoom.Exits.Down,
 	}
-	if currentRoom.Exits.South != nil {
-		southExit, err := getRoom(currentRoom.Exits.South.UUID, db)
-		if err != nil {
-			fmt.Fprintf(playerConn, "%v", err)
+
+	abbreviatedDirections := []string{}
+	longDirections := []string{}
+
+	for direction, exit := range exits {
+		if exit != nil {
+			abbreviatedDirections = append(abbreviatedDirections, direction)
+			exitRoom, err := getRoom(exit.UUID, db)
+			if err != nil {
+				fmt.Fprintf(playerConn, "%v", err)
+			}
+			longDirections = append(longDirections, fmt.Sprintf("%s: %s", direction, exitRoom.Name))
 		}
-		fmt.Fprintf(playerConn, "South: %s\n", southExit.Name)
 	}
-	if currentRoom.Exits.West != nil {
-		westExit, err := getRoom(currentRoom.Exits.West.UUID, db)
-		if err != nil {
-			fmt.Fprintf(playerConn, "%v", err)
+	if h.ShowOnlyDirections {
+		fmt.Fprintf(playerConn, "\nExits: %s\n", strings.Join(abbreviatedDirections, ", "))
+	} else {
+		for _, direction := range longDirections {
+			fmt.Fprintf(playerConn, "%s\n", direction)
 		}
-		fmt.Fprintf(playerConn, "West: %s\n", westExit.Name)
-	}
-	if currentRoom.Exits.East != nil {
-		eastExit, err := getRoom(currentRoom.Exits.East.UUID, db)
-		if err != nil {
-			fmt.Fprintf(playerConn, "%v", err)
-		}
-		fmt.Fprintf(playerConn, "East: %s\n", eastExit.Name)
-	}
-	if currentRoom.Exits.Up != nil {
-		upExit, err := getRoom(currentRoom.Exits.Up.UUID, db)
-		if err != nil {
-			fmt.Fprintf(playerConn, "%v", err)
-		}
-		fmt.Fprintf(playerConn, "Up: %s\n", upExit.Name)
-	}
-	if currentRoom.Exits.Down != nil {
-		downExit, err := getRoom(currentRoom.Exits.Down.UUID, db)
-		if err != nil {
-			fmt.Fprintf(playerConn, "%v", err)
-		}
-		fmt.Fprintf(playerConn, "Down: %s\n", downExit.Name)
 	}
 }
 
@@ -247,12 +203,9 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 	}
 
 	if len(arguments) == 0 {
-
-		display.PrintWithColor(player, fmt.Sprintf("%s\n", currentRoom.Area.Name), "primary")
-		display.PrintWithColor(player, fmt.Sprintf("%s\n", currentRoom.Area.Description), "secondary")
+		display.PrintWithColor(player, fmt.Sprintf("%s\n", currentRoom.Name), "primary")
+		display.PrintWithColor(player, fmt.Sprintf("%s\n", currentRoom.Description), "secondary")
 		display.PrintWithColor(player, "-----------------------\n\n", "secondary")
-		fmt.Fprintf(playerConn, "%s\n", currentRoom.Name)
-		fmt.Fprintf(playerConn, "%s\n", currentRoom.Description)
 
 		if len(currentRoom.Items) > 0 {
 			fmt.Fprintf(playerConn, "You see the following items:\n")
@@ -260,6 +213,8 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 				fmt.Fprintf(playerConn, "%s\n", item.GetName())
 			}
 		}
+		exitsHandler := &ExitsCommandHandler{ShowOnlyDirections: true}
+		exitsHandler.Execute(db, player, "exits", arguments, currentChannel, updateChannel)
 	} else if len(arguments) == 1 {
 		switch arguments[0] {
 		case "north":
@@ -346,6 +301,22 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 	} else {
 		fmt.Fprintf(playerConn, "I don't know how to do that yet.\n")
 	}
+}
+
+type AreaCommandHandler struct{}
+
+func (h *AreaCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
+	roomUUID := player.GetRoom()
+	playerConn := player.GetConn()
+	currentRoom, err := getRoom(roomUUID, db)
+	if err != nil {
+		fmt.Fprintf(playerConn, "%v", err)
+		return
+	}
+
+	display.PrintWithColor(player, fmt.Sprintf("%s\n", currentRoom.Area.Name), "primary")
+	display.PrintWithColor(player, fmt.Sprintf("%s\n", currentRoom.Area.Description), "secondary")
+	display.PrintWithColor(player, "-----------------------\n\n", "secondary")
 }
 
 type TakeCommandHandler struct{}
