@@ -66,6 +66,7 @@ func handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, 
 	}
 
 	router.HandleCommand(db, player, bytes.NewBufferString("look").Bytes(), ch, updateChannel)
+	display.PrintWithColor(player, fmt.Sprintf("\nHP: %d> ", player.GetHealth()), "primary")
 
 	for {
 		buf := make([]byte, 1024)
@@ -76,6 +77,7 @@ func handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, 
 		}
 
 		router.HandleCommand(db, player, buf[:n], ch, updateChannel)
+		display.PrintWithColor(player, fmt.Sprintf("\n%d> ", player.GetHealth()), "primary")
 	}
 }
 
