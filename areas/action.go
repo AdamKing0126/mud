@@ -3,6 +3,7 @@ package areas
 import (
 	"database/sql"
 	"fmt"
+	"mud/display"
 	"mud/interfaces"
 	"time"
 )
@@ -32,11 +33,8 @@ type ActionHandler interface {
 type FooActionHandler struct{}
 
 func (h *FooActionHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, action *Action, updateChannel func(string)) {
-	playerConn := player.GetConn()
-	fmt.Fprintf(playerConn, "FooActionHandler.Execute()\n")
+	display.PrintWithColor(player, "FooActionHandler.Execute()\n", "danger")
 }
-
-// type ActionHandler func(db *sql.DB, action interfaces.ActionInterface)
 
 var ActionHandlers = map[string]ActionHandler{
 	"foo": &FooActionHandler{},

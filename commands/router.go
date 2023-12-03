@@ -3,6 +3,7 @@ package commands
 import (
 	"database/sql"
 	"fmt"
+	"mud/display"
 	"mud/interfaces"
 	"mud/utils"
 	"strings"
@@ -58,7 +59,7 @@ func (r *CommandRouter) HandleCommand(db *sql.DB, player interfaces.PlayerInterf
 
 		handler, ok := r.Handlers[commandName]
 		if !ok {
-			fmt.Fprintf(playerConn, "Unknown command: %s\n", command)
+			display.PrintWithColor(player, fmt.Sprintf("Unknown command: %s\n", command), "danger")
 			return
 		}
 

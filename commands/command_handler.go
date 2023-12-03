@@ -60,28 +60,32 @@ func getRoom(roomUUID string, db *sql.DB) (*areas.Room, error) {
 		return nil, err
 	}
 
-	if northExitUUID != "" {
-		room.Exits.North = &areas.Room{UUID: northExitUUID}
+	exitUUIDs := map[string]*string{
+		"North": &northExitUUID,
+		"South": &southExitUUID,
+		"West":  &westExitUUID,
+		"East":  &eastExitUUID,
+		"Down":  &downExitUUID,
+		"Up":    &upExitUUID,
 	}
 
-	if southExitUUID != "" {
-		room.Exits.South = &areas.Room{UUID: southExitUUID}
-	}
-
-	if westExitUUID != "" {
-		room.Exits.West = &areas.Room{UUID: westExitUUID}
-	}
-
-	if eastExitUUID != "" {
-		room.Exits.East = &areas.Room{UUID: eastExitUUID}
-	}
-
-	if downExitUUID != "" {
-		room.Exits.Down = &areas.Room{UUID: downExitUUID}
-	}
-
-	if upExitUUID != "" {
-		room.Exits.Up = &areas.Room{UUID: upExitUUID}
+	for direction, uuid := range exitUUIDs {
+		if *uuid != "" {
+			switch direction {
+			case "North":
+				room.Exits.North = &areas.Room{UUID: *uuid}
+			case "South":
+				room.Exits.South = &areas.Room{UUID: *uuid}
+			case "West":
+				room.Exits.West = &areas.Room{UUID: *uuid}
+			case "East":
+				room.Exits.East = &areas.Room{UUID: *uuid}
+			case "Down":
+				room.Exits.Down = &areas.Room{UUID: *uuid}
+			case "Up":
+				room.Exits.Up = &areas.Room{UUID: *uuid}
+			}
+		}
 	}
 
 	items, err := items.GetItemsInRoom(db, roomUUID)
@@ -102,7 +106,7 @@ type MovePlayerCommandHandler struct {
 }
 
 func movePlayerToDirection(db *sql.DB, player interfaces.PlayerInterface, room *areas.Room, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
-	if room.UUID == "" {
+	if room == nil || room.UUID == "" {
 		display.PrintWithColor(player, "You cannot go that way.", "primary")
 	} else {
 		lookHandler := &LookCommandHandler{}
@@ -149,7 +153,7 @@ func (h *ExitsCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterf
 	playerConn := player.GetConn()
 	currentRoom, err := getRoom(roomUUID, db)
 	if err != nil {
-		fmt.Fprintf(playerConn, "%v", err)
+		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 		return
 	}
 
@@ -170,16 +174,16 @@ func (h *ExitsCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterf
 			abbreviatedDirections = append(abbreviatedDirections, direction)
 			exitRoom, err := getRoom(exit.UUID, db)
 			if err != nil {
-				fmt.Fprintf(playerConn, "%v", err)
+				display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 			}
 			longDirections = append(longDirections, fmt.Sprintf("%s: %s", direction, exitRoom.Name))
 		}
 	}
 	if h.ShowOnlyDirections {
-		fmt.Fprintf(playerConn, "\nExits: %s\n", strings.Join(abbreviatedDirections, ", "))
+		display.PrintWithColor(player, fmt.Sprintf("\nExits: %s\n", strings.Join(abbreviatedDirections, ", ")), "primary")
 	} else {
 		for _, direction := range longDirections {
-			fmt.Fprintf(playerConn, "%s\n", direction)
+			display.PrintWithColor(player, fmt.Sprintf("%s\n", direction), "primary")
 		}
 	}
 }
@@ -187,8 +191,7 @@ func (h *ExitsCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterf
 type LogoutCommandHandler struct{}
 
 func (h *LogoutCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
-	playerConn := player.GetConn()
-	fmt.Fprintf(playerConn, "Goodbye!\n")
+	display.PrintWithColor(player, "Goodbye!\n", "primary")
 	player.Logout()
 }
 
@@ -199,7 +202,7 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 	playerConn := player.GetConn()
 	currentRoom, err := getRoom(roomUUID, db)
 	if err != nil {
-		fmt.Fprintf(playerConn, "%v", err)
+		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 	}
 
 	if len(arguments) == 0 {
@@ -208,98 +211,65 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 		display.PrintWithColor(player, "-----------------------\n\n", "secondary")
 
 		if len(currentRoom.Items) > 0 {
-			fmt.Fprintf(playerConn, "You see the following items:\n")
+			display.PrintWithColor(player, "You see the following items:\n", "primary")
 			for _, item := range currentRoom.Items {
-				fmt.Fprintf(playerConn, "%s\n", item.GetName())
+				display.PrintWithColor(player, fmt.Sprintf("%s\n", item.GetName()), "primary")
 			}
 		}
 		exitsHandler := &ExitsCommandHandler{ShowOnlyDirections: true}
 		exitsHandler.Execute(db, player, "exits", arguments, currentChannel, updateChannel)
 	} else if len(arguments) == 1 {
-		switch arguments[0] {
-		case "north":
-			if currentRoom.Exits.North != nil {
-				northExit, err := getRoom(currentRoom.Exits.North.UUID, db)
-				if err != nil {
-					fmt.Fprintf(playerConn, "%v", err)
+
+		exits := map[string]*areas.Room{
+			"north": currentRoom.Exits.North,
+			"south": currentRoom.Exits.South,
+			"west":  currentRoom.Exits.West,
+			"east":  currentRoom.Exits.East,
+			"down":  currentRoom.Exits.Down,
+			"up":    currentRoom.Exits.Up,
+		}
+
+		lookDirection := arguments[0]
+		directionMatch := false
+
+		for direction, exit := range exits {
+			if lookDirection == direction {
+				directionMatch = true
+				if exit != nil {
+					exitRoom, err := getRoom(exit.UUID, db)
+					if err != nil {
+						display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
+					}
+					display.PrintWithColor(player, fmt.Sprintf("You look %s.  You see %s\n", direction, exitRoom.Name), "primary")
+				} else {
+					display.PrintWithColor(player, "You don't see anything in that direction\n", "primary")
 				}
-				fmt.Fprintf(playerConn, "You look North. You see %s\n", northExit.Name)
-			} else {
-				fmt.Fprintf(playerConn, "You don't see anything in that direction\n")
 			}
-		case "south":
-			if currentRoom.Exits.South != nil {
-				southExit, err := getRoom(currentRoom.Exits.South.UUID, db)
-				if err != nil {
-					fmt.Fprintf(playerConn, "%v", err)
-				}
-				fmt.Fprintf(playerConn, "You look South. You see %s\n", southExit.Name)
-			} else {
-				fmt.Fprintf(playerConn, "You don't see anything in that direction\n")
-			}
-		case "east":
-			if currentRoom.Exits.East != nil {
-				eastExit, err := getRoom(currentRoom.Exits.East.UUID, db)
-				if err != nil {
-					fmt.Fprintf(playerConn, "%v", err)
-				}
-				fmt.Fprintf(playerConn, "You look East. You see %s\n", eastExit.Name)
-			} else {
-				fmt.Fprintf(playerConn, "You don't see anything in that direction\n")
-			}
-		case "west":
-			if currentRoom.Exits.West != nil {
-				westExit, err := getRoom(currentRoom.Exits.West.UUID, db)
-				if err != nil {
-					fmt.Fprintf(playerConn, "%v", err)
-				}
-				fmt.Fprintf(playerConn, "You look West. You see %s\n", westExit.Name)
-			} else {
-				fmt.Fprintf(playerConn, "You don't see anything in that direction\n")
-			}
-		case "up":
-			if currentRoom.Exits.Up != nil {
-				upExit, err := getRoom(currentRoom.Exits.Up.UUID, db)
-				if err != nil {
-					fmt.Fprintf(playerConn, "%v", err)
-				}
-				fmt.Fprintf(playerConn, "You look Up. You see %s\n", upExit.Name)
-			} else {
-				fmt.Fprintf(playerConn, "You don't see anything in that direction\n")
-			}
-		case "down":
-			if currentRoom.Exits.Down != nil {
-				downExit, err := getRoom(currentRoom.Exits.Down.UUID, db)
-				if err != nil {
-					fmt.Fprintf(playerConn, "%v", err)
-				}
-				fmt.Fprintf(playerConn, "You look Down. You see %s\n", downExit.Name)
-			} else {
-				fmt.Fprintf(playerConn, "You don't see anything in that direction\n")
-			}
-		default:
+		}
+
+		if !directionMatch {
 			itemName := arguments[0]
 			found := false
 			itemsForPlayer, err := items.GetItemsForPlayer(db, player.GetUUID())
 			if err != nil {
-				fmt.Fprintf(playerConn, "%v", err)
+				display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 			}
 
 			items := append(currentRoom.Items, itemsForPlayer...)
 			for _, item := range items {
 				if item.GetName() == itemName {
-					fmt.Fprintf(playerConn, "%s\n", item.GetDescription())
+					display.PrintWithColor(player, fmt.Sprintf("%s\n", item.GetName()), "primary")
 					found = true
 					break
 				}
 			}
 
 			if !found {
-				fmt.Fprintf(playerConn, "You don't see that.\n")
+				display.PrintWithColor(player, "You don't see that.\n", "primary")
 			}
 		}
 	} else {
-		fmt.Fprintf(playerConn, "I don't know how to do that yet.\n")
+		display.PrintWithColor(player, "I don't know how to do that yet.\n", "primary")
 	}
 }
 
@@ -307,10 +277,9 @@ type AreaCommandHandler struct{}
 
 func (h *AreaCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	roomUUID := player.GetRoom()
-	playerConn := player.GetConn()
 	currentRoom, err := getRoom(roomUUID, db)
 	if err != nil {
-		fmt.Fprintf(playerConn, "%v", err)
+		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 		return
 	}
 
@@ -323,10 +292,9 @@ type TakeCommandHandler struct{}
 
 func (h *TakeCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	roomUUID := player.GetRoom()
-	playerConn := player.GetConn()
 	currentRoom, err := getRoom(roomUUID, db)
 	if err != nil {
-		fmt.Fprintf(playerConn, "%v", err)
+		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 	}
 
 	if len(currentRoom.Items) > 0 {
@@ -335,14 +303,14 @@ func (h *TakeCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 				query := "UPDATE item_locations SET room_uuid = '', player_uuid = ? WHERE item_uuid = ?"
 				_, err := db.Exec(query, player.GetUUID(), item.GetUUID())
 				if err != nil {
-					fmt.Fprintf(playerConn, "Failed to update item location: %v\n", err)
+					display.PrintWithColor(player, fmt.Sprintf("Failed to update item location: %v\n", err), "danger")
 				}
-				fmt.Fprintf(playerConn, "You take the %s.\n", item.GetName())
+				display.PrintWithColor(player, fmt.Sprintf("You take the %s.\n", item.GetName()), "primary")
 				break
 			}
 		}
 	} else {
-		fmt.Fprintf(playerConn, "You don't see that here.\n")
+		display.PrintWithColor(player, "You don't see that here.\n", "primary")
 	}
 }
 
@@ -354,7 +322,7 @@ func (h *DropCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 
 	playerItems, err := items.GetItemsForPlayer(db, player.GetUUID())
 	if err != nil {
-		fmt.Fprintf(playerConn, "%v", err)
+		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 	}
 
 	if len(playerItems) > 0 {
@@ -363,33 +331,32 @@ func (h *DropCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 				query := "UPDATE item_locations SET room_uuid = ?, player_uuid = NULL WHERE item_uuid = ?"
 				_, err := db.Exec(query, roomUUID, item.GetUUID())
 				if err != nil {
-					fmt.Fprintf(playerConn, "Failed to update item location: %v\n", err)
+					display.PrintWithColor(player, fmt.Sprintf("Failed to update item location: %v\n", err), "danger")
 				}
-				fmt.Fprintf(playerConn, "You drop the %s.\n", item.GetName())
+				display.PrintWithColor(player, fmt.Sprintf("You drop the %s.\n", item.GetName()), "primary")
 				break
 			}
 		}
 	} else {
-		fmt.Fprintf(playerConn, "You don't have that item.\n")
+		display.PrintWithColor(player, "You don't have that item.\n", "warning")
 	}
 }
 
 type InventoryCommandHandler struct{}
 
 func (h *InventoryCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
-	playerConn := player.GetConn()
 	playerItems, err := items.GetItemsForPlayer(db, player.GetUUID())
 	if err != nil {
-		fmt.Fprintf(playerConn, "%v", err)
+		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 	}
 
-	fmt.Fprintf(playerConn, "You are carrying:\n")
+	display.PrintWithColor(player, "You are carrying:\n", "secondary")
 
 	if len(playerItems) == 0 {
-		fmt.Fprintf(playerConn, "Nothing\n")
+		display.PrintWithColor(player, "Nothing\n", "primary")
 	} else {
 		for _, item := range playerItems {
-			fmt.Fprintf(playerConn, "%s\n", item.GetName())
+			display.PrintWithColor(player, fmt.Sprintf("%s\n", item.GetName()), "primary")
 		}
 	}
 }
