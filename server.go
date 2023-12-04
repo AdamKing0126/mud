@@ -27,7 +27,7 @@ func handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, 
 	player := players.NewPlayer(conn)
 
 	if player.GetName() == "" {
-		display.PrintWithColor(player, "Welcome! Please enter your player name: ", "primary")
+		fmt.Fprintf(conn, "Welcome! Please enter your player name: ")
 		buf := make([]byte, 1024)
 		n, err := conn.Read(buf)
 		if err != nil {
@@ -42,7 +42,7 @@ func handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, 
 	err := db.QueryRow("SELECT uuid, area, room, health, color_profile FROM players WHERE name = ?", player.Name).
 		Scan(&player.UUID, &player.Area, &player.Room, &player.Health, &colorProfileUUID)
 	if err != nil {
-		display.PrintWithColor(player, fmt.Sprintf("Error retrieving player info: %v\n", err), "danger")
+		fmt.Fprintf(conn, "Error retrieving player info: %v\n", err)
 		return
 	}
 

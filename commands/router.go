@@ -40,7 +40,6 @@ func RegisterCommands(router *CommandRouter, commands map[string]utils.CommandHa
 }
 
 func (r *CommandRouter) HandleCommand(db *sql.DB, player interfaces.PlayerInterface, command []byte, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
-	playerConn := player.GetConn()
 	// Convert the command []byte to a string and trim the extra characters off.
 	commandString := strings.ToLower(strings.TrimSpace(string(command)))
 
