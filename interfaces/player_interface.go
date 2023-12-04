@@ -13,8 +13,13 @@ type PlayerInterface interface {
 	GetHealth() int
 	GetConn() net.Conn
 	SetLocation(db *sql.DB, roomUUID string) error
-	Logout()
+	Logout(db *sql.DB) error
 	GetCommands() []string
 	SetCommands([]string)
 	GetColorProfile() ColorProfileInterface
+}
+
+type PlayerInRoomInterface interface {
+	GetUUID() string
+	GetName() string
 }

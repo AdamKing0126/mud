@@ -48,8 +48,20 @@ func (player *Player) GetConn() net.Conn {
 	return player.Conn
 }
 
-func (player *Player) Logout() {
+func (player *Player) Logout(db *sql.DB) error {
+	stmt, err := db.Prepare("UPDATE players SET logged_in = FALSE WHERE uuid = ?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(player.UUID)
+	if err != nil {
+		return err
+	}
+
 	player.Conn.Close()
+	return nil
 }
 
 func (p *Player) GetCommands() []string {

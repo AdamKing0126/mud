@@ -88,15 +88,29 @@ func getRoom(roomUUID string, db *sql.DB) (*areas.Room, error) {
 		}
 	}
 
-	items, err := items.GetItemsInRoom(db, roomUUID)
+	items, err := areas.GetItemsInRoom(db, roomUUID)
 	if err != nil {
 		return nil, err
 	}
 
 	itemInterfaces := make([]interfaces.ItemInterface, len(items))
-	copy(itemInterfaces, items)
+	for i, item := range items {
+		itemInterfaces[i] = &item
+	}
 
 	room.Items = itemInterfaces
+
+	players, err := areas.GetPlayersInRoom(db, roomUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	playerInterfaces := make([]areas.PlayerInRoomInterface, len(players))
+	for i := range players {
+		playerInterfaces[i] = &players[i]
+	}
+
+	room.Players = playerInterfaces
 
 	return room, nil
 }
@@ -191,7 +205,9 @@ type LogoutCommandHandler struct{}
 
 func (h *LogoutCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	display.PrintWithColor(player, "Goodbye!\n", "reset")
-	player.Logout()
+	if err := player.Logout(db); err != nil {
+		fmt.Printf("Error logging out player: %v\n", err)
+	}
 }
 
 type LookCommandHandler struct{}
@@ -213,7 +229,19 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 			for _, item := range currentRoom.Items {
 				display.PrintWithColor(player, fmt.Sprintf("%s\n", item.GetName()), "primary")
 			}
+			display.PrintWithColor(player, "\n", "reset")
 		}
+
+		if len(currentRoom.Players) > 0 {
+			display.PrintWithColor(player, "You see the following players:\n", "reset")
+			for _, playerInRoom := range currentRoom.Players {
+				if player.GetUUID() != playerInRoom.GetUUID() {
+					display.PrintWithColor(player, fmt.Sprintf("%s\n", playerInRoom.GetName()), "primary")
+				}
+			}
+			display.PrintWithColor(player, "\n", "reset")
+		}
+
 		exitsHandler := &ExitsCommandHandler{ShowOnlyDirections: true}
 		exitsHandler.Execute(db, player, "exits", arguments, currentChannel, updateChannel)
 	} else if len(arguments) == 1 {
@@ -246,7 +274,7 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 		}
 
 		if !directionMatch {
-			itemName := arguments[0]
+			target := arguments[0]
 			found := false
 			itemsForPlayer, err := items.GetItemsForPlayer(db, player.GetUUID())
 			if err != nil {
@@ -255,8 +283,16 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 
 			items := append(currentRoom.Items, itemsForPlayer...)
 			for _, item := range items {
-				if item.GetName() == itemName {
+				if item.GetName() == target {
 					display.PrintWithColor(player, fmt.Sprintf("%s\n", item.GetName()), "reset")
+					found = true
+					break
+				}
+			}
+
+			for _, playerInRoom := range currentRoom.Players {
+				if strings.ToLower(playerInRoom.GetName()) == target {
+					display.PrintWithColor(player, fmt.Sprintf("You see %s.\n", playerInRoom.GetName()), "reset")
 					found = true
 					break
 				}

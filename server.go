@@ -46,6 +46,12 @@ func handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, 
 		return
 	}
 
+	_, err = db.Exec("UPDATE players SET logged_in = ? WHERE uuid = ?", true, player.UUID)
+	if err != nil {
+		fmt.Fprintf(conn, "Error updating player logged_in status: %v\n", err)
+		return
+	}
+
 	colorProfile, err := players.NewColorProfileFromDB(db, colorProfileUUID)
 	if err != nil {
 		fmt.Fprintf(conn, "Error retrieving color profile: %v\n", err)

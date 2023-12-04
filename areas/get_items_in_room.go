@@ -1,19 +1,9 @@
-package items
+package areas
 
 import (
 	"database/sql"
 	"fmt"
-
-	"mud/interfaces"
-
-	"github.com/google/uuid"
 )
-
-type ItemLocation struct {
-	ItemUUID   uuid.UUID
-	RoomUUID   uuid.UUID
-	PlayerUUID uuid.UUID
-}
 
 type Item struct {
 	UUID        string
@@ -33,18 +23,18 @@ func (item *Item) GetDescription() string {
 	return item.Description
 }
 
-func GetItemsForPlayer(db *sql.DB, playerUUID string) ([]interfaces.ItemInterface, error) {
+func GetItemsInRoom(db *sql.DB, roomUUID string) ([]Item, error) {
 	query := `
 		SELECT i.uuid, i.name, i.description
 		FROM item_locations il
-		JOIN items i on il.item_uuid = i.uuid
-		WHERE il.player_uuid = ?
+		JOIN items i ON il.item_uuid = i.uuid
+		WHERE il.room_uuid = ?
 	`
-
-	rows, err := db.Query(query, playerUUID)
+	rows, err := db.Query(query, roomUUID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query: %v", err)
 	}
+	defer rows.Close()
 
 	var items []Item
 	for rows.Next() {
@@ -60,9 +50,5 @@ func GetItemsForPlayer(db *sql.DB, playerUUID string) ([]interfaces.ItemInterfac
 		return nil, fmt.Errorf("error iterating over rows: %v", err)
 	}
 
-	itemInterfaces := make([]interfaces.ItemInterface, len(items))
-	for i, item := range items {
-		itemInterfaces[i] = &item
-	}
-	return itemInterfaces, nil
+	return items, nil
 }

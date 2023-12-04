@@ -15,7 +15,8 @@ func SeedPlayers(db *sql.DB) {
 			room VARCHAR(36),
 			area VARCHAR(36),
 			health INTEGER,
-			color_profile VARCHAR(36)
+			color_profile VARCHAR(36),
+			logged_in BOOLEAN DEFAULT FALSE
 		);
 	`)
 	if err != nil {
