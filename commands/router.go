@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
+	"mud/notifications"
 	"mud/utils"
 	"strings"
 	"sync"
@@ -33,8 +34,11 @@ func (r *CommandRouter) RegisterHandler(command string, handler utils.CommandHan
 	r.Handlers[command] = handler
 }
 
-func RegisterCommands(router *CommandRouter, commands map[string]utils.CommandHandlerWithPriority) {
+func RegisterCommands(router *CommandRouter, notifier *notifications.Notifier, commands map[string]utils.CommandHandlerWithPriority) {
 	for command, handlerWithPriority := range commands {
+		if notifiable, ok := handlerWithPriority.Handler.(utils.Notifiable); ok {
+			notifiable.SetNotifier(notifier)
+		}
 		router.RegisterHandler(command, handlerWithPriority.Handler)
 	}
 }

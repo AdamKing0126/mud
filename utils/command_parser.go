@@ -4,16 +4,22 @@ import (
 	"database/sql"
 	"math"
 	"mud/interfaces"
+	"mud/notifications"
 	"strings"
 )
 
 type CommandHandlerWithPriority struct {
 	Handler  CommandHandler
+	Notifier notifications.Notifier
 	Priority int
 }
 
 type CommandHandler interface {
 	Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string))
+}
+
+type Notifiable interface {
+	SetNotifier(notifier *notifications.Notifier)
 }
 
 type CommandParser struct {

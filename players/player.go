@@ -155,3 +155,31 @@ func NewColorProfileFromDB(db *sql.DB, uuid string) (interfaces.ColorProfileInte
 	}
 	return &colorProfile, nil
 }
+
+func GetPlayersInRoom(db *sql.DB, roomUUID string) ([]interfaces.PlayerInterface, error) {
+	rows, err := db.Query("SELECT uuid, name, room, area, health FROM players WHERE room = ?", roomUUID)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving players in room: %v", err)
+	}
+	defer rows.Close()
+
+	var players []Player
+	for rows.Next() {
+		var player Player
+		err := rows.Scan(&player.UUID, &player.Name, &player.Room, &player.Area, &player.Health)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning row: %v", err)
+		}
+		players = append(players, player)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over rows: %v", err)
+	}
+
+	playerInterfaces := make([]interfaces.PlayerInterface, len(players))
+	for i := range players {
+		playerInterfaces[i] = &players[i]
+	}
+	return playerInterfaces, nil
+}

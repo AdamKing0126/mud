@@ -32,7 +32,7 @@ func GetPlayersInRoom(db *sql.DB, roomUUID string) ([]Player, error) {
 	query := `
 		SELECT uuid, name 
 		FROM players 
-		WHERE room = ?
+		WHERE room = ? and logged_in = 1
 	`
 	rows, err := db.Query(query, roomUUID)
 	if err != nil {

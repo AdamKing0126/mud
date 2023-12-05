@@ -9,6 +9,7 @@ import (
 	"mud/commands"
 	"mud/display"
 	"mud/interfaces"
+	"mud/notifications"
 	"mud/players"
 	"net"
 	"strings"
@@ -21,7 +22,17 @@ type CommandRouterInterface interface {
 	HandleCommand(db *sql.DB, player interfaces.PlayerInterface, command []byte, currentChannel chan interfaces.ActionInterface, updateChannel func(string))
 }
 
-func handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, areaChannels map[string]chan interfaces.ActionInterface) {
+type Server struct {
+	connections map[string]interfaces.PlayerInterface
+}
+
+func NewServer() *Server {
+	return &Server{
+		connections: make(map[string]interfaces.PlayerInterface),
+	}
+}
+
+func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, areaChannels map[string]chan interfaces.ActionInterface) {
 	defer conn.Close()
 
 	player := players.NewPlayer(conn)
@@ -50,6 +61,23 @@ func handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, 
 	if err != nil {
 		fmt.Fprintf(conn, "Error updating player logged_in status: %v\n", err)
 		return
+	}
+	s.connections[player.UUID] = player
+
+	defer delete(s.connections, player.UUID)
+
+	var playersInRoom []interfaces.PlayerInterface
+	for _, p := range s.connections {
+		if p.GetRoom() == player.GetRoom() && p.GetUUID() != player.GetUUID() {
+			playersInRoom = append(playersInRoom, p)
+		}
+	}
+
+	for _, p := range playersInRoom {
+		if otherPlayer, ok := s.connections[p.GetUUID()]; ok {
+			fmt.Fprintf(otherPlayer.GetConn(), "\n%s has entered the room.\n", player.GetName())
+			display.PrintWithColor(otherPlayer, fmt.Sprintf("\nHP: %d> ", player.GetHealth()), "primary")
+		}
 	}
 
 	colorProfile, err := players.NewColorProfileFromDB(db, colorProfileUUID)
@@ -83,7 +111,7 @@ func handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, 
 		}
 
 		router.HandleCommand(db, player, buf[:n], ch, updateChannel)
-		display.PrintWithColor(player, fmt.Sprintf("\n%d> ", player.GetHealth()), "primary")
+		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d> ", player.GetHealth()), "primary")
 	}
 }
 
@@ -106,8 +134,10 @@ func main() {
 	defer db.Close()
 
 	router := commands.NewCommandRouter()
+	server := NewServer()
+	notifier := notifications.NewNotifier(server.connections)
 
-	commands.RegisterCommands(router, commands.CommandHandlers)
+	commands.RegisterCommands(router, notifier, commands.CommandHandlers)
 
 	// Check if the command router is empty.
 	if len(router.Handlers) == 0 {
@@ -155,8 +185,7 @@ func main() {
 		}
 
 		wg.Add(1)
-
-		go handleConnection(conn, router, db, areaChannels)
+		go server.handleConnection(conn, router, db, areaChannels)
 	}
 
 	wg.Wait()
