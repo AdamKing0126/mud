@@ -20,12 +20,15 @@ var CommandHandlers = map[string]utils.CommandHandlerWithPriority{
 	"east":      {Handler: &MovePlayerCommandHandler{Direction: "east"}, Priority: 1},
 	"up":        {Handler: &MovePlayerCommandHandler{Direction: "up"}, Priority: 1},
 	"down":      {Handler: &MovePlayerCommandHandler{Direction: "down"}, Priority: 1},
+	"say":       {Handler: &SayHandler{}, Priority: 2},
+	"'":         {Handler: &SayHandler{}, Priority: 2},
+	"tell":      {Handler: &TellHandler{}, Priority: 2},
 	"give":      {Handler: &GiveCommandHandler{}, Priority: 2},
 	"look":      {Handler: &LookCommandHandler{}, Priority: 2},
 	"area":      {Handler: &AreaCommandHandler{}, Priority: 2},
 	"logout":    {Handler: &LogoutCommandHandler{}, Priority: 10},
 	"exits":     {Handler: &ExitsCommandHandler{}, Priority: 2},
-	"take":      {Handler: &TakeCommandHandler{}, Priority: 2},
+	"take":      {Handler: &TakeCommandHandler{}, Priority: 3},
 	"drop":      {Handler: &DropCommandHandler{}, Priority: 2},
 	"inventory": {Handler: &InventoryCommandHandler{}, Priority: 2},
 	"foo":       {Handler: &FooCommandHandler{}, Priority: 2},
@@ -242,7 +245,7 @@ func (h *GiveCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 		return
 	}
-	playersInRoom, err := players.GetPlayersInRoom(db, player.GetRoom())
+	playersInRoom, err := areas.GetPlayersInRoom(db, player.GetRoom())
 	if err != nil {
 		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 		return
@@ -261,11 +264,6 @@ func (h *GiveCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 	}
 
 	display.PrintWithColor(player, fmt.Sprintf("You don't see %s here.\n", arguments[1]), "reset")
-
-	// get the item in the player's inventory
-	// if not present, send a message to the player
-	// else, set the item's location to the other player's UUID
-	// send a notification to the room
 }
 
 type LookCommandHandler struct{}
@@ -476,5 +474,48 @@ func (h *FooCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfac
 }
 
 func (h *FooCommandHandler) SetNotifier(notifier *notifications.Notifier) {
+	h.Notifier = notifier
+}
+
+type SayHandler struct {
+	Notifier *notifications.Notifier
+}
+
+func (h *SayHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
+	msg := strings.Join(arguments, " ")
+	display.PrintWithColor(player, fmt.Sprintf("You say \"%s\"\n", msg), "reset")
+	h.Notifier.NotifyRoom(player.GetRoom(), player.GetUUID(), fmt.Sprintf("\n%s says \"%s\"\n", player.GetName(), msg))
+}
+
+func (h *SayHandler) SetNotifier(notifier *notifications.Notifier) {
+	h.Notifier = notifier
+}
+
+type TellHandler struct {
+	Notifier *notifications.Notifier
+}
+
+func (h *TellHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
+	msg := strings.Join(arguments[1:], " ")
+	retrievedPlayer, err := players.GetPlayerByName(db, arguments[0])
+	if err != nil {
+		display.PrintWithColor(player, fmt.Sprintf("Error retrieving player UUID: %v\n", err), "danger")
+		return
+	}
+
+	if player.GetUUID() == retrievedPlayer.GetUUID() {
+		display.PrintWithColor(player, "Talking to yourself again?\n", "reset")
+		return
+	}
+
+	if retrievedPlayer.GetLoggedIn() {
+		display.PrintWithColor(player, fmt.Sprintf("You tell %s \"%s\"\n", arguments[0], msg), "reset")
+		h.Notifier.NotifyPlayer(retrievedPlayer.GetUUID(), fmt.Sprintf("\n%s tells you \"%s\"\n", player.GetName(), msg))
+	} else {
+		display.PrintWithColor(player, fmt.Sprintf("%s isn't here\n", arguments[0]), "reset")
+	}
+}
+
+func (h *TellHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
 }

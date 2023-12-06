@@ -22,6 +22,7 @@ type Player struct {
 	Conn         net.Conn
 	Commands     []string
 	ColorProfile interfaces.ColorProfileInterface
+	LoggedIn     bool
 }
 
 func (player *Player) GetUUID() string {
@@ -46,6 +47,10 @@ func (player *Player) GetHealth() int {
 
 func (player *Player) GetConn() net.Conn {
 	return player.Conn
+}
+
+func (player *Player) GetLoggedIn() bool {
+	return player.LoggedIn
 }
 
 func (player *Player) Logout(db *sql.DB) error {
@@ -156,30 +161,12 @@ func NewColorProfileFromDB(db *sql.DB, uuid string) (interfaces.ColorProfileInte
 	return &colorProfile, nil
 }
 
-func GetPlayersInRoom(db *sql.DB, roomUUID string) ([]interfaces.PlayerInterface, error) {
-	rows, err := db.Query("SELECT uuid, name, room, area, health FROM players WHERE room = ?", roomUUID)
+func GetPlayerByName(db *sql.DB, name string) (interfaces.PlayerInterface, error) {
+	var player Player
+	err := db.QueryRow("SELECT uuid, name, room, area, health, logged_in FROM players WHERE LOWER(name) = LOWER(?)", name).
+		Scan(&player.UUID, &player.Name, &player.Room, &player.Area, &player.Health, &player.LoggedIn)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving players in room: %v", err)
+		return nil, err
 	}
-	defer rows.Close()
-
-	var players []Player
-	for rows.Next() {
-		var player Player
-		err := rows.Scan(&player.UUID, &player.Name, &player.Room, &player.Area, &player.Health)
-		if err != nil {
-			return nil, fmt.Errorf("error scanning row: %v", err)
-		}
-		players = append(players, player)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating over rows: %v", err)
-	}
-
-	playerInterfaces := make([]interfaces.PlayerInterface, len(players))
-	for i := range players {
-		playerInterfaces[i] = &players[i]
-	}
-	return playerInterfaces, nil
+	return &player, nil
 }

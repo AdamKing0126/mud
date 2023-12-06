@@ -17,6 +17,7 @@ type PlayerInterface interface {
 	GetCommands() []string
 	SetCommands([]string)
 	GetColorProfile() ColorProfileInterface
+	GetLoggedIn() bool
 }
 
 type PlayerInRoomInterface interface {
