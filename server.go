@@ -37,6 +37,12 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 
 	player := players.NewPlayer(conn)
 
+	defer func() {
+		if _, err := db.Exec("UPDATE players SET logged_in = ? WHERE uuid = ?", false, player.UUID); err != nil {
+			fmt.Fprintf(conn, "Error updating player logged_in status: %v\n", err)
+		}
+	}()
+
 	if player.GetName() == "" {
 		fmt.Fprintf(conn, "Welcome! Please enter your player name: ")
 		buf := make([]byte, 1024)

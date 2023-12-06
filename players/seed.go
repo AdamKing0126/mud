@@ -78,5 +78,11 @@ func SeedPlayers(db *sql.DB) {
 				log.Fatalf("Failed to insert player: %v", err)
 			}
 		}
+	} else {
+		// In case of a crash/restart, set all players to logged_out
+		_, err := db.Exec("UPDATE players SET logged_in = ?", false)
+		if err != nil {
+			log.Fatalf("Failed to update player login status: %v", err)
+		}
 	}
 }
