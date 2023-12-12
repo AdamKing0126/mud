@@ -45,6 +45,10 @@ func (player *Player) GetHealth() int {
 	return player.Health
 }
 
+func (player *Player) SetHealth(health int) {
+	player.Health = health
+}
+
 func (player *Player) GetConn() net.Conn {
 	return player.Conn
 }

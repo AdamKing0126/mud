@@ -10,28 +10,30 @@ import (
 	"mud/notifications"
 	"mud/players"
 	"mud/utils"
+	"strconv"
 	"strings"
 )
 
 var CommandHandlers = map[string]utils.CommandHandlerWithPriority{
-	"north":     {Handler: &MovePlayerCommandHandler{Direction: "north"}, Priority: 1},
-	"south":     {Handler: &MovePlayerCommandHandler{Direction: "south"}, Priority: 1},
-	"west":      {Handler: &MovePlayerCommandHandler{Direction: "west"}, Priority: 1},
-	"east":      {Handler: &MovePlayerCommandHandler{Direction: "east"}, Priority: 1},
-	"up":        {Handler: &MovePlayerCommandHandler{Direction: "up"}, Priority: 1},
-	"down":      {Handler: &MovePlayerCommandHandler{Direction: "down"}, Priority: 1},
-	"say":       {Handler: &SayHandler{}, Priority: 2},
-	"'":         {Handler: &SayHandler{}, Priority: 2},
-	"tell":      {Handler: &TellHandler{}, Priority: 2},
-	"give":      {Handler: &GiveCommandHandler{}, Priority: 2},
-	"look":      {Handler: &LookCommandHandler{}, Priority: 2},
-	"area":      {Handler: &AreaCommandHandler{}, Priority: 2},
-	"logout":    {Handler: &LogoutCommandHandler{}, Priority: 10},
-	"exits":     {Handler: &ExitsCommandHandler{}, Priority: 2},
-	"take":      {Handler: &TakeCommandHandler{}, Priority: 3},
-	"drop":      {Handler: &DropCommandHandler{}, Priority: 2},
-	"inventory": {Handler: &InventoryCommandHandler{}, Priority: 2},
-	"foo":       {Handler: &FooCommandHandler{}, Priority: 2},
+	"north":      {Handler: &MovePlayerCommandHandler{Direction: "north"}, Priority: 1},
+	"south":      {Handler: &MovePlayerCommandHandler{Direction: "south"}, Priority: 1},
+	"west":       {Handler: &MovePlayerCommandHandler{Direction: "west"}, Priority: 1},
+	"east":       {Handler: &MovePlayerCommandHandler{Direction: "east"}, Priority: 1},
+	"up":         {Handler: &MovePlayerCommandHandler{Direction: "up"}, Priority: 1},
+	"down":       {Handler: &MovePlayerCommandHandler{Direction: "down"}, Priority: 1},
+	"say":        {Handler: &SayHandler{}, Priority: 2},
+	"'":          {Handler: &SayHandler{}, Priority: 2},
+	"tell":       {Handler: &TellHandler{}, Priority: 2},
+	"give":       {Handler: &GiveCommandHandler{}, Priority: 2},
+	"look":       {Handler: &LookCommandHandler{}, Priority: 2},
+	"area":       {Handler: &AreaCommandHandler{}, Priority: 2},
+	"logout":     {Handler: &LogoutCommandHandler{}, Priority: 10},
+	"exits":      {Handler: &ExitsCommandHandler{}, Priority: 2},
+	"take":       {Handler: &TakeCommandHandler{}, Priority: 3},
+	"drop":       {Handler: &DropCommandHandler{}, Priority: 2},
+	"inventory":  {Handler: &InventoryCommandHandler{}, Priority: 2},
+	"foo":        {Handler: &FooCommandHandler{}, Priority: 2},
+	"/sethealth": {Handler: &AdminSetHealthCommandHandler{}, Priority: 10},
 }
 
 func getRoom(roomUUID string, db *sql.DB) (*areas.Room, error) {
@@ -517,5 +519,43 @@ func (h *TellHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, com
 }
 
 func (h *TellHandler) SetNotifier(notifier *notifications.Notifier) {
+	h.Notifier = notifier
+}
+
+type AdminSetHealthCommandHandler struct {
+	Notifier *notifications.Notifier
+}
+
+func (h *AdminSetHealthCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
+	target := arguments[0]
+	value := arguments[1]
+
+	retrievedPlayer, err := players.GetPlayerByName(db, target)
+	if err != nil {
+		display.PrintWithColor(player, fmt.Sprintf("Error retrieving player UUID: %v\n", err), "danger")
+		return
+	}
+
+	query := "UPDATE players SET health = ? WHERE UUID = ?"
+
+	_, err = db.Exec(query, value, retrievedPlayer.GetUUID())
+
+	if err != nil {
+		display.PrintWithColor(player, fmt.Sprintf("Error updating health: %v\n", err), "danger")
+		return
+	}
+
+	intValue, err := strconv.Atoi(value)
+	if err != nil {
+		display.PrintWithColor(player, fmt.Sprintf("Error converting value to int: %v\n", err), "danger")
+		return
+	}
+	h.Notifier.Players[retrievedPlayer.GetUUID()].SetHealth(intValue)
+	display.PrintWithColor(player, fmt.Sprintf("You set %s's health to %d\n", target, intValue), "reset")
+	h.Notifier.NotifyPlayer(retrievedPlayer.GetUUID(), fmt.Sprintf("\n%s magically sets your health to %d\n", player.GetName(), intValue))
+
+}
+
+func (h *AdminSetHealthCommandHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
 }

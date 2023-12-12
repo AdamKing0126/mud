@@ -32,13 +32,6 @@ type AreaInfo struct {
 	Description string
 }
 
-type AreaImport struct {
-	UUID        string       `yaml:"uuid"`
-	Name        string       `yaml:"name"`
-	Description string       `yaml:"description"`
-	Rooms       []RoomImport `yaml:"rooms"`
-}
-
 func NewArea() interfaces.AreaInterface {
 	return &Area{}
 }

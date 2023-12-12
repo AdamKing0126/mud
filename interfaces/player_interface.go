@@ -11,6 +11,7 @@ type PlayerInterface interface {
 	GetRoom() string
 	GetArea() string
 	GetHealth() int
+	SetHealth(int)
 	GetConn() net.Conn
 	SetLocation(db *sql.DB, roomUUID string) error
 	Logout(db *sql.DB) error

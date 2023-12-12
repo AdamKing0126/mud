@@ -28,10 +28,3 @@ type ExitInfo struct {
 	Up    *Room
 	Down  *Room
 }
-
-type RoomImport struct {
-	UUID        string            `yaml:"uuid"`
-	Name        string            `yaml:"name"`
-	Description string            `yaml:"description"`
-	Exits       map[string]string `yaml:"exits"`
-}
