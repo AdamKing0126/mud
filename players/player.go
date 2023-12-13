@@ -23,6 +23,7 @@ type Player struct {
 	Commands     []string
 	ColorProfile interfaces.ColorProfileInterface
 	LoggedIn     bool
+	Password     string
 }
 
 func (player *Player) GetUUID() string {
@@ -43,6 +44,10 @@ func (player *Player) GetArea() string {
 
 func (player *Player) GetHealth() int {
 	return player.Health
+}
+
+func (player *Player) GetHashedPassword() string {
+	return player.Password
 }
 
 func (player *Player) SetHealth(health int) {

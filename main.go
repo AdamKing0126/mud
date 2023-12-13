@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/crypto/bcrypt"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -54,12 +56,25 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 		player.Name = strings.TrimSpace(string(buf[:n]))
 	}
 
-	// Retrieve player info from the database
 	var colorProfileUUID string
-	err := db.QueryRow("SELECT uuid, area, room, health, color_profile FROM players WHERE name = ?", player.Name).
-		Scan(&player.UUID, &player.Area, &player.Room, &player.Health, &colorProfileUUID)
+	err := db.QueryRow("SELECT uuid, area, room, health, color_profile, password FROM players WHERE name = ?", player.Name).
+		Scan(&player.UUID, &player.Area, &player.Room, &player.Health, &colorProfileUUID, &player.Password)
 	if err != nil {
 		fmt.Fprintf(conn, "Error retrieving player info: %v\n", err)
+		return
+	}
+
+	fmt.Fprintf(conn, "Please enter your password: ")
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	passwd := strings.TrimSpace(string(buf[:n]))
+	err = bcrypt.CompareHashAndPassword([]byte(player.GetHashedPassword()), []byte(passwd))
+	if err != nil {
+		fmt.Fprintf(conn, "Incorrect password.\n")
 		return
 	}
 

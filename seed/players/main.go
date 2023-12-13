@@ -8,7 +8,16 @@ import (
 
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/crypto/bcrypt"
 )
+
+func hashPassword(password string) string {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatalf("Failed to hash password: %v", err)
+	}
+	return string(hashedPassword)
+}
 
 func SeedPlayers() {
 	db, err := sql.Open("sqlite3", "./sql_database/mud.db")
@@ -33,7 +42,8 @@ func SeedPlayers() {
 			area VARCHAR(36),
 			health INTEGER,
 			color_profile VARCHAR(36),
-			logged_in BOOLEAN DEFAULT FALSE
+			logged_in BOOLEAN DEFAULT FALSE,
+			password VARCHAR(60)
 		);
 	`)
 
@@ -78,6 +88,7 @@ func SeedPlayers() {
 				Room:         "189a729d-4e40-4184-a732-e2c45c66ff46",
 				Health:       100,
 				ColorProfile: &players.ColorProfile{UUID: colorProfileUUIDs["Light Mode"]},
+				Password:     hashPassword("password"),
 			},
 			{
 				Name:         "Admin",
@@ -85,13 +96,14 @@ func SeedPlayers() {
 				Room:         "189a729d-4e40-4184-a732-e2c45c66ff46",
 				Health:       100,
 				ColorProfile: &players.ColorProfile{UUID: colorProfileUUIDs["Dark Mode"]},
+				Password:     hashPassword("password"),
 			},
 		}
 
 		// Insert players into the database
 		for _, p := range players {
-			_, err := db.Exec("INSERT INTO players (uuid, name, area, room, health, color_profile) VALUES (?, ?, ?, ?, ?, ?)",
-				uuid.New(), p.Name, p.Area, p.Room, p.Health, p.ColorProfile.GetUUID())
+			_, err := db.Exec("INSERT INTO players (uuid, name, area, room, health, color_profile, password) VALUES (?, ?, ?, ?, ?, ?, ?)",
+				uuid.New(), p.Name, p.Area, p.Room, p.Health, p.ColorProfile.GetUUID(), p.Password)
 			if err != nil {
 				log.Fatalf("Failed to insert player: %v", err)
 			}

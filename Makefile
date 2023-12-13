@@ -1,5 +1,11 @@
 .PHONY: drop_db seed_db build run_server
 
+help:
+	@echo "drop_db - Remove the database"
+	@echo "seed_db - Seed the database"
+	@echo "build - Build the project"
+	@echo "run_server - Run the server"
+
 drop_db:
 	rm -f ./sql_database/mud.db
 
@@ -13,8 +19,3 @@ build:
 
 run_server:
 	go run ./main.go	
-
-
-
-
-
