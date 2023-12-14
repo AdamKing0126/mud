@@ -1,10 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"database/sql"
 	"fmt"
-	"log"
+	"io"
 	"mud/areas"
 	"mud/commands"
 	"mud/display"
@@ -37,77 +38,41 @@ func NewServer() *Server {
 func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, areaChannels map[string]chan interfaces.ActionInterface) {
 	defer conn.Close()
 
-	player := players.NewPlayer(conn)
+	fmt.Fprintf(conn, "Welcome! Please enter your player name: ")
+	playerName := getPlayerInput(conn)
 
-	defer func() {
-		if _, err := db.Exec("UPDATE players SET logged_in = ? WHERE uuid = ?", false, player.UUID); err != nil {
-			fmt.Fprintf(conn, "Error updating player logged_in status: %v\n", err)
-		}
-	}()
-
-	if player.GetName() == "" {
-		fmt.Fprintf(conn, "Welcome! Please enter your player name: ")
-		buf := make([]byte, 1024)
-		n, err := conn.Read(buf)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		player.Name = strings.TrimSpace(string(buf[:n]))
-	}
-
-	var colorProfileUUID string
-	err := db.QueryRow("SELECT uuid, area, room, health, color_profile, password FROM players WHERE name = ?", player.Name).
-		Scan(&player.UUID, &player.Area, &player.Room, &player.Health, &colorProfileUUID, &player.Password)
+	player, err := getPlayerFromDB(db, playerName)
 	if err != nil {
 		fmt.Fprintf(conn, "Error retrieving player info: %v\n", err)
 		return
 	}
 
+	defer func() {
+		err := setPlayerLoggedInStatus(db, player.UUID, false)
+		if err != nil {
+			fmt.Fprintf(conn, "Error updating player logged_in status: %v\n", err)
+		}
+	}()
+
 	fmt.Fprintf(conn, "Please enter your password: ")
-	buf := make([]byte, 1024)
-	n, err := conn.Read(buf)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	passwd := strings.TrimSpace(string(buf[:n]))
+	passwd := getPlayerInput(conn)
 	err = bcrypt.CompareHashAndPassword([]byte(player.GetHashedPassword()), []byte(passwd))
 	if err != nil {
 		fmt.Fprintf(conn, "Incorrect password.\n")
 		return
 	}
 
-	_, err = db.Exec("UPDATE players SET logged_in = ? WHERE uuid = ?", true, player.UUID)
+	player.Conn = conn
+
+	err = setPlayerLoggedInStatus(db, player.UUID, true)
 	if err != nil {
 		fmt.Fprintf(conn, "Error updating player logged_in status: %v\n", err)
 		return
 	}
 	s.connections[player.UUID] = player
-
 	defer delete(s.connections, player.UUID)
 
-	var playersInRoom []interfaces.PlayerInterface
-	for _, p := range s.connections {
-		if p.GetRoom() == player.GetRoom() && p.GetUUID() != player.GetUUID() {
-			playersInRoom = append(playersInRoom, p)
-		}
-	}
-
-	for _, p := range playersInRoom {
-		if otherPlayer, ok := s.connections[p.GetUUID()]; ok {
-			fmt.Fprintf(otherPlayer.GetConn(), "\n%s has entered the room.\n", player.GetName())
-			display.PrintWithColor(otherPlayer, fmt.Sprintf("\nHP: %d> ", player.GetHealth()), "primary")
-		}
-	}
-
-	colorProfile, err := players.NewColorProfileFromDB(db, colorProfileUUID)
-	if err != nil {
-		fmt.Fprintf(conn, "Error retrieving color profile: %v\n", err)
-		return
-	}
-
-	player.ColorProfile = colorProfile
+	notifyPlayersInRoomThatNewPlayerHasJoined(player, s.connections)
 
 	if player.Area == "" || player.Room == "" {
 		player.Area = "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9"
@@ -121,9 +86,9 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 	}
 
 	router.HandleCommand(db, player, bytes.NewBufferString("look").Bytes(), ch, updateChannel)
-	display.PrintWithColor(player, fmt.Sprintf("\nHP: %d> ", player.GetHealth()), "primary")
 
 	for {
+		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d> ", player.GetHealth()), "primary")
 		buf := make([]byte, 1024)
 		n, err := conn.Read(buf)
 		if err != nil {
@@ -132,22 +97,79 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 		}
 
 		router.HandleCommand(db, player, buf[:n], ch, updateChannel)
-		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d> ", player.GetHealth()), "primary")
 	}
 }
 
-func main() {
-	db, err := sql.Open("sqlite3", "./sql_database/mud.db")
+func getPlayerInput(reader io.Reader) string {
+	r := bufio.NewReader(reader)
+	input, _ := r.ReadString('\n')
+	return strings.TrimSpace(input)
+}
+
+func getPlayerFromDB(db *sql.DB, playerName string) (*players.Player, error) {
+	var player players.Player
+	var colorProfile = &players.ColorProfile{}
+	query := `SELECT p.name, p.uuid, p.area, p.room, p.health, p.password, cp.uuid, cp.name, cp.primary_color, cp.secondary_color, cp.warning_color, cp.danger_color, cp.title_color, cp.description_color
+				FROM players p JOIN color_profiles cp ON cp.uuid = p.color_profile
+				WHERE p.name = ?`
+	err := db.QueryRow(query, playerName).
+		Scan(&player.Name, &player.UUID, &player.Area, &player.Room, &player.Health, &player.Password, &colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
 	if err != nil {
-		log.Fatalf("Failed to open SQLite database: %v", err)
-	} else {
-		err := db.Ping()
-		if err != nil {
-			log.Fatalf("Failed to ping database: %v", err)
-		}
-		fmt.Println("Database opened successfully")
+		return &player, err
 	}
 
+	// colorProfile, err := players.NewColorProfileFromDB(db, colorProfileUUID)
+	// if err != nil {
+	// 	return &player, err
+	// }
+
+	player.ColorProfile = colorProfile
+
+	return &player, nil
+}
+
+func setPlayerLoggedInStatus(db *sql.DB, playerUUID string, loggedIn bool) error {
+	_, err := db.Exec("UPDATE players SET logged_in = ? WHERE uuid = ?", loggedIn, playerUUID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func notifyPlayersInRoomThatNewPlayerHasJoined(player interfaces.PlayerInterface, connections map[string]interfaces.PlayerInterface) {
+	var playersInRoom []interfaces.PlayerInterface
+	for _, p := range connections {
+		if p.GetRoom() == player.GetRoom() && p.GetUUID() != player.GetUUID() {
+			playersInRoom = append(playersInRoom, p)
+		}
+	}
+
+	for _, p := range playersInRoom {
+		fmt.Fprintf(p.GetConn(), "\n%s has entered the room.\n", player.GetName())
+		display.PrintWithColor(p, fmt.Sprintf("\nHP: %d> ", player.GetHealth()), "primary")
+	}
+}
+
+func openDatabase() (*sql.DB, error) {
+	db, err := sql.Open("sqlite3", "./sql_database/mud.db")
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.Ping()
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("Database opened successfully")
+
+	return db, nil
+}
+
+func main() {
+	db, err := openDatabase()
+	if err != nil {
+		fmt.Println(err)
+	}
 	defer db.Close()
 
 	router := commands.NewCommandRouter()
@@ -155,8 +177,6 @@ func main() {
 	notifier := notifications.NewNotifier(server.connections)
 
 	commands.RegisterCommands(router, notifier, commands.CommandHandlers)
-
-	// Check if the command router is empty.
 	if len(router.Handlers) == 0 {
 		fmt.Println("Warning: no commands registered. Exiting...")
 		return
@@ -167,9 +187,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-
 	defer listener.Close()
-
 	wg := sync.WaitGroup{}
 
 	areaChannels := make(map[string]chan interfaces.ActionInterface)
@@ -180,7 +198,6 @@ func main() {
 	}
 
 	areaInstances := make(map[string]interfaces.AreaInterface)
-
 	for rows.Next() {
 		var uuid string
 		err := rows.Scan(&uuid)
@@ -204,6 +221,4 @@ func main() {
 		wg.Add(1)
 		go server.handleConnection(conn, router, db, areaChannels)
 	}
-
-	wg.Wait()
 }
