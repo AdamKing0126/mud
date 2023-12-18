@@ -11,6 +11,11 @@ type PlayerInterface interface {
 	GetRoom() string
 	GetArea() string
 	GetHealth() int
+	GetHealthMax() int
+	GetMovement() int
+	GetMovementMax() int
+	GetMana() int
+	GetManaMax() int
 	SetHealth(int)
 	GetConn() net.Conn
 	SetLocation(db *sql.DB, roomUUID string) error
@@ -19,9 +24,5 @@ type PlayerInterface interface {
 	SetCommands([]string)
 	GetColorProfile() ColorProfileInterface
 	GetLoggedIn() bool
-}
-
-type PlayerInRoomInterface interface {
-	GetUUID() string
-	GetName() string
+	Regen(db *sql.DB) error
 }

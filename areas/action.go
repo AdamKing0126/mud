@@ -40,8 +40,9 @@ var ActionHandlers = map[string]ActionHandler{
 	"foo": &FooActionHandler{},
 }
 
-func (a *Area) Run(db *sql.DB, ch chan interfaces.ActionInterface) {
+func (a *Area) Run(db *sql.DB, ch chan interfaces.ActionInterface, connections map[string]interfaces.PlayerInterface) {
 	ticker := time.NewTicker(time.Second)
+	tickerCounter := 0
 	defer ticker.Stop()
 
 	playerActions := make(map[interfaces.PlayerInterface][]interfaces.ActionInterface)
@@ -52,6 +53,27 @@ func (a *Area) Run(db *sql.DB, ch chan interfaces.ActionInterface) {
 			player := action.GetPlayer()
 			playerActions[player] = append(playerActions[player], action)
 		case <-ticker.C:
+			tickerCounter++
+			if tickerCounter%15 == 0 {
+				var playersInArea []interfaces.PlayerInterface
+				playersInArea = make([]interfaces.PlayerInterface, 0, len(connections))
+				for _, player := range connections {
+					areaUUID := a.GetUUID()
+					playerArea := player.GetArea()
+					if playerArea == areaUUID {
+						playersInArea = append(playersInArea, player)
+					}
+				}
+				for _, player := range playersInArea {
+					// Process what hapens on the beat.
+					display.PrintWithColor(player, "\nboom-boom\n", "danger")
+					if err := player.Regen(db); err != nil {
+						fmt.Printf("Error: %v\n", err)
+					}
+					display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mana: %d Mvt: %d> ", player.GetHealth(), player.GetMana(), player.GetMovement()), "primary")
+				}
+			}
+
 			// Process one action for each player
 			for player, actions := range playerActions {
 				if len(actions) > 0 {

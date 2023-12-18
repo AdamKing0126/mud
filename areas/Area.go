@@ -30,6 +30,6 @@ type AreaInfo struct {
 	Description string
 }
 
-func NewArea() interfaces.AreaInterface {
-	return &Area{}
+func NewArea(uuid string, name string, description string) interfaces.AreaInterface {
+	return &Area{UUID: uuid, Name: name, Description: description}
 }

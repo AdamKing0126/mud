@@ -3,7 +3,6 @@ package players
 import (
 	"database/sql"
 	"fmt"
-	"mud/areas"
 	"mud/display"
 	"mud/interfaces"
 	"net"
@@ -19,6 +18,11 @@ type Player struct {
 	Room         string
 	Area         string
 	Health       int
+	HealthMax    int
+	Mana         int
+	ManaMax      int
+	Movement     int
+	MovementMax  int
 	Conn         net.Conn
 	Commands     []string
 	ColorProfile interfaces.ColorProfileInterface
@@ -46,12 +50,40 @@ func (player *Player) GetHealth() int {
 	return player.Health
 }
 
+func (player *Player) GetHealthMax() int {
+	return player.HealthMax
+}
+
+func (player *Player) GetMana() int {
+	return player.Mana
+}
+
+func (player *Player) GetManaMax() int {
+	return player.ManaMax
+}
+
+func (player *Player) GetMovement() int {
+	return player.Movement
+}
+
+func (player *Player) GetMovementMax() int {
+	return player.MovementMax
+}
+
 func (player *Player) GetHashedPassword() string {
 	return player.Password
 }
 
 func (player *Player) SetHealth(health int) {
 	player.Health = health
+}
+
+func (player *Player) SetMana(mana int) {
+	player.Mana = mana
+}
+
+func (player *Player) SetMovement(movement int) {
+	player.Movement = movement
 }
 
 func (player *Player) GetConn() net.Conn {
@@ -101,25 +133,27 @@ func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
 		return fmt.Errorf("room with UUID %s does not have an area", roomUUID)
 	}
 
-	area := &areas.Area{}
-	err = area_rows.Scan(&area.UUID)
+	var areaUUID string
+	err = area_rows.Scan(&areaUUID)
 	if err != nil {
 		return err
 	}
 
-	player.Area = area.UUID
+	player.Area = areaUUID
 	player.Room = roomUUID
 
 	area_rows.Close()
 
-	stmt, err := db.Prepare("UPDATE players SET area = ?, room = ? WHERE uuid = ?")
+	stmt, err := db.Prepare("UPDATE players SET area = ?, room = ?, movement = ? WHERE uuid = ?")
 	if err != nil {
 		return err
 	}
 
 	defer stmt.Close()
 
-	_, err = stmt.Exec(area.UUID, roomUUID, player.UUID)
+	player.SetMovement(player.GetMovement() - 1)
+	newMovement := player.GetMovement()
+	_, err = stmt.Exec(areaUUID, roomUUID, newMovement, player.UUID)
 	if err != nil {
 		return err
 	}
@@ -172,10 +206,49 @@ func NewColorProfileFromDB(db *sql.DB, uuid string) (interfaces.ColorProfileInte
 
 func GetPlayerByName(db *sql.DB, name string) (interfaces.PlayerInterface, error) {
 	var player Player
-	err := db.QueryRow("SELECT uuid, name, room, area, health, logged_in FROM players WHERE LOWER(name) = LOWER(?)", name).
-		Scan(&player.UUID, &player.Name, &player.Room, &player.Area, &player.Health, &player.LoggedIn)
+	err := db.QueryRow("SELECT uuid, name, room, area, health, movement, mana, logged_in FROM players WHERE LOWER(name) = LOWER(?)", name).
+		Scan(&player.UUID, &player.Name, &player.Room, &player.Area, &player.Health, &player.Movement, &player.Mana, &player.LoggedIn)
 	if err != nil {
 		return nil, err
 	}
 	return &player, nil
+}
+
+func calculateHealthRegen(p *Player) float64 {
+	return 1.1
+}
+
+func calculateManaRegen(p *Player) float64 {
+	return 1.1
+}
+
+func calculateMovementRegen(p *Player) float64 {
+	return 1.1
+}
+
+func (p *Player) Regen(db *sql.DB) error {
+	healthRegen := calculateHealthRegen(p)
+	manaRegen := calculateManaRegen(p)
+	movementRegen := calculateMovementRegen(p)
+
+	p.Health = int(float64(p.Health) * healthRegen)
+	if p.Health > p.HealthMax {
+		p.Health = p.HealthMax
+	}
+
+	p.Mana = int(float64(p.Mana) * manaRegen)
+	if p.Mana > p.ManaMax {
+		p.Mana = p.ManaMax
+	}
+
+	p.Movement = int(float64(p.Movement) * movementRegen)
+	if p.Movement > p.MovementMax {
+		p.Movement = p.MovementMax
+	}
+
+	_, err := db.Exec("UPDATE players SET health = ?, mana = ?, movement = ? WHERE uuid = ?", p.Health, p.Mana, p.Movement, p.UUID)
+	if err != nil {
+		return err
+	}
+	return nil
 }

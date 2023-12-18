@@ -88,7 +88,7 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 	router.HandleCommand(db, player, bytes.NewBufferString("look").Bytes(), ch, updateChannel)
 
 	for {
-		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d> ", player.GetHealth()), "primary")
+		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mana: %d Mvt: %d> ", player.GetHealth(), player.GetMana(), player.GetMovement()), "primary")
 		buf := make([]byte, 1024)
 		n, err := conn.Read(buf)
 		if err != nil {
@@ -109,19 +109,14 @@ func getPlayerInput(reader io.Reader) string {
 func getPlayerFromDB(db *sql.DB, playerName string) (*players.Player, error) {
 	var player players.Player
 	var colorProfile = &players.ColorProfile{}
-	query := `SELECT p.name, p.uuid, p.area, p.room, p.health, p.password, cp.uuid, cp.name, cp.primary_color, cp.secondary_color, cp.warning_color, cp.danger_color, cp.title_color, cp.description_color
+	query := `SELECT p.name, p.uuid, p.area, p.room, p.health, p.health_max, p.movement, p.movement_max, p.mana, p.mana_max, p.password, cp.uuid, cp.name, cp.primary_color, cp.secondary_color, cp.warning_color, cp.danger_color, cp.title_color, cp.description_color
 				FROM players p JOIN color_profiles cp ON cp.uuid = p.color_profile
 				WHERE p.name = ?`
 	err := db.QueryRow(query, playerName).
-		Scan(&player.Name, &player.UUID, &player.Area, &player.Room, &player.Health, &player.Password, &colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
+		Scan(&player.Name, &player.UUID, &player.Area, &player.Room, &player.Health, &player.HealthMax, &player.Movement, &player.MovementMax, &player.Mana, &player.ManaMax, &player.Password, &colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
 	if err != nil {
 		return &player, err
 	}
-
-	// colorProfile, err := players.NewColorProfileFromDB(db, colorProfileUUID)
-	// if err != nil {
-	// 	return &player, err
-	// }
 
 	player.ColorProfile = colorProfile
 
@@ -146,7 +141,7 @@ func notifyPlayersInRoomThatNewPlayerHasJoined(player interfaces.PlayerInterface
 
 	for _, p := range playersInRoom {
 		fmt.Fprintf(p.GetConn(), "\n%s has entered the room.\n", player.GetName())
-		display.PrintWithColor(p, fmt.Sprintf("\nHP: %d> ", player.GetHealth()), "primary")
+		display.PrintWithColor(p, fmt.Sprintf("\nHP: %d Mana: %d Mvt: %d> ", player.GetHealth(), player.GetMana(), player.GetMovement()), "primary")
 	}
 }
 
@@ -191,7 +186,7 @@ func main() {
 	wg := sync.WaitGroup{}
 
 	areaChannels := make(map[string]chan interfaces.ActionInterface)
-	rows, err := db.Query("SELECT uuid FROM areas")
+	rows, err := db.Query("SELECT uuid, name, description FROM areas")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -200,15 +195,17 @@ func main() {
 	areaInstances := make(map[string]interfaces.AreaInterface)
 	for rows.Next() {
 		var uuid string
-		err := rows.Scan(&uuid)
+		var name string
+		var description string
+		err := rows.Scan(&uuid, &name, &description)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
-		areaInstances[uuid] = areas.NewArea()
+		areaInstances[uuid] = areas.NewArea(uuid, name, description)
 		areaChannels[uuid] = make(chan interfaces.ActionInterface)
-		go areaInstances[uuid].Run(db, areaChannels[uuid])
+		go areaInstances[uuid].Run(db, areaChannels[uuid], server.connections)
 	}
 
 	for {

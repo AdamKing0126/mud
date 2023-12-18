@@ -3,6 +3,7 @@ package display
 import (
 	"fmt"
 	"mud/interfaces"
+	"net"
 )
 
 const (
@@ -25,11 +26,16 @@ const (
 	BrightWhite   = "\033[37;1m"
 )
 
+type Player interface {
+	GetColorProfile() interfaces.ColorProfileInterface
+	GetConn() net.Conn
+}
+
 func Colorize(text string, color string) string {
 	return color + text + Reset
 }
 
-func PrintWithColor(player interfaces.PlayerInterface, text string, colorUse string) {
+func PrintWithColor(player Player, text string, colorUse string) {
 	colorProfile := player.GetColorProfile()
 	color := colorProfile.GetColor(colorUse)
 	playerConn := player.GetConn()

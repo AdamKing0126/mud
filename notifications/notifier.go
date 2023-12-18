@@ -24,19 +24,19 @@ func (n *Notifier) NotifyRoom(roomID string, playerUUID string, message string) 
 	}
 	for _, player := range playersInRoom {
 		display.PrintWithColor(player, message, "primary")
-		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d> ", player.GetHealth()), "primary")
+		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mana: %d Mvt: %d> ", player.GetHealth(), player.GetMana(), player.GetMovement()), "primary")
 	}
 }
 
 func (n *Notifier) NotifyAll(message string) {
 	for _, player := range n.Players {
 		display.PrintWithColor(player, message, "primary")
-		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d> ", player.GetHealth()), "primary")
+		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mana: %d Mvt: %d> ", player.GetHealth(), player.GetMana(), player.GetMovement()), "primary")
 	}
 }
 
 func (n *Notifier) NotifyPlayer(playerUUID string, message string) {
 	player := n.Players[playerUUID]
 	display.PrintWithColor(player, message, "primary")
-	display.PrintWithColor(player, fmt.Sprintf("\nHP: %d> ", player.GetHealth()), "primary")
+	display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mana: %d Mvt: %d> ", player.GetHealth(), player.GetMana(), player.GetMovement()), "primary")
 }

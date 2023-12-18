@@ -6,5 +6,5 @@ type AreaInterface interface {
 	GetUUID() string
 	GetName() string
 	GetDescription() string
-	Run(db *sql.DB, ch chan ActionInterface)
+	Run(db *sql.DB, ch chan ActionInterface, connections map[string]PlayerInterface)
 }

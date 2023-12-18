@@ -3,13 +3,26 @@ package areas
 import (
 	"database/sql"
 	"fmt"
+	"mud/interfaces"
+	"net"
 )
 
+type ColorProfile struct {
+}
+
 type Player struct {
-	UUID string
-	Name string
-	Area string
-	Room string
+	UUID         string
+	Name         string
+	Area         string
+	Health       int
+	Mana         int
+	Movement     int
+	Room         string
+	Conn         net.Conn
+	Commands     []string
+	ColorProfile interfaces.ColorProfileInterface
+	LoggedIn     bool
+	Password     string
 }
 
 func (player *Player) GetUUID() string {
@@ -26,6 +39,34 @@ func (player *Player) GetRoom() string {
 
 func (player *Player) GetArea() string {
 	return player.Area
+}
+
+func (player *Player) GetColorProfile() interfaces.ColorProfileInterface {
+	return player.ColorProfile
+}
+
+func (player *Player) GetCommands() []string {
+	return player.Commands
+}
+
+func (player *Player) GetConn() net.Conn {
+	return player.Conn
+}
+
+func (player *Player) GetHealth() int {
+	return player.Health
+}
+
+func (player *Player) GetMana() int {
+	return player.Mana
+}
+
+func (player *Player) GetMovement() int {
+	return player.Movement
+}
+
+func (player *Player) GetLoggedIn() bool {
+	return player.LoggedIn
 }
 
 func GetPlayersInRoom(db *sql.DB, roomUUID string) ([]Player, error) {
