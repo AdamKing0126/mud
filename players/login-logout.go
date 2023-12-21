@@ -26,8 +26,8 @@ func getPlayerFromDB(db *sql.DB, playerName string) (*Player, error) {
 	var colorProfile = &ColorProfile{}
 	query := `SELECT p.name, p.uuid, p.area, p.room, p.health, p.health_max, p.movement, p.movement_max, p.mana, p.mana_max, p.password, cp.uuid, cp.name, cp.primary_color, cp.secondary_color, cp.warning_color, cp.danger_color, cp.title_color, cp.description_color
 				FROM players p JOIN color_profiles cp ON cp.uuid = p.color_profile
-				WHERE p.name = ?`
-	err := db.QueryRow(query, playerName).
+				WHERE LOWER(p.name) = LOWER(?)`
+	err := db.QueryRow(query, strings.ToLower(playerName)).
 		Scan(&player.Name, &player.UUID, &player.Area, &player.Room, &player.Health, &player.HealthMax, &player.Movement, &player.MovementMax, &player.Mana, &player.ManaMax, &player.Password, &colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
 	if err != nil {
 		return &player, err
@@ -108,12 +108,11 @@ func createPlayer(conn net.Conn, db *sql.DB, playerName string) (*Player, error)
 		log.Fatalf("Failed to insert player: %v", err)
 	}
 
-	// Max out player's attributes while they're still a noob.
-	_, err = tx.Exec("INSERT INTO player_attributes (uuid, player_uuid, strength, dexterity, constitution, intelligence, wisdom, charisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-		uuid.New(), player.UUID, 18, 18, 18, 18, 18, 18)
+	_, err = tx.Exec("INSERT INTO player_abilities (uuid, player_uuid, strength, dexterity, constitution, intelligence, wisdom, charisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		uuid.New(), player.UUID, 10, 10, 10, 10, 10, 10)
 	if err != nil {
 		tx.Rollback()
-		log.Fatalf("Failed to set player attributes: %v", err)
+		log.Fatalf("Failed to set player abilities: %v", err)
 	}
 
 	err = tx.Commit()

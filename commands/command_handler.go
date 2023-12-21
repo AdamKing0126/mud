@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"mud/areas"
+	"mud/combat"
 	"mud/display"
 	"mud/interfaces"
 	"mud/items"
@@ -452,20 +453,27 @@ func (h *DropCommandHandler) SetNotifier(notifier *notifications.Notifier) {
 type PlayerStatusHandler struct{}
 
 func (h *PlayerStatusHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
-	playerAttributes := &players.PlayerAttributes{}
+	playerAbilities := &players.PlayerAbilities{}
 
-	query := "SELECT * FROM player_attributes WHERE player_uuid = ?"
-	err := db.QueryRow(query, player.GetUUID()).Scan(&playerAttributes.UUID, &playerAttributes.PlayerUUID, &playerAttributes.Strength, &playerAttributes.Intelligence, &playerAttributes.Wisdom, &playerAttributes.Constitution, &playerAttributes.Charisma, &playerAttributes.Dexterity)
+	query := "SELECT * FROM player_abilities WHERE player_uuid = ?"
+	err := db.QueryRow(query, player.GetUUID()).Scan(&playerAbilities.UUID, &playerAbilities.PlayerUUID, &playerAbilities.Strength, &playerAbilities.Intelligence, &playerAbilities.Wisdom, &playerAbilities.Constitution, &playerAbilities.Charisma, &playerAbilities.Dexterity)
 	if err != nil {
 		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 	}
 
-	display.PrintWithColor(player, fmt.Sprintf("Strength: %d\n", playerAttributes.GetStrength()), "danger")
-	display.PrintWithColor(player, fmt.Sprintf("Dexterity: %d\n", playerAttributes.GetDexterity()), "danger")
-	display.PrintWithColor(player, fmt.Sprintf("Constitution: %d\n", playerAttributes.GetConstitution()), "danger")
-	display.PrintWithColor(player, fmt.Sprintf("Intelligence: %d\n", playerAttributes.GetIntelligence()), "danger")
-	display.PrintWithColor(player, fmt.Sprintf("Wisdom: %d\n", playerAttributes.GetWisdom()), "danger")
-	display.PrintWithColor(player, fmt.Sprintf("Charisma: %d\n", playerAttributes.GetCharisma()), "danger")
+	player.SetAbilities(playerAbilities)
+
+	display.PrintWithColor(player, fmt.Sprintf("Strength: %d\n", playerAbilities.GetStrength()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Dexterity: %d\n", playerAbilities.GetDexterity()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Constitution: %d\n", playerAbilities.GetConstitution()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Intelligence: %d\n", playerAbilities.GetIntelligence()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Wisdom: %d\n", playerAbilities.GetWisdom()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Charisma: %d\n", playerAbilities.GetCharisma()), "danger")
+
+	// for debugging purposes only - remove later
+	display.PrintWithColor(player, "\n\n***********DEBUG***************\n", "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Attack Roll Hits: %t\n", combat.AttackRoll(player, player)), "danger")
+	display.PrintWithColor(player, "*******************************\n", "danger")
 }
 
 type InventoryCommandHandler struct{}

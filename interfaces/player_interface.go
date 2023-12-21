@@ -25,5 +25,7 @@ type PlayerInterface interface {
 	GetColorProfile() ColorProfileInterface
 	GetLoggedIn() bool
 	Regen(db *sql.DB) error
-	GetPlayerAttributes() PlayerAttributesInterface
+	GetAbilities() AbilitiesInterface
+	GetArmorClass() int
+	SetAbilities(PlayerAbilitiesInterface)
 }

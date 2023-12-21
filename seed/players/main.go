@@ -57,7 +57,7 @@ func SeedPlayers() {
 	}
 
 	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS player_attributes (
+		CREATE TABLE IF NOT EXISTS player_abilities (
 			uuid VARCHAR(36) PRIMARY KEY,
 			player_uuid VARCHAR(36),
 			strength INTEGER,
@@ -70,7 +70,7 @@ func SeedPlayers() {
 	`)
 
 	if err != nil {
-		log.Fatalf("Failed to create player_attributes table: %v", err)
+		log.Fatalf("Failed to create player_abilities table: %v", err)
 	}
 
 	var count int
@@ -141,10 +141,10 @@ func SeedPlayers() {
 				log.Fatalf("Failed to insert player: %v", err)
 			}
 
-			_, err = db.Exec("INSERT INTO player_attributes (uuid, player_uuid, strength, dexterity, constitution, intelligence, wisdom, charisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+			_, err = db.Exec("INSERT INTO player_abilities (uuid, player_uuid, strength, dexterity, constitution, intelligence, wisdom, charisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 				uuid.New(), playerUUID, 18, 18, 18, 18, 18, 18)
 			if err != nil {
-				log.Fatalf("Failed to set player attributes: %v", err)
+				log.Fatalf("Failed to set player abilities: %v", err)
 			}
 		}
 	} else {

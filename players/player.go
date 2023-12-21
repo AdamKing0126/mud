@@ -3,7 +3,6 @@ package players
 import (
 	"database/sql"
 	"fmt"
-	"mud/display"
 	"mud/interfaces"
 	"net"
 )
@@ -12,66 +11,50 @@ func NewPlayer(conn net.Conn) *Player {
 	return &Player{Conn: conn}
 }
 
-type PlayerAttributes struct {
-	UUID         string
-	PlayerUUID   string
-	Strength     int
-	Intelligence int
-	Charisma     int
-	Wisdom       int
-	Dexterity    int
-	Constitution int
-}
-
-func (playerAttributes *PlayerAttributes) GetUUID() string {
-	return playerAttributes.UUID
-}
-
-func (playerAttributes *PlayerAttributes) GetPlayerUUID() string {
-	return playerAttributes.PlayerUUID
-}
-
-func (playerAttributes *PlayerAttributes) GetStrength() int {
-	return playerAttributes.Strength
-}
-
-func (playerAttributes *PlayerAttributes) GetIntelligence() int {
-	return playerAttributes.Intelligence
-}
-
-func (playerAttributes *PlayerAttributes) GetCharisma() int {
-	return playerAttributes.Charisma
-}
-
-func (playerAttributes *PlayerAttributes) GetWisdom() int {
-	return playerAttributes.Wisdom
-}
-
-func (playerAttributes *PlayerAttributes) GetDexterity() int {
-	return playerAttributes.Dexterity
-}
-
-func (playerAttributes *PlayerAttributes) GetConstitution() int {
-	return playerAttributes.Constitution
-}
-
 type Player struct {
-	UUID             string
-	Name             string
-	Room             string
-	Area             string
-	Health           int
-	HealthMax        int
-	Mana             int
-	ManaMax          int
-	Movement         int
-	MovementMax      int
-	Conn             net.Conn
-	Commands         []string
-	ColorProfile     interfaces.ColorProfileInterface
-	LoggedIn         bool
-	Password         string
-	PlayerAttributes interfaces.PlayerAttributesInterface
+	UUID            string
+	Name            string
+	Room            string
+	Area            string
+	Health          int
+	HealthMax       int
+	Mana            int
+	ManaMax         int
+	Movement        int
+	MovementMax     int
+	Conn            net.Conn
+	Commands        []string
+	ColorProfile    interfaces.ColorProfileInterface
+	LoggedIn        bool
+	Password        string
+	PlayerAbilities interfaces.PlayerAbilitiesInterface
+}
+
+func (player *Player) GetArmorClass() int {
+	// 10 + armor_bonus + shield_bonus + dexterity_modifier + other_modifiers
+	base := 10
+	armorBonus := 0
+	shieldBonus := 0
+	dexModifier := player.PlayerAbilities.GetDexterityModifier()
+	otherModifiers := 0
+	return base + armorBonus + shieldBonus + dexModifier + otherModifiers
+}
+
+func (player *Player) GetSizeModifier() int {
+	// Need to update this.  Probably need to move this out, so it can be used by players and monsters
+
+	sizeTable := map[string]int{
+		"colossal":   -8,
+		"gargantuan": -4,
+		"huge":       -2,
+		"large":      -1,
+		"medium":     0,
+		"small":      1,
+		"tiny":       2,
+		"diminutive": 4,
+		"fine":       8,
+	}
+	return sizeTable["medium"]
 }
 
 func (player *Player) GetUUID() string {
@@ -138,20 +121,20 @@ func (player *Player) GetLoggedIn() bool {
 	return player.LoggedIn
 }
 
-func (p *Player) GetCommands() []string {
-	return p.Commands
+func (player *Player) GetCommands() []string {
+	return player.Commands
 }
 
-func (p *Player) GetColorProfile() interfaces.ColorProfileInterface {
-	return p.ColorProfile
+func (player *Player) GetColorProfile() interfaces.ColorProfileInterface {
+	return player.ColorProfile
 }
 
-func (p *Player) GetPlayerAttributes() interfaces.PlayerAttributesInterface {
-	return p.PlayerAttributes
+func (player *Player) GetAbilities() interfaces.AbilitiesInterface {
+	return player.PlayerAbilities
 }
 
-func (p *Player) SetCommands(commands []string) {
-	p.Commands = commands
+func (player *Player) SetCommands(commands []string) {
+	player.Commands = commands
 }
 
 func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
@@ -194,69 +177,8 @@ func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
 	return nil
 }
 
-type ColorProfile struct {
-	UUID        string
-	Name        string
-	Primary     string
-	Secondary   string
-	Warning     string
-	Danger      string
-	Title       string
-	Description string
-}
-
-func (c *ColorProfile) GetUUID() string {
-	return c.UUID
-}
-
-func (c *ColorProfile) GetColor(colorUse string) string {
-	switch colorUse {
-	case "primary":
-		return c.Primary
-	case "secondary":
-		return c.Secondary
-	case "warning":
-		return c.Warning
-	case "danger":
-		return c.Danger
-	case "title":
-		return c.Title
-	default:
-		return display.Reset
-	}
-}
-
-func NewColorProfileFromDB(db *sql.DB, uuid string) (interfaces.ColorProfileInterface, error) {
-	var colorProfile ColorProfile
-	err := db.QueryRow("SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color FROM color_profiles WHERE uuid = ?", uuid).
-		Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
-	if err != nil {
-		return nil, err
-	}
-	return &colorProfile, nil
-}
-
-func GetPlayerByName(db *sql.DB, name string) (interfaces.PlayerInterface, error) {
-	var player Player
-	var playerAttributes PlayerAttributes
-	err := db.QueryRow("SELECT p.uuid, p.name, p.room, p.area, p.health, p.movement, p.mana, p.logged_in, pa.intelligence, pa.dexterity, pa.charisma, pa.constitution, pa.wisdom, pa.strength FROM players p JOIN player_attributes pa ON p.uuid = pa.player_uuid WHERE LOWER(p.name) = LOWER(?)", name).
-		Scan(&player.UUID, &player.Name, &player.Room, &player.Area, &player.Health, &player.Movement, &player.Mana, &player.LoggedIn, &playerAttributes.Intelligence, &playerAttributes.Dexterity, &playerAttributes.Charisma, &playerAttributes.Constitution, &playerAttributes.Wisdom, &playerAttributes.Strength)
-	if err != nil {
-		return nil, err
-	}
-	return &player, nil
-}
-
-func calculateHealthRegen(p *Player) float64 {
-	return 1.1
-}
-
-func calculateManaRegen(p *Player) float64 {
-	return 1.1
-}
-
-func calculateMovementRegen(p *Player) float64 {
-	return 1.1
+func (player *Player) SetAbilities(abilities interfaces.PlayerAbilitiesInterface) {
+	player.PlayerAbilities = abilities
 }
 
 func (p *Player) Regen(db *sql.DB) error {
@@ -284,4 +206,27 @@ func (p *Player) Regen(db *sql.DB) error {
 		return err
 	}
 	return nil
+}
+
+func GetPlayerByName(db *sql.DB, name string) (interfaces.PlayerInterface, error) {
+	var player Player
+	var playerAbilities PlayerAbilities
+	err := db.QueryRow("SELECT p.uuid, p.name, p.room, p.area, p.health, p.movement, p.mana, p.logged_in, pa.intelligence, pa.dexterity, pa.charisma, pa.constitution, pa.wisdom, pa.strength FROM players p JOIN player_attributes pa ON p.uuid = pa.player_uuid WHERE LOWER(p.name) = LOWER(?)", name).
+		Scan(&player.UUID, &player.Name, &player.Room, &player.Area, &player.Health, &player.Movement, &player.Mana, &player.LoggedIn, &playerAbilities.Intelligence, &playerAbilities.Dexterity, &playerAbilities.Charisma, &playerAbilities.Constitution, &playerAbilities.Wisdom, &playerAbilities.Strength)
+	if err != nil {
+		return nil, err
+	}
+	return &player, nil
+}
+
+func calculateHealthRegen(p *Player) float64 {
+	return 1.1
+}
+
+func calculateManaRegen(p *Player) float64 {
+	return 1.1
+}
+
+func calculateMovementRegen(p *Player) float64 {
+	return 1.1
 }
