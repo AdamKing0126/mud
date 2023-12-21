@@ -12,22 +12,66 @@ func NewPlayer(conn net.Conn) *Player {
 	return &Player{Conn: conn}
 }
 
-type Player struct {
+type PlayerAttributes struct {
 	UUID         string
-	Name         string
-	Room         string
-	Area         string
-	Health       int
-	HealthMax    int
-	Mana         int
-	ManaMax      int
-	Movement     int
-	MovementMax  int
-	Conn         net.Conn
-	Commands     []string
-	ColorProfile interfaces.ColorProfileInterface
-	LoggedIn     bool
-	Password     string
+	PlayerUUID   string
+	Strength     int
+	Intelligence int
+	Charisma     int
+	Wisdom       int
+	Dexterity    int
+	Constitution int
+}
+
+func (playerAttributes *PlayerAttributes) GetUUID() string {
+	return playerAttributes.UUID
+}
+
+func (playerAttributes *PlayerAttributes) GetPlayerUUID() string {
+	return playerAttributes.PlayerUUID
+}
+
+func (playerAttributes *PlayerAttributes) GetStrength() int {
+	return playerAttributes.Strength
+}
+
+func (playerAttributes *PlayerAttributes) GetIntelligence() int {
+	return playerAttributes.Intelligence
+}
+
+func (playerAttributes *PlayerAttributes) GetCharisma() int {
+	return playerAttributes.Charisma
+}
+
+func (playerAttributes *PlayerAttributes) GetWisdom() int {
+	return playerAttributes.Wisdom
+}
+
+func (playerAttributes *PlayerAttributes) GetDexterity() int {
+	return playerAttributes.Dexterity
+}
+
+func (playerAttributes *PlayerAttributes) GetConstitution() int {
+	return playerAttributes.Constitution
+}
+
+type Player struct {
+	UUID             string
+	Name             string
+	Room             string
+	Area             string
+	Health           int
+	HealthMax        int
+	Mana             int
+	ManaMax          int
+	Movement         int
+	MovementMax      int
+	Conn             net.Conn
+	Commands         []string
+	ColorProfile     interfaces.ColorProfileInterface
+	LoggedIn         bool
+	Password         string
+	PlayerAttributes interfaces.PlayerAttributesInterface
 }
 
 func (player *Player) GetUUID() string {
@@ -100,6 +144,10 @@ func (p *Player) GetCommands() []string {
 
 func (p *Player) GetColorProfile() interfaces.ColorProfileInterface {
 	return p.ColorProfile
+}
+
+func (p *Player) GetPlayerAttributes() interfaces.PlayerAttributesInterface {
+	return p.PlayerAttributes
 }
 
 func (p *Player) SetCommands(commands []string) {
@@ -190,8 +238,9 @@ func NewColorProfileFromDB(db *sql.DB, uuid string) (interfaces.ColorProfileInte
 
 func GetPlayerByName(db *sql.DB, name string) (interfaces.PlayerInterface, error) {
 	var player Player
-	err := db.QueryRow("SELECT uuid, name, room, area, health, movement, mana, logged_in FROM players WHERE LOWER(name) = LOWER(?)", name).
-		Scan(&player.UUID, &player.Name, &player.Room, &player.Area, &player.Health, &player.Movement, &player.Mana, &player.LoggedIn)
+	var playerAttributes PlayerAttributes
+	err := db.QueryRow("SELECT p.uuid, p.name, p.room, p.area, p.health, p.movement, p.mana, p.logged_in, pa.intelligence, pa.dexterity, pa.charisma, pa.constitution, pa.wisdom, pa.strength FROM players p JOIN player_attributes pa ON p.uuid = pa.player_uuid WHERE LOWER(p.name) = LOWER(?)", name).
+		Scan(&player.UUID, &player.Name, &player.Room, &player.Area, &player.Health, &player.Movement, &player.Mana, &player.LoggedIn, &playerAttributes.Intelligence, &playerAttributes.Dexterity, &playerAttributes.Charisma, &playerAttributes.Constitution, &playerAttributes.Wisdom, &playerAttributes.Strength)
 	if err != nil {
 		return nil, err
 	}

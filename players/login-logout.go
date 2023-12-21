@@ -54,31 +54,71 @@ func HashPassword(password string) string {
 	return string(hashedPassword)
 }
 
+func getColorProfileFromDB(db *sql.DB, colorProfileUUID string) (*ColorProfile, error) {
+	var colorProfile ColorProfile
+	query := `SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color
+				FROM color_profiles
+				WHERE uuid = ?`
+	err := db.QueryRow(query, colorProfileUUID).
+		Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
+	if err != nil {
+		return nil, err
+	}
+
+	return &colorProfile, nil
+}
+
 func createPlayer(conn net.Conn, db *sql.DB, playerName string) (*Player, error) {
 	player := &Player{}
 	player.Name = playerName
 
-	fmt.Fprintf(conn, "Please enter a password you'd like to use.\n")
+	fmt.Fprintf(conn, "Please enter a password you'd like to use: ")
 	password := getPlayerInput(conn)
 	player.Password = HashPassword(password)
 
+	// default start point
 	player.Area = "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9"
 	player.Room = "189a729d-4e40-4184-a732-e2c45c66ff46"
 	player.UUID = uuid.New().String()
-	// this is a hack, for expediency.
-	// replace this with some code which asks the user what color profile they'd like
-	player.ColorProfile = &ColorProfile{UUID: "2c7dfd5b-d160-42e0-accb-b77d9686dbea"}
+
+	// "default" light mode color profile.  Should let the user choose?
+	colorProfile, err := getColorProfileFromDB(db, "2c7dfd5b-d160-42e0-accb-b77d9686dbea")
+	if err != nil {
+		return nil, err
+	}
+
+	player.ColorProfile = colorProfile
 	player.Health = 100
 	player.HealthMax = 100
 	player.Movement = 100
 	player.MovementMax = 100
 	player.Mana = 100
 	player.ManaMax = 100
+	player.UUID = uuid.New().String()
 
-	_, err := db.Exec("INSERT INTO players (uuid, name, area, room, health, health_max, movement, movement_max, mana, mana_max, color_profile, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		uuid.New(), player.Name, player.Area, player.Room, player.Health, player.HealthMax, player.Movement, player.MovementMax, player.Mana, player.ManaMax, player.ColorProfile.GetUUID(), player.Password)
+	tx, err := db.Begin()
 	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = tx.Exec("INSERT INTO players (uuid, name, area, room, health, health_max, movement, movement_max, mana, mana_max, color_profile, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		player.UUID, player.Name, player.Area, player.Room, player.Health, player.HealthMax, player.Movement, player.MovementMax, player.Mana, player.ManaMax, player.ColorProfile.GetUUID(), player.Password)
+	if err != nil {
+		tx.Rollback()
 		log.Fatalf("Failed to insert player: %v", err)
+	}
+
+	// Max out player's attributes while they're still a noob.
+	_, err = tx.Exec("INSERT INTO player_attributes (uuid, player_uuid, strength, dexterity, constitution, intelligence, wisdom, charisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		uuid.New(), player.UUID, 18, 18, 18, 18, 18, 18)
+	if err != nil {
+		tx.Rollback()
+		log.Fatalf("Failed to set player attributes: %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	player.Conn = conn

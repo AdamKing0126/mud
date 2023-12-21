@@ -34,6 +34,7 @@ var CommandHandlers = map[string]utils.CommandHandlerWithPriority{
 	"inventory":  {Handler: &InventoryCommandHandler{}, Priority: 2},
 	"foo":        {Handler: &FooCommandHandler{}, Priority: 2},
 	"/sethealth": {Handler: &AdminSetHealthCommandHandler{}, Priority: 10},
+	"status":     {Handler: &PlayerStatusHandler{}, Priority: 2},
 }
 
 func getRoom(roomUUID string, db *sql.DB) (*areas.Room, error) {
@@ -446,6 +447,25 @@ func (h *DropCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterfa
 
 func (h *DropCommandHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
+}
+
+type PlayerStatusHandler struct{}
+
+func (h *PlayerStatusHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
+	playerAttributes := &players.PlayerAttributes{}
+
+	query := "SELECT * FROM player_attributes WHERE player_uuid = ?"
+	err := db.QueryRow(query, player.GetUUID()).Scan(&playerAttributes.UUID, &playerAttributes.PlayerUUID, &playerAttributes.Strength, &playerAttributes.Intelligence, &playerAttributes.Wisdom, &playerAttributes.Constitution, &playerAttributes.Charisma, &playerAttributes.Dexterity)
+	if err != nil {
+		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
+	}
+
+	display.PrintWithColor(player, fmt.Sprintf("Strength: %d\n", playerAttributes.GetStrength()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Dexterity: %d\n", playerAttributes.GetDexterity()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Constitution: %d\n", playerAttributes.GetConstitution()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Intelligence: %d\n", playerAttributes.GetIntelligence()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Wisdom: %d\n", playerAttributes.GetWisdom()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Charisma: %d\n", playerAttributes.GetCharisma()), "danger")
 }
 
 type InventoryCommandHandler struct{}

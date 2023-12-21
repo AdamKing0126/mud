@@ -56,6 +56,23 @@ func SeedPlayers() {
 		log.Fatalf("Failed to create players table: %v", err)
 	}
 
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS player_attributes (
+			uuid VARCHAR(36) PRIMARY KEY,
+			player_uuid VARCHAR(36),
+			strength INTEGER,
+			dexterity INTEGER,
+			constitution INTEGER,
+			intelligence INTEGER,
+			wisdom INTEGER,
+			charisma INTEGER
+		);
+	`)
+
+	if err != nil {
+		log.Fatalf("Failed to create player_attributes table: %v", err)
+	}
+
 	var count int
 	err = db.QueryRow("SELECT COUNT(*) FROM players").Scan(&count)
 	if err != nil {
@@ -117,10 +134,17 @@ func SeedPlayers() {
 
 		// Insert players into the database
 		for _, p := range players {
+			playerUUID := uuid.New().String()
 			_, err := db.Exec("INSERT INTO players (uuid, name, area, room, health, health_max, movement, movement_max, mana, mana_max, color_profile, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-				uuid.New(), p.Name, p.Area, p.Room, p.Health, p.HealthMax, p.Movement, p.MovementMax, p.Mana, p.ManaMax, p.ColorProfile.GetUUID(), p.Password)
+				playerUUID, p.Name, p.Area, p.Room, p.Health, p.HealthMax, p.Movement, p.MovementMax, p.Mana, p.ManaMax, p.ColorProfile.GetUUID(), p.Password)
 			if err != nil {
 				log.Fatalf("Failed to insert player: %v", err)
+			}
+
+			_, err = db.Exec("INSERT INTO player_attributes (uuid, player_uuid, strength, dexterity, constitution, intelligence, wisdom, charisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+				uuid.New(), playerUUID, 18, 18, 18, 18, 18, 18)
+			if err != nil {
+				log.Fatalf("Failed to set player attributes: %v", err)
 			}
 		}
 	} else {
