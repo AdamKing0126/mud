@@ -36,6 +36,7 @@ var CommandHandlers = map[string]utils.CommandHandlerWithPriority{
 	"foo":        {Handler: &FooCommandHandler{}, Priority: 2},
 	"/sethealth": {Handler: &AdminSetHealthCommandHandler{}, Priority: 10},
 	"status":     {Handler: &PlayerStatusHandler{}, Priority: 2},
+	"wield":      {Handler: &WieldHandler{}, Priority: 2},
 }
 
 func getRoom(roomUUID string, db *sql.DB) (*areas.Room, error) {
@@ -585,5 +586,33 @@ func (h *AdminSetHealthCommandHandler) Execute(db *sql.DB, player interfaces.Pla
 }
 
 func (h *AdminSetHealthCommandHandler) SetNotifier(notifier *notifications.Notifier) {
+	h.Notifier = notifier
+}
+
+type WieldHandler struct {
+	Notifier *notifications.Notifier
+}
+
+func (h *WieldHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
+	playerItems, err := items.GetItemsForPlayer(db, player.GetUUID())
+	if err != nil {
+		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
+	}
+
+	if len(playerItems) > 0 {
+		for _, item := range playerItems {
+			if item.GetName() == arguments[0] {
+				// actually wield the thing
+				h.Notifier.NotifyRoom(player.GetRoom(), player.GetUUID(), fmt.Sprintf("\n%s wields %s.\n", player.GetName(), item.GetName()))
+				break
+			}
+		}
+	} else {
+		display.PrintWithColor(player, "You don't have that item.\n", "warning")
+	}
+
+}
+
+func (h *WieldHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
 }

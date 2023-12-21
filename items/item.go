@@ -3,10 +3,25 @@ package items
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"mud/interfaces"
 
 	"github.com/google/uuid"
+)
+
+type EquipmentSlot int
+
+const (
+	Head EquipmentSlot = iota
+	Neck
+	Chest
+	Arms
+	Hands
+	DominantHand
+	OffHand
+	Legs
+	Feet
 )
 
 type ItemLocation struct {
@@ -16,9 +31,10 @@ type ItemLocation struct {
 }
 
 type Item struct {
-	UUID        string
-	Name        string
-	Description string
+	UUID           string
+	Name           string
+	Description    string
+	EquipmentSlots []EquipmentSlot
 }
 
 func (item *Item) GetUUID() string {
@@ -49,7 +65,7 @@ func (item *Item) SetLocation(db *sql.DB, playerUUID string, roomUUID string) er
 
 func GetItemsForPlayer(db *sql.DB, playerUUID string) ([]interfaces.ItemInterface, error) {
 	query := `
-		SELECT i.uuid, i.name, i.description
+		SELECT i.uuid, i.name, i.description, i.equipment_slots
 		FROM item_locations il
 		JOIN items i on il.item_uuid = i.uuid
 		WHERE il.player_uuid = ?
@@ -63,10 +79,35 @@ func GetItemsForPlayer(db *sql.DB, playerUUID string) ([]interfaces.ItemInterfac
 	var items []Item
 	for rows.Next() {
 		var item Item
-		err := rows.Scan(&item.UUID, &item.Name, &item.Description)
+		var equipmentSlots string
+		err := rows.Scan(&item.UUID, &item.Name, &item.Description, &equipmentSlots)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row: %v", err)
 		}
+
+		for _, slot := range strings.Split(equipmentSlots, ",") {
+			switch slot {
+			case "Head":
+				item.EquipmentSlots = append(item.EquipmentSlots, Head)
+			case "Neck":
+				item.EquipmentSlots = append(item.EquipmentSlots, Neck)
+			case "Chest":
+				item.EquipmentSlots = append(item.EquipmentSlots, Chest)
+			case "Arms":
+				item.EquipmentSlots = append(item.EquipmentSlots, Arms)
+			case "Hands":
+				item.EquipmentSlots = append(item.EquipmentSlots, Hands)
+			case "DominantHand":
+				item.EquipmentSlots = append(item.EquipmentSlots, DominantHand)
+			case "OffHand":
+				item.EquipmentSlots = append(item.EquipmentSlots, OffHand)
+			case "Legs":
+				item.EquipmentSlots = append(item.EquipmentSlots, Legs)
+			case "Feet":
+				item.EquipmentSlots = append(item.EquipmentSlots, Feet)
+			}
+		}
+
 		items = append(items, item)
 	}
 

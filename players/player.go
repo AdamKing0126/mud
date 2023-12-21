@@ -208,6 +208,10 @@ func (p *Player) Regen(db *sql.DB) error {
 	return nil
 }
 
+// func (player *Player) Wield(db *sql.DB) error {
+
+// }
+
 func GetPlayerByName(db *sql.DB, name string) (interfaces.PlayerInterface, error) {
 	var player Player
 	var playerAbilities PlayerAbilities

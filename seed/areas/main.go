@@ -62,7 +62,8 @@ func SeedAreasAndRooms() {
 		CREATE TABLE IF NOT EXISTS items (
 			uuid VARCHAR(36) PRIMARY KEY,
 			name TEXT,
-			description TEXT
+			description TEXT, 
+			equipment_slots TEXT
 		);
 
 		CREATE TABLE IF NOT EXISTS item_locations (
@@ -116,7 +117,7 @@ func SeedAreasAndRooms() {
 			}
 
 			item_uuid := uuid.New().String()
-			_, item_err := db.Exec("INSERT INTO items (uuid, name, description) VALUES (?, ?, ?)", item_uuid, "sword", "A sword")
+			_, item_err := db.Exec("INSERT INTO items (uuid, name, description, equipment_slots) VALUES (?, ?, ?, ?)", item_uuid, "sword", "A sword", "DominantHand,OffHand")
 			if item_err != nil {
 				log.Fatalf("Failed to insert item: %v", item_err)
 			}
