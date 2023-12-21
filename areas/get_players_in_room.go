@@ -70,6 +70,8 @@ func (player *Player) GetLoggedIn() bool {
 }
 
 func GetPlayersInRoom(db *sql.DB, roomUUID string) ([]Player, error) {
+	// Would it be better to rely on the `connections` structure attached to the server
+	// or is it better to query the db for this info?
 	query := `
 		SELECT uuid, name 
 		FROM players 

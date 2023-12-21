@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"database/sql"
 	"fmt"
-	"io"
 	"mud/areas"
 	"mud/commands"
 	"mud/display"
@@ -13,10 +11,7 @@ import (
 	"mud/notifications"
 	"mud/players"
 	"net"
-	"strings"
 	"sync"
-
-	"golang.org/x/crypto/bcrypt"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -38,46 +33,23 @@ func NewServer() *Server {
 func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, areaChannels map[string]chan interfaces.ActionInterface) {
 	defer conn.Close()
 
-	fmt.Fprintf(conn, "Welcome! Please enter your player name: ")
-	playerName := getPlayerInput(conn)
-
-	player, err := getPlayerFromDB(db, playerName)
+	player, err := players.LoginPlayer(conn, db)
 	if err != nil {
-		fmt.Fprintf(conn, "Error retrieving player info: %v\n", err)
+		fmt.Fprintf(conn, "Error: %v\n", err)
 		return
 	}
 
 	defer func() {
-		err := setPlayerLoggedInStatus(db, player.UUID, false)
+		err := player.Logout(db)
 		if err != nil {
 			fmt.Fprintf(conn, "Error updating player logged_in status: %v\n", err)
 		}
 	}()
 
-	fmt.Fprintf(conn, "Please enter your password: ")
-	passwd := getPlayerInput(conn)
-	err = bcrypt.CompareHashAndPassword([]byte(player.GetHashedPassword()), []byte(passwd))
-	if err != nil {
-		fmt.Fprintf(conn, "Incorrect password.\n")
-		return
-	}
-
-	player.Conn = conn
-
-	err = setPlayerLoggedInStatus(db, player.UUID, true)
-	if err != nil {
-		fmt.Fprintf(conn, "Error updating player logged_in status: %v\n", err)
-		return
-	}
 	s.connections[player.UUID] = player
 	defer delete(s.connections, player.UUID)
 
 	notifyPlayersInRoomThatNewPlayerHasJoined(player, s.connections)
-
-	if player.Area == "" || player.Room == "" {
-		player.Area = "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9"
-		player.Room = "189a729d-4e40-4184-a732-e2c45c66ff46"
-	}
 
 	ch := areaChannels[player.Area]
 
@@ -98,37 +70,6 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 
 		router.HandleCommand(db, player, buf[:n], ch, updateChannel)
 	}
-}
-
-func getPlayerInput(reader io.Reader) string {
-	r := bufio.NewReader(reader)
-	input, _ := r.ReadString('\n')
-	return strings.TrimSpace(input)
-}
-
-func getPlayerFromDB(db *sql.DB, playerName string) (*players.Player, error) {
-	var player players.Player
-	var colorProfile = &players.ColorProfile{}
-	query := `SELECT p.name, p.uuid, p.area, p.room, p.health, p.health_max, p.movement, p.movement_max, p.mana, p.mana_max, p.password, cp.uuid, cp.name, cp.primary_color, cp.secondary_color, cp.warning_color, cp.danger_color, cp.title_color, cp.description_color
-				FROM players p JOIN color_profiles cp ON cp.uuid = p.color_profile
-				WHERE p.name = ?`
-	err := db.QueryRow(query, playerName).
-		Scan(&player.Name, &player.UUID, &player.Area, &player.Room, &player.Health, &player.HealthMax, &player.Movement, &player.MovementMax, &player.Mana, &player.ManaMax, &player.Password, &colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
-	if err != nil {
-		return &player, err
-	}
-
-	player.ColorProfile = colorProfile
-
-	return &player, nil
-}
-
-func setPlayerLoggedInStatus(db *sql.DB, playerUUID string, loggedIn bool) error {
-	_, err := db.Exec("UPDATE players SET logged_in = ? WHERE uuid = ?", loggedIn, playerUUID)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func notifyPlayersInRoomThatNewPlayerHasJoined(player interfaces.PlayerInterface, connections map[string]interfaces.PlayerInterface) {
