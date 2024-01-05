@@ -73,6 +73,26 @@ func SeedPlayers() {
 		log.Fatalf("Failed to create player_abilities table: %v", err)
 	}
 
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS player_equipments (
+			uuid VARCHAR(36) PRIMARY KEY,
+			player_uuid VARCHAR(36),
+			Head VARCHAR(36),
+			Neck VARCHAR(36),
+			Chest VARCHAR(36),
+			Arms VARCHAR(36),
+			Hands VARCHAR(36),
+			DominantHand VARCHAR(36),
+			OffHand VARCHAR(36),
+			Legs VARCHAR(36),
+			Feet VARCHAR(36)
+		);
+	`)
+
+	if err != nil {
+		log.Fatalf("Failed to create player_equipments table: %v", err)
+	}
+
 	var count int
 	err = db.QueryRow("SELECT COUNT(*) FROM players").Scan(&count)
 	if err != nil {

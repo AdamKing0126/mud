@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mud/interfaces"
 	"net"
+	"reflect"
 )
 
 func NewPlayer(conn net.Conn) *Player {
@@ -28,6 +29,7 @@ type Player struct {
 	LoggedIn        bool
 	Password        string
 	PlayerAbilities interfaces.PlayerAbilitiesInterface
+	Equipment       PlayerEquipment
 }
 
 func (player *Player) GetArmorClass() int {
@@ -208,9 +210,95 @@ func (p *Player) Regen(db *sql.DB) error {
 	return nil
 }
 
-// func (player *Player) Wield(db *sql.DB) error {
+func (player *Player) Equip(db *sql.DB, item interfaces.ItemInterface) bool {
+	// get the location where the thing goes
+	val := reflect.ValueOf(&player.Equipment).Elem()
+	itemEquipSlots := []string{}
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Type().Field(i)
 
-// }
+		for _, slot := range item.GetEquipmentSlots() {
+			if string(slot) == field.Name {
+				itemEquipSlots = append(itemEquipSlots, field.Name)
+			}
+		}
+
+	}
+	fmt.Println(itemEquipSlots)
+
+	// generate the query to retrieve columns from player_equipments table
+	queryString := "SELECT "
+	for i, slot := range itemEquipSlots {
+		if i > 0 {
+			queryString += ", "
+		}
+		queryString += slot
+	}
+	queryString += " FROM player_equipments WHERE player_uuid = ? LIMIT 1"
+	rows, err := db.Query(queryString, player.GetUUID())
+	if err != nil {
+		fmt.Printf("error retrieving player equipments: %v", err)
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		fmt.Printf("error getting columns: %v", err)
+	}
+
+	values := make([]interface{}, len(columns))
+	pointers := make([]interface{}, len(columns))
+
+	for i := range columns {
+		pointers[i] = &values[i]
+	}
+
+	if rows.Next() {
+		err = rows.Scan(pointers...)
+		if err != nil {
+			fmt.Printf("error scanning row: %v", err)
+			return false
+		}
+	}
+
+	// iterate through the values
+	// get the index of the first empty value, equip the item there and then break
+	for idx, val := range values {
+		if val == "" {
+			itemUUID := item.GetUUID()
+			queryString := "UPDATE player_equipments SET "
+			queryString += columns[idx]
+			queryString += " = ? WHERE player_uuid = ?"
+			rows.Close()
+			_, err = db.Exec(queryString, itemUUID, player.GetUUID())
+			if err != nil {
+				fmt.Printf("error inserting into player_equipments: %v", err)
+				return false
+			}
+
+			return true
+		}
+
+	}
+
+	// if no empty values, remove the first item with a value,
+	fmt.Printf("equipping at first slot.")
+	// then equip the new item
+
+	fmt.Printf("yo, dude %v", columns)
+	return true
+
+}
+
+func GetPlayer(db *sql.DB, playerName string) (interfaces.PlayerInterface, error) {
+	var player Player
+	err := db.QueryRow("SELECT uuid, name, room, area, health, movement, mana, logged_in, FROM players WHERE LOWER(p.name) = LOWER(?)", playerName).
+		Scan(&player.UUID, &player.Name, &player.Room, &player.Area, &player.Health, &player.Movement, &player.Mana, &player.LoggedIn)
+	if err != nil {
+		return nil, err
+	}
+	return &player, nil
+}
 
 func GetPlayerByName(db *sql.DB, name string) (interfaces.PlayerInterface, error) {
 	var player Player

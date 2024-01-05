@@ -36,7 +36,8 @@ var CommandHandlers = map[string]utils.CommandHandlerWithPriority{
 	"foo":        {Handler: &FooCommandHandler{}, Priority: 2},
 	"/sethealth": {Handler: &AdminSetHealthCommandHandler{}, Priority: 10},
 	"status":     {Handler: &PlayerStatusHandler{}, Priority: 2},
-	"wield":      {Handler: &WieldHandler{}, Priority: 2},
+	"equip":      {Handler: &EquipHandler{}, Priority: 2},
+	"remove":     {Handler: &RemoveHandler{}, Priority: 2},
 }
 
 func getRoom(roomUUID string, db *sql.DB) (*areas.Room, error) {
@@ -105,8 +106,8 @@ func getRoom(roomUUID string, db *sql.DB) (*areas.Room, error) {
 	}
 
 	itemInterfaces := make([]interfaces.ItemInterface, len(items))
-	for i, item := range items {
-		itemInterfaces[i] = &item
+	for i := range items {
+		itemInterfaces[i] = &items[i]
 	}
 
 	room.Items = itemInterfaces
@@ -589,11 +590,33 @@ func (h *AdminSetHealthCommandHandler) SetNotifier(notifier *notifications.Notif
 	h.Notifier = notifier
 }
 
-type WieldHandler struct {
+type EquipHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func (h *WieldHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
+func (h *EquipHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
+	if len(arguments) == 0 {
+		display.PrintWithColor(player, "Your current equipment:\n", "primary")
+		var dominantHand string
+		var offHand string
+		queryString := "SELECT items_dominant.Name, items_offhand.Name FROM player_equipments LEFT JOIN items AS items_dominant on player_equipments.DominantHand = items_dominant.UUID LEFT JOIN items as items_offhand on player_equipments.Offhand = items_offhand.UUID WHERE player_uuid = ?"
+		rows, err := db.Query(queryString, player.GetUUID())
+		if err != nil {
+			fmt.Printf("error retrieving player_equipments: %v", err)
+		}
+		defer rows.Close()
+		if !rows.Next() {
+			display.PrintWithColor(player, fmt.Sprintf("no player_equipments entry for %s", player.GetUUID()), "warning")
+		}
+		err = rows.Scan(&dominantHand, &offHand)
+		if err != nil {
+			fmt.Printf("error retrieving player equipments: %v", err)
+		}
+		display.PrintWithColor(player, fmt.Sprintf("\nDominant Hand: %s", dominantHand), "primary")
+		display.PrintWithColor(player, fmt.Sprintf("\nOff Hand: %s", offHand), "primary")
+		return
+	}
+
 	playerItems, err := items.GetItemsForPlayer(db, player.GetUUID())
 	if err != nil {
 		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
@@ -602,8 +625,10 @@ func (h *WieldHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, co
 	if len(playerItems) > 0 {
 		for _, item := range playerItems {
 			if item.GetName() == arguments[0] {
-				// actually wield the thing
-				h.Notifier.NotifyRoom(player.GetRoom(), player.GetUUID(), fmt.Sprintf("\n%s wields %s.\n", player.GetName(), item.GetName()))
+				if player.Equip(db, item) {
+					h.Notifier.NotifyRoom(player.GetRoom(), player.GetUUID(), fmt.Sprintf("\n%s wields %s.\n", player.GetName(), item.GetName()))
+				}
+
 				break
 			}
 		}
@@ -613,6 +638,32 @@ func (h *WieldHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, co
 
 }
 
-func (h *WieldHandler) SetNotifier(notifier *notifications.Notifier) {
+func (h *EquipHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
+}
+
+type RemoveHandler struct {
+	Notifier *notifications.Notifier
+}
+
+func (h *RemoveHandler) SetNotifier(notifier *notifications.Notifier) {
+	h.Notifier = notifier
+}
+
+func (h *RemoveHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
+	if len(arguments) == 0 {
+		display.PrintWithColor(player, "Remove what?\n", "primary")
+		return
+	}
+
+	items, err := items.GetEquippedItemsForPlayer(db, player.GetUUID())
+	if err != nil {
+		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
+	}
+	for _, item := range items {
+		if item.GetName() == arguments[0] {
+			display.PrintWithColor(player, "Sure you want to remove it?", "danger")
+		}
+	}
+
 }

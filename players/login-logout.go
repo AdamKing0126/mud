@@ -33,7 +33,13 @@ func getPlayerFromDB(db *sql.DB, playerName string) (*Player, error) {
 		return &player, err
 	}
 
+	playerEquipment, err := GetPlayerEquipment(db, player.UUID)
+	if err != nil {
+		return nil, err
+	}
+
 	player.ColorProfile = colorProfile
+	player.Equipment = *playerEquipment
 
 	return &player, nil
 }
@@ -101,8 +107,8 @@ func createPlayer(conn net.Conn, db *sql.DB, playerName string) (*Player, error)
 		log.Fatal(err)
 	}
 
-	_, err = tx.Exec("INSERT INTO players (uuid, name, area, room, health, health_max, movement, movement_max, mana, mana_max, color_profile, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		player.UUID, player.Name, player.Area, player.Room, player.Health, player.HealthMax, player.Movement, player.MovementMax, player.Mana, player.ManaMax, player.ColorProfile.GetUUID(), player.Password)
+	_, err = tx.Exec("INSERT INTO players (uuid, name, area, room, health, health_max, movement, movement_max, mana, mana_max, color_profile, password, logged_in) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		player.UUID, player.Name, player.Area, player.Room, player.Health, player.HealthMax, player.Movement, player.MovementMax, player.Mana, player.ManaMax, player.ColorProfile.GetUUID(), player.Password, true)
 	if err != nil {
 		tx.Rollback()
 		log.Fatalf("Failed to insert player: %v", err)
@@ -114,6 +120,14 @@ func createPlayer(conn net.Conn, db *sql.DB, playerName string) (*Player, error)
 		tx.Rollback()
 		log.Fatalf("Failed to set player abilities: %v", err)
 	}
+
+	_, err = tx.Exec("INSERT INTO player_equipments (uuid, player_uuid, Head, Neck, Chest, Arms, Hands, DominantHand, OffHand, Legs, Feet) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		uuid.New(), player.UUID, "", "", "", "", "", "", "", "", "", "")
+	if err != nil {
+		tx.Rollback()
+		log.Fatalf("Failed to set player equipments: %v", err)
+	}
+	player.Equipment = *NewPlayerEquipment()
 
 	err = tx.Commit()
 	if err != nil {

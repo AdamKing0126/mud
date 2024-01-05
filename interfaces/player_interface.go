@@ -28,4 +28,5 @@ type PlayerInterface interface {
 	GetAbilities() AbilitiesInterface
 	GetArmorClass() int
 	SetAbilities(PlayerAbilitiesInterface)
+	Equip(db *sql.DB, item ItemInterface) bool
 }
