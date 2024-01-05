@@ -18,6 +18,9 @@ type PlayerInterface interface {
 	GetManaMax() int
 	SetHealth(int)
 	GetConn() net.Conn
+	SetConn(net.Conn)
+	GetColorProfileFromDB(db *sql.DB) error
+	GetEquipmentFromDB(db *sql.DB) error
 	SetLocation(db *sql.DB, roomUUID string) error
 	Logout(db *sql.DB) error
 	GetCommands() []string
@@ -29,4 +32,5 @@ type PlayerInterface interface {
 	GetArmorClass() int
 	SetAbilities(PlayerAbilitiesInterface)
 	Equip(db *sql.DB, item ItemInterface) bool
+	GetHashedPassword() string
 }

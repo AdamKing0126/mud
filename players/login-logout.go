@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mud/interfaces"
 	"net"
 	"strings"
 
@@ -21,36 +22,34 @@ func getPlayerInput(reader io.Reader) string {
 	return strings.TrimSpace(input)
 }
 
-func getPlayerFromDB(db *sql.DB, playerName string) (*Player, error) {
-	var player Player
-	var colorProfile = &ColorProfile{}
-	query := `SELECT p.name, p.uuid, p.area, p.room, p.health, p.health_max, p.movement, p.movement_max, p.mana, p.mana_max, p.password, cp.uuid, cp.name, cp.primary_color, cp.secondary_color, cp.warning_color, cp.danger_color, cp.title_color, cp.description_color
-				FROM players p JOIN color_profiles cp ON cp.uuid = p.color_profile
-				WHERE LOWER(p.name) = LOWER(?)`
-	err := db.QueryRow(query, strings.ToLower(playerName)).
-		Scan(&player.Name, &player.UUID, &player.Area, &player.Room, &player.Health, &player.HealthMax, &player.Movement, &player.MovementMax, &player.Mana, &player.ManaMax, &player.Password, &colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
-	if err != nil {
-		return &player, err
-	}
+// func getPlayerFromDB(db *sql.DB, playerName string) (interfaces.PlayerInterface, error) {
+// 	player, err := GetPlayer(db, playerName)
 
-	playerEquipment, err := GetPlayerEquipment(db, player.UUID)
-	if err != nil {
-		return nil, err
-	}
+// 	return player, err
+// func getPlayerFromDB(db *sql.DB, playerName string) (*Player, error) {
+// 	player, err := GetPlayer(db, playerName)
 
-	player.ColorProfile = colorProfile
-	player.Equipment = *playerEquipment
+// var player Player
+// var colorProfile = &ColorProfile{}
+// query := `SELECT p.name, p.uuid, p.area, p.room, p.health, p.health_max, p.movement, p.movement_max, p.mana, p.mana_max, p.password, cp.uuid, cp.name, cp.primary_color, cp.secondary_color, cp.warning_color, cp.danger_color, cp.title_color, cp.description_color
+// 			FROM players p JOIN color_profiles cp ON cp.uuid = p.color_profile
+// 			WHERE LOWER(p.name) = LOWER(?)`
+// err := db.QueryRow(query, strings.ToLower(playerName)).
+// 	Scan(&player.Name, &player.UUID, &player.Area, &player.Room, &player.Health, &player.HealthMax, &player.Movement, &player.MovementMax, &player.Mana, &player.ManaMax, &player.Password, &colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
+// if err != nil {
+// 	return &player, err
+// }
 
-	return &player, nil
-}
+// playerEquipment, err := GetPlayerEquipment(db, player.UUID)
+// if err != nil {
+// 	return nil, err
+// }
 
-func setPlayerLoggedInStatus(db *sql.DB, playerUUID string, loggedIn bool) error {
-	_, err := db.Exec("UPDATE players SET logged_in = ? WHERE uuid = ?", loggedIn, playerUUID)
-	if err != nil {
-		return err
-	}
-	return nil
-}
+// player.ColorProfile = colorProfile
+// player.Equipment = *playerEquipment
+
+// return &player, nil
+// }
 
 func HashPassword(password string) string {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -139,12 +138,21 @@ func createPlayer(conn net.Conn, db *sql.DB, playerName string) (*Player, error)
 	return player, nil
 }
 
-func LoginPlayer(conn net.Conn, db *sql.DB) (*Player, error) {
+// Handle the login process for a player.  After authentication,
+// cycle through related fields to populate the `player` object:
+// - ColorProfile
+// - Equipment
+// - etc
+//
+// each one of these steps results in another database query, but I thought it
+// best to keep the actions atomic for now, rather than trying to build one
+// huge query which has joins all over the place.
+func LoginPlayer(conn net.Conn, db *sql.DB) (interfaces.PlayerInterface, error) {
 
 	fmt.Fprintf(conn, "Welcome! Please enter your player name: ")
 	playerName := getPlayerInput(conn)
 
-	player, err := getPlayerFromDB(db, playerName)
+	player, err := GetPlayerFromDB(db, playerName)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			fmt.Fprintf(conn, "Player not found.  Do you want to create a new player? (y/n): ")
@@ -170,9 +178,19 @@ func LoginPlayer(conn net.Conn, db *sql.DB) (*Player, error) {
 		return nil, err
 	}
 
-	player.Conn = conn
+	player.SetConn(conn)
 
-	err = setPlayerLoggedInStatus(db, player.UUID, true)
+	err = player.GetColorProfileFromDB(db)
+	if err != nil {
+		return nil, err
+	}
+
+	err = player.GetEquipmentFromDB(db)
+	if err != nil {
+		return nil, err
+	}
+
+	err = setPlayerLoggedInStatusInDB(db, player.GetUUID(), true)
 	if err != nil {
 		return nil, err
 	}

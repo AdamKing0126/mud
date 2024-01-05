@@ -119,6 +119,10 @@ func (player *Player) GetConn() net.Conn {
 	return player.Conn
 }
 
+func (player *Player) SetConn(conn net.Conn) {
+	player.Conn = conn
+}
+
 func (player *Player) GetLoggedIn() bool {
 	return player.LoggedIn
 }
@@ -288,16 +292,6 @@ func (player *Player) Equip(db *sql.DB, item interfaces.ItemInterface) bool {
 	fmt.Printf("yo, dude %v", columns)
 	return true
 
-}
-
-func GetPlayer(db *sql.DB, playerName string) (interfaces.PlayerInterface, error) {
-	var player Player
-	err := db.QueryRow("SELECT uuid, name, room, area, health, movement, mana, logged_in, FROM players WHERE LOWER(p.name) = LOWER(?)", playerName).
-		Scan(&player.UUID, &player.Name, &player.Room, &player.Area, &player.Health, &player.Movement, &player.Mana, &player.LoggedIn)
-	if err != nil {
-		return nil, err
-	}
-	return &player, nil
 }
 
 func GetPlayerByName(db *sql.DB, name string) (interfaces.PlayerInterface, error) {

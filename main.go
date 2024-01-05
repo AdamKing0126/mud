@@ -46,12 +46,12 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 		}
 	}()
 
-	s.connections[player.UUID] = player
-	defer delete(s.connections, player.UUID)
+	s.connections[player.GetUUID()] = player
+	defer delete(s.connections, player.GetUUID())
 
 	notifyPlayersInRoomThatNewPlayerHasJoined(player, s.connections)
 
-	ch := areaChannels[player.Area]
+	ch := areaChannels[player.GetArea()]
 
 	updateChannel := func(newArea string) {
 		ch = areaChannels[newArea]
