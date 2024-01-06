@@ -3,12 +3,11 @@ package players
 import (
 	"database/sql"
 	"fmt"
-	"mud/interfaces"
 	"mud/items"
 	"strings"
 )
 
-func GetPlayerFromDB(db *sql.DB, playerName string) (interfaces.PlayerInterface, error) {
+func GetPlayerFromDB(db *sql.DB, playerName string) (*Player, error) {
 	var player Player
 	var colorProfileUUID string
 	err := db.QueryRow("SELECT uuid, name, room, area, health, health_max, movement, movement_max, mana, mana_max, logged_in, password, color_profile FROM players WHERE LOWER(name) = LOWER(?)", playerName).
@@ -16,13 +15,13 @@ func GetPlayerFromDB(db *sql.DB, playerName string) (interfaces.PlayerInterface,
 	if err != nil {
 		return nil, err
 	}
-	player.ColorProfile = &ColorProfile{UUID: colorProfileUUID}
+	player.ColorProfile = ColorProfile{UUID: colorProfileUUID}
 
 	return &player, nil
 }
 
 func (player *Player) GetColorProfileFromDB(db *sql.DB) error {
-	var colorProfile = &ColorProfile{}
+	var colorProfile = ColorProfile{}
 	query := `SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color 
 	FROM color_profiles WHERE uuid = ?;`
 	err := db.QueryRow(query, player.GetColorProfile().GetUUID()).Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
@@ -54,7 +53,6 @@ func (player *Player) GetEquipmentFromDB(db *sql.DB) error {
 	}
 
 	item_uuids := []string{head, neck, chest, arms, hands, dominantHand, offHand, legs, feet}
-	// itemsMap := make(map[string]interfaces.EquippedItemInterface)
 
 	placeholders := strings.Trim(strings.Repeat("?,", len(item_uuids)), ",")
 
@@ -88,7 +86,7 @@ func (player *Player) GetEquipmentFromDB(db *sql.DB) error {
 		case chest:
 			pe.Chest = items.NewEquippedItem(item, "Chest")
 		case arms:
-			pe.Arms = items.NewEquippedItem(item, "Arms	")
+			pe.Arms = items.NewEquippedItem(item, "Arms")
 		case hands:
 			pe.Hands = items.NewEquippedItem(item, "Hands")
 		case dominantHand:
@@ -109,4 +107,50 @@ func (player *Player) GetEquipmentFromDB(db *sql.DB) error {
 	player.Equipment = pe
 
 	return nil
+}
+
+// Used when creating a new player, fetch a ColorProfile to assign to the new player
+func getColorProfileFromDB(db *sql.DB, colorProfileUUID string) (*ColorProfile, error) {
+	var colorProfile ColorProfile
+	query := `SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color
+				FROM color_profiles
+				WHERE uuid = ?`
+	err := db.QueryRow(query, colorProfileUUID).
+		Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
+	if err != nil {
+		return nil, err
+	}
+
+	return &colorProfile, nil
+}
+
+func GetPlayersInRoom(db *sql.DB, roomUUID string) ([]Player, error) {
+	// Would it be better to rely on the `connections` structure attached to the server
+	// or is it better to query the db for this info?
+	query := `
+		SELECT uuid, name 
+		FROM players 
+		WHERE room = ? and logged_in = 1
+	`
+	rows, err := db.Query(query, roomUUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %v", err)
+	}
+	defer rows.Close()
+
+	var players []Player
+	for rows.Next() {
+		var player Player
+		err := rows.Scan(&player.UUID, &player.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan row: %v", err)
+		}
+		players = append(players, player)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over rows: %v", err)
+	}
+
+	return players, nil
 }

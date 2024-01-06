@@ -1,6 +1,8 @@
-package interfaces
+package players
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 type Item interface {
 	GetUUID() string

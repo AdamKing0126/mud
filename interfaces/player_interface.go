@@ -2,6 +2,7 @@ package interfaces
 
 import (
 	"database/sql"
+	"mud/players"
 	"net"
 )
 
@@ -20,6 +21,8 @@ type PlayerInterface interface {
 	GetConn() net.Conn
 	SetConn(net.Conn)
 	GetColorProfileFromDB(db *sql.DB) error
+	GetEquipment() *players.PlayerEquipment
+	// GetEquipment() PlayerEquipmentInterface
 	GetEquipmentFromDB(db *sql.DB) error
 	SetLocation(db *sql.DB, roomUUID string) error
 	Logout(db *sql.DB) error
@@ -31,6 +34,6 @@ type PlayerInterface interface {
 	GetAbilities() AbilitiesInterface
 	GetArmorClass() int
 	SetAbilities(PlayerAbilitiesInterface)
-	Equip(db *sql.DB, item ItemInterface) bool
+	Equip(db *sql.DB, item Item) bool
 	GetHashedPassword() string
 }
