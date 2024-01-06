@@ -72,8 +72,8 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 	}
 }
 
-func notifyPlayersInRoomThatNewPlayerHasJoined(player interfaces.PlayerInterface, connections map[string]interfaces.PlayerInterface) {
-	var playersInRoom []interfaces.PlayerInterface
+func notifyPlayersInRoomThatNewPlayerHasJoined(player *players.Player, connections map[string]players.Player) {
+	var playersInRoom []players.Player
 	for _, p := range connections {
 		if p.GetRoom() == player.GetRoom() && p.GetUUID() != player.GetUUID() {
 			playersInRoom = append(playersInRoom, p)
@@ -133,7 +133,7 @@ func main() {
 		return
 	}
 
-	areaInstances := make(map[string]interfaces.AreaInterface)
+	areaInstances := make(map[string]*areas.Area)
 	for rows.Next() {
 		var uuid string
 		var name string
@@ -145,6 +145,7 @@ func main() {
 		}
 
 		areaInstances[uuid] = areas.NewArea(uuid, name, description)
+		/// is this interfaces.ActionInterface the problem?
 		areaChannels[uuid] = make(chan interfaces.ActionInterface)
 		go areaInstances[uuid].Run(db, areaChannels[uuid], server.connections)
 	}

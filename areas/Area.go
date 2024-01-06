@@ -1,9 +1,5 @@
 package areas
 
-import (
-	"mud/interfaces"
-)
-
 type Area struct {
 	UUID        string
 	Name        string
@@ -30,6 +26,6 @@ type AreaInfo struct {
 	Description string
 }
 
-func NewArea(uuid string, name string, description string) interfaces.AreaInterface {
+func NewArea(uuid string, name string, description string) *Area {
 	return &Area{UUID: uuid, Name: name, Description: description}
 }
