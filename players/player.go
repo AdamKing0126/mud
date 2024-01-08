@@ -195,11 +195,11 @@ func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
 }
 
 func (player *Player) SetAbilities(abilities interfaces.PlayerAbilitiesInterface) {
-	playerAbilities, ok := abilities.(PlayerAbilities)
+	playerAbilities, ok := abilities.(*PlayerAbilities)
 	if !ok {
 		fmt.Errorf("error setting abilities")
 	}
-	player.PlayerAbilities = playerAbilities
+	player.PlayerAbilities = *playerAbilities
 }
 
 func (p *Player) Regen(db *sql.DB) error {

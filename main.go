@@ -73,7 +73,7 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 }
 
 func notifyPlayersInRoomThatNewPlayerHasJoined(player interfaces.PlayerInterface, connections map[string]interfaces.PlayerInterface) {
-	var playersInRoom []players.Player
+	var playersInRoom []interfaces.PlayerInterface
 	for _, p := range connections {
 		if p.GetRoom() == player.GetRoom() && p.GetUUID() != player.GetUUID() {
 			playersInRoom = append(playersInRoom, p)
