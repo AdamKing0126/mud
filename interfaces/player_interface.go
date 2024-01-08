@@ -32,6 +32,6 @@ type PlayerInterface interface {
 	GetAbilities() AbilitiesInterface
 	GetArmorClass() int
 	SetAbilities(PlayerAbilitiesInterface)
-	Equip(db *sql.DB, item Item)
+	Equip(db *sql.DB, item Item) bool
 	GetHashedPassword() string
 }

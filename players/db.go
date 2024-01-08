@@ -18,7 +18,7 @@ func GetPlayerFromDB(db *sql.DB, playerName string) (interfaces.PlayerInterface,
 	}
 	player.ColorProfile = ColorProfile{UUID: colorProfileUUID}
 
-	return player, nil
+	return &player, nil
 }
 
 func (player *Player) GetColorProfileFromDB(db *sql.DB) error {

@@ -150,7 +150,7 @@ func GetItemsForPlayer(db *sql.DB, playerUUID string) ([]interfaces.Item, error)
 
 	var itemInterfaces []interfaces.Item
 	for _, item := range items {
-		itemInterfaces = append(itemInterfaces, item)
+		itemInterfaces = append(itemInterfaces, &item)
 	}
 
 	return itemInterfaces, nil
