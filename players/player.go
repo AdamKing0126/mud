@@ -104,7 +104,7 @@ func (player *Player) GetHashedPassword() string {
 }
 
 // func (player *Player) GetEquipment() *PlayerEquipment {
-func (player *Player) GetEquipment() interfaces.PlayerEquipmentInterface {
+func (player *Player) GetEquipment() interfaces.PlayerEquipment {
 	return &player.Equipment
 }
 
@@ -139,14 +139,14 @@ func (player *Player) GetCommands() []string {
 // TODO Adam - why can't I do this?
 // func (player *Player) GetColorProfile() *ColorProfile {
 // This one works
-func (player *Player) GetColorProfile() interfaces.ColorProfileInterface {
+func (player *Player) GetColorProfile() interfaces.ColorProfile {
 	return &player.ColorProfile
 }
 
 // TODO Adam - why can't I do this?
 // func (player *Player) GetAbilities() *PlayerAbilities {
 // This one works
-func (player *Player) GetAbilities() interfaces.AbilitiesInterface {
+func (player *Player) GetAbilities() interfaces.Abilities {
 	return &player.PlayerAbilities
 }
 
@@ -194,7 +194,7 @@ func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
 	return nil
 }
 
-func (player *Player) SetAbilities(abilities interfaces.PlayerAbilitiesInterface) {
+func (player *Player) SetAbilities(abilities interfaces.PlayerAbilities) {
 	playerAbilities, ok := abilities.(*PlayerAbilities)
 	if !ok {
 		fmt.Errorf("error setting abilities")

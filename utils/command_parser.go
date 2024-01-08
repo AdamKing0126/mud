@@ -15,7 +15,7 @@ type CommandHandlerWithPriority struct {
 }
 
 type CommandHandler interface {
-	Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string))
+	Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string))
 }
 
 type Notifiable interface {

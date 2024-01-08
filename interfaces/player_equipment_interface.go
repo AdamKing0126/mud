@@ -1,6 +1,6 @@
 package interfaces
 
-type PlayerEquipmentInterface interface {
+type PlayerEquipment interface {
 	GetUUID() string
 	GetPlayerUUID() string
 	GetHead() EquippedItem

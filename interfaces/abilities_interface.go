@@ -1,6 +1,6 @@
 package interfaces
 
-type AbilitiesInterface interface {
+type Abilities interface {
 	GetAttackModifier(string) int
 	GetStrengthModifier() int
 	GetDexterityModifier() int

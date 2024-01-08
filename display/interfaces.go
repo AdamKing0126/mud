@@ -6,7 +6,7 @@ import (
 )
 
 type Player interface {
-	GetColorProfile() interfaces.ColorProfileInterface
+	GetColorProfile() interfaces.ColorProfile
 	GetConn() net.Conn
 }
 

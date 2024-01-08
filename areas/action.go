@@ -9,12 +9,12 @@ import (
 )
 
 type Action struct {
-	Player    interfaces.PlayerInterface
+	Player    interfaces.Player
 	Command   string
 	Arguments []string
 }
 
-func (a *Action) GetPlayer() interfaces.PlayerInterface {
+func (a *Action) GetPlayer() interfaces.Player {
 	return a.Player
 }
 
@@ -27,12 +27,12 @@ func (a *Action) GetArguments() []string {
 }
 
 type ActionHandler interface {
-	Execute(db *sql.DB, player interfaces.PlayerInterface, action *Action, updateChannel func(string))
+	Execute(db *sql.DB, player interfaces.Player, action *Action, updateChannel func(string))
 }
 
 type FooActionHandler struct{}
 
-func (h *FooActionHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, action *Action, updateChannel func(string)) {
+func (h *FooActionHandler) Execute(db *sql.DB, player interfaces.Player, action *Action, updateChannel func(string)) {
 	display.PrintWithColor(player, "FooActionHandler.Execute()\n", "danger")
 }
 
@@ -40,12 +40,12 @@ var ActionHandlers = map[string]ActionHandler{
 	"foo": &FooActionHandler{},
 }
 
-func (a *Area) Run(db *sql.DB, ch chan interfaces.ActionInterface, connections map[string]interfaces.PlayerInterface) {
+func (a *Area) Run(db *sql.DB, ch chan interfaces.Action, connections map[string]interfaces.Player) {
 	ticker := time.NewTicker(time.Second)
 	tickerCounter := 0
 	defer ticker.Stop()
 
-	playerActions := make(map[interfaces.PlayerInterface][]interfaces.ActionInterface)
+	playerActions := make(map[interfaces.Player][]interfaces.Action)
 
 	for {
 		select {
@@ -55,8 +55,8 @@ func (a *Area) Run(db *sql.DB, ch chan interfaces.ActionInterface, connections m
 		case <-ticker.C:
 			tickerCounter++
 			if tickerCounter%15 == 0 {
-				var playersInArea []interfaces.PlayerInterface
-				playersInArea = make([]interfaces.PlayerInterface, 0, len(connections))
+				var playersInArea []interfaces.Player
+				playersInArea = make([]interfaces.Player, 0, len(connections))
 				for _, player := range connections {
 					areaUUID := a.GetUUID()
 					playerArea := player.GetArea()
