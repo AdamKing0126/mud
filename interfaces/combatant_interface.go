@@ -1,6 +1,6 @@
 package interfaces
 
-type CombatantInterface interface {
-	GetAbilities() AbilitiesInterface
+type Combatant interface {
+	GetAbilities() Abilities
 	GetArmorClass() int
 }

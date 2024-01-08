@@ -2,9 +2,9 @@ package interfaces
 
 import "database/sql"
 
-type AreaInterface interface {
+type Area interface {
 	GetUUID() string
 	GetName() string
 	GetDescription() string
-	Run(db *sql.DB, ch chan ActionInterface, connections map[string]PlayerInterface)
+	Run(db *sql.DB, ch chan Action, connections map[string]Player)
 }

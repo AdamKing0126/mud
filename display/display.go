@@ -2,8 +2,6 @@ package display
 
 import (
 	"fmt"
-	"mud/interfaces"
-	"net"
 )
 
 const (
@@ -25,11 +23,6 @@ const (
 	BrightCyan    = "\033[36;1m"
 	BrightWhite   = "\033[37;1m"
 )
-
-type Player interface {
-	GetColorProfile() interfaces.ColorProfileInterface
-	GetConn() net.Conn
-}
 
 func Colorize(text string, color string) string {
 	return color + text + Reset

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"mud/interfaces"
 	"net"
 	"strings"
 
@@ -22,55 +21,12 @@ func getPlayerInput(reader io.Reader) string {
 	return strings.TrimSpace(input)
 }
 
-// func getPlayerFromDB(db *sql.DB, playerName string) (interfaces.PlayerInterface, error) {
-// 	player, err := GetPlayer(db, playerName)
-
-// 	return player, err
-// func getPlayerFromDB(db *sql.DB, playerName string) (*Player, error) {
-// 	player, err := GetPlayer(db, playerName)
-
-// var player Player
-// var colorProfile = &ColorProfile{}
-// query := `SELECT p.name, p.uuid, p.area, p.room, p.health, p.health_max, p.movement, p.movement_max, p.mana, p.mana_max, p.password, cp.uuid, cp.name, cp.primary_color, cp.secondary_color, cp.warning_color, cp.danger_color, cp.title_color, cp.description_color
-// 			FROM players p JOIN color_profiles cp ON cp.uuid = p.color_profile
-// 			WHERE LOWER(p.name) = LOWER(?)`
-// err := db.QueryRow(query, strings.ToLower(playerName)).
-// 	Scan(&player.Name, &player.UUID, &player.Area, &player.Room, &player.Health, &player.HealthMax, &player.Movement, &player.MovementMax, &player.Mana, &player.ManaMax, &player.Password, &colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
-// if err != nil {
-// 	return &player, err
-// }
-
-// playerEquipment, err := GetPlayerEquipment(db, player.UUID)
-// if err != nil {
-// 	return nil, err
-// }
-
-// player.ColorProfile = colorProfile
-// player.Equipment = *playerEquipment
-
-// return &player, nil
-// }
-
 func HashPassword(password string) string {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Fatalf("Failed to hash password: %v", err)
 	}
 	return string(hashedPassword)
-}
-
-func getColorProfileFromDB(db *sql.DB, colorProfileUUID string) (*ColorProfile, error) {
-	var colorProfile ColorProfile
-	query := `SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color
-				FROM color_profiles
-				WHERE uuid = ?`
-	err := db.QueryRow(query, colorProfileUUID).
-		Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
-	if err != nil {
-		return nil, err
-	}
-
-	return &colorProfile, nil
 }
 
 func createPlayer(conn net.Conn, db *sql.DB, playerName string) (*Player, error) {
@@ -92,7 +48,7 @@ func createPlayer(conn net.Conn, db *sql.DB, playerName string) (*Player, error)
 		return nil, err
 	}
 
-	player.ColorProfile = colorProfile
+	player.ColorProfile = *colorProfile
 	player.Health = 100
 	player.HealthMax = 100
 	player.Movement = 100
@@ -147,7 +103,7 @@ func createPlayer(conn net.Conn, db *sql.DB, playerName string) (*Player, error)
 // each one of these steps results in another database query, but I thought it
 // best to keep the actions atomic for now, rather than trying to build one
 // huge query which has joins all over the place.
-func LoginPlayer(conn net.Conn, db *sql.DB) (interfaces.PlayerInterface, error) {
+func LoginPlayer(conn net.Conn, db *sql.DB) (*Player, error) {
 
 	fmt.Fprintf(conn, "Welcome! Please enter your player name: ")
 	playerName := getPlayerInput(conn)

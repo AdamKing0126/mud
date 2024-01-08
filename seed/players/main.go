@@ -134,7 +134,7 @@ func SeedPlayers() {
 				MovementMax:  100,
 				Mana:         100,
 				ManaMax:      100,
-				ColorProfile: &players.ColorProfile{UUID: colorProfileUUIDs["Light Mode"]},
+				ColorProfile: players.ColorProfile{UUID: colorProfileUUIDs["Light Mode"]},
 				Password:     hashPassword("password"),
 			},
 			{
@@ -147,7 +147,7 @@ func SeedPlayers() {
 				MovementMax:  100,
 				Mana:         100,
 				ManaMax:      100,
-				ColorProfile: &players.ColorProfile{UUID: colorProfileUUIDs["Dark Mode"]},
+				ColorProfile: players.ColorProfile{UUID: colorProfileUUIDs["Dark Mode"]},
 				Password:     hashPassword("password"),
 			},
 		}

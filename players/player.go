@@ -25,10 +25,10 @@ type Player struct {
 	MovementMax     int
 	Conn            net.Conn
 	Commands        []string
-	ColorProfile    interfaces.ColorProfileInterface
+	ColorProfile    ColorProfile
 	LoggedIn        bool
 	Password        string
-	PlayerAbilities interfaces.PlayerAbilitiesInterface
+	PlayerAbilities PlayerAbilities
 	Equipment       PlayerEquipment
 }
 
@@ -103,6 +103,11 @@ func (player *Player) GetHashedPassword() string {
 	return player.Password
 }
 
+// func (player *Player) GetEquipment() *PlayerEquipment {
+func (player *Player) GetEquipment() interfaces.PlayerEquipment {
+	return &player.Equipment
+}
+
 func (player *Player) SetHealth(health int) {
 	player.Health = health
 }
@@ -131,12 +136,18 @@ func (player *Player) GetCommands() []string {
 	return player.Commands
 }
 
-func (player *Player) GetColorProfile() interfaces.ColorProfileInterface {
-	return player.ColorProfile
+// TODO Adam - why can't I do this?
+// func (player *Player) GetColorProfile() *ColorProfile {
+// This one works
+func (player *Player) GetColorProfile() interfaces.ColorProfile {
+	return &player.ColorProfile
 }
 
-func (player *Player) GetAbilities() interfaces.AbilitiesInterface {
-	return player.PlayerAbilities
+// TODO Adam - why can't I do this?
+// func (player *Player) GetAbilities() *PlayerAbilities {
+// This one works
+func (player *Player) GetAbilities() interfaces.Abilities {
+	return &player.PlayerAbilities
 }
 
 func (player *Player) SetCommands(commands []string) {
@@ -183,8 +194,12 @@ func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
 	return nil
 }
 
-func (player *Player) SetAbilities(abilities interfaces.PlayerAbilitiesInterface) {
-	player.PlayerAbilities = abilities
+func (player *Player) SetAbilities(abilities interfaces.PlayerAbilities) {
+	playerAbilities, ok := abilities.(*PlayerAbilities)
+	if !ok {
+		fmt.Errorf("error setting abilities")
+	}
+	player.PlayerAbilities = *playerAbilities
 }
 
 func (p *Player) Regen(db *sql.DB) error {
@@ -214,7 +229,7 @@ func (p *Player) Regen(db *sql.DB) error {
 	return nil
 }
 
-func (player *Player) Equip(db *sql.DB, item interfaces.ItemInterface) bool {
+func (player *Player) Equip(db *sql.DB, item interfaces.Item) bool {
 	// get the location where the thing goes
 	val := reflect.ValueOf(&player.Equipment).Elem()
 	itemEquipSlots := []string{}
@@ -242,12 +257,14 @@ func (player *Player) Equip(db *sql.DB, item interfaces.ItemInterface) bool {
 	rows, err := db.Query(queryString, player.GetUUID())
 	if err != nil {
 		fmt.Printf("error retrieving player equipments: %v", err)
+		return false
 	}
 	defer rows.Close()
 
 	columns, err := rows.Columns()
 	if err != nil {
 		fmt.Printf("error getting columns: %v", err)
+		return false
 	}
 
 	values := make([]interface{}, len(columns))
@@ -279,22 +296,12 @@ func (player *Player) Equip(db *sql.DB, item interfaces.ItemInterface) bool {
 				fmt.Printf("error inserting into player_equipments: %v", err)
 				return false
 			}
-
-			return true
 		}
-
 	}
-
-	// if no empty values, remove the first item with a value,
-	fmt.Printf("equipping at first slot.")
-	// then equip the new item
-
-	fmt.Printf("yo, dude %v", columns)
 	return true
-
 }
 
-func GetPlayerByName(db *sql.DB, name string) (interfaces.PlayerInterface, error) {
+func GetPlayerByName(db *sql.DB, name string) (*Player, error) {
 	var player Player
 	var playerAbilities PlayerAbilities
 	err := db.QueryRow("SELECT p.uuid, p.name, p.room, p.area, p.health, p.movement, p.mana, p.logged_in, pa.intelligence, pa.dexterity, pa.charisma, pa.constitution, pa.wisdom, pa.strength FROM players p JOIN player_attributes pa ON p.uuid = pa.player_uuid WHERE LOWER(p.name) = LOWER(?)", name).

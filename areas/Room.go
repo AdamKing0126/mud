@@ -16,7 +16,7 @@ type Room struct {
 	Description string
 	Area        AreaInfo
 	Exits       ExitInfo
-	Items       []interfaces.ItemInterface
+	Items       []interfaces.Item
 	Players     []PlayerInRoomInterface
 }
 

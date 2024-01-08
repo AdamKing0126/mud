@@ -4,6 +4,6 @@ import (
 	"database/sql"
 )
 
-type CommandRouterInterface interface {
-	HandleCommand(db *sql.DB, player PlayerInterface, command []byte)
+type CommandRouter interface {
+	HandleCommand(db *sql.DB, player Player, command []byte)
 }

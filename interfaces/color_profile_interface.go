@@ -1,6 +1,6 @@
 package interfaces
 
-type ColorProfileInterface interface {
+type ColorProfile interface {
 	GetUUID() string
 	GetColor(string) string
 }

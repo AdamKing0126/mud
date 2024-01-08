@@ -2,8 +2,6 @@ package players
 
 import (
 	"database/sql"
-	"mud/display"
-	"mud/interfaces"
 )
 
 type ColorProfile struct {
@@ -34,11 +32,11 @@ func (c *ColorProfile) GetColor(colorUse string) string {
 	case "title":
 		return c.Title
 	default:
-		return display.Reset
+		return "\033[0m"
 	}
 }
 
-func NewColorProfileFromDB(db *sql.DB, uuid string) (interfaces.ColorProfileInterface, error) {
+func NewColorProfileFromDB(db *sql.DB, uuid string) (*ColorProfile, error) {
 	var colorProfile ColorProfile
 	err := db.QueryRow("SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color FROM color_profiles WHERE uuid = ?", uuid).
 		Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)

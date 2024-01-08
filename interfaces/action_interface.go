@@ -1,7 +1,7 @@
 package interfaces
 
-type ActionInterface interface {
-	GetPlayer() PlayerInterface
+type Action interface {
+	GetPlayer() Player
 	GetCommand() string
 	GetArguments() []string
 }

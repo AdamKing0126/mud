@@ -7,16 +7,16 @@ import (
 )
 
 type Notifier struct {
-	Players map[string]interfaces.PlayerInterface
+	Players map[string]interfaces.Player
 }
 
-func NewNotifier(connections map[string]interfaces.PlayerInterface) *Notifier {
+func NewNotifier(connections map[string]interfaces.Player) *Notifier {
 	return &Notifier{Players: connections}
 }
 
 func (n *Notifier) NotifyRoom(roomID string, playerUUID string, message string) {
 	fmt.Println("Notifying room", roomID, "with message", message)
-	var playersInRoom []interfaces.PlayerInterface
+	var playersInRoom []interfaces.Player
 	for _, player := range n.Players {
 		if player.GetRoom() == roomID && player.GetUUID() != playerUUID {
 			playersInRoom = append(playersInRoom, player)

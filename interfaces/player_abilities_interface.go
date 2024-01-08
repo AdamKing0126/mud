@@ -1,6 +1,6 @@
 package interfaces
 
-type PlayerAbilitiesInterface interface {
+type PlayerAbilities interface {
 	GetStrength() int
 	GetIntelligence() int
 	GetDexterity() int
