@@ -3,6 +3,7 @@ package players
 import (
 	"database/sql"
 	"fmt"
+	"mud/interfaces"
 	"net"
 	"reflect"
 )
@@ -102,7 +103,8 @@ func (player *Player) GetHashedPassword() string {
 	return player.Password
 }
 
-func (player *Player) GetEquipment() *PlayerEquipment {
+// func (player *Player) GetEquipment() *PlayerEquipment {
+func (player *Player) GetEquipment() interfaces.PlayerEquipmentInterface {
 	return &player.Equipment
 }
 
@@ -134,17 +136,17 @@ func (player *Player) GetCommands() []string {
 	return player.Commands
 }
 
-// This one works
-// func (player *Player) GetColorProfile() interfaces.ColorProfileInterface {
 // TODO Adam - why can't I do this?
-func (player *Player) GetColorProfile() *ColorProfile {
+// func (player *Player) GetColorProfile() *ColorProfile {
+// This one works
+func (player *Player) GetColorProfile() interfaces.ColorProfileInterface {
 	return &player.ColorProfile
 }
 
-// This one works
-// func (player *Player) GetAbilities() interfaces.AbilitiesInterface {
 // TODO Adam - why can't I do this?
-func (player *Player) GetAbilities() *PlayerAbilities {
+// func (player *Player) GetAbilities() *PlayerAbilities {
+// This one works
+func (player *Player) GetAbilities() interfaces.AbilitiesInterface {
 	return &player.PlayerAbilities
 }
 
@@ -192,8 +194,12 @@ func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
 	return nil
 }
 
-func (player *Player) SetAbilities(abilities *PlayerAbilities) {
-	player.PlayerAbilities = *abilities
+func (player *Player) SetAbilities(abilities interfaces.PlayerAbilitiesInterface) {
+	playerAbilities, ok := abilities.(PlayerAbilities)
+	if !ok {
+		fmt.Errorf("error setting abilities")
+	}
+	player.PlayerAbilities = playerAbilities
 }
 
 func (p *Player) Regen(db *sql.DB) error {
@@ -223,7 +229,7 @@ func (p *Player) Regen(db *sql.DB) error {
 	return nil
 }
 
-func (player *Player) Equip(db *sql.DB, item Item) bool {
+func (player *Player) Equip(db *sql.DB, item interfaces.Item) bool {
 	// get the location where the thing goes
 	val := reflect.ValueOf(&player.Equipment).Elem()
 	itemEquipSlots := []string{}
@@ -251,12 +257,14 @@ func (player *Player) Equip(db *sql.DB, item Item) bool {
 	rows, err := db.Query(queryString, player.GetUUID())
 	if err != nil {
 		fmt.Printf("error retrieving player equipments: %v", err)
+		return false
 	}
 	defer rows.Close()
 
 	columns, err := rows.Columns()
 	if err != nil {
 		fmt.Printf("error getting columns: %v", err)
+		return false
 	}
 
 	values := make([]interface{}, len(columns))
@@ -288,19 +296,9 @@ func (player *Player) Equip(db *sql.DB, item Item) bool {
 				fmt.Printf("error inserting into player_equipments: %v", err)
 				return false
 			}
-
-			return true
 		}
-
 	}
-
-	// if no empty values, remove the first item with a value,
-	fmt.Printf("equipping at first slot.")
-	// then equip the new item
-
-	fmt.Printf("yo, dude %v", columns)
 	return true
-
 }
 
 func GetPlayerByName(db *sql.DB, name string) (*Player, error) {

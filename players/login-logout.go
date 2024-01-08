@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mud/interfaces"
 	"net"
 	"strings"
 
@@ -103,7 +104,7 @@ func createPlayer(conn net.Conn, db *sql.DB, playerName string) (*Player, error)
 // each one of these steps results in another database query, but I thought it
 // best to keep the actions atomic for now, rather than trying to build one
 // huge query which has joins all over the place.
-func LoginPlayer(conn net.Conn, db *sql.DB) (*Player, error) {
+func LoginPlayer(conn net.Conn, db *sql.DB) (interfaces.PlayerInterface, error) {
 
 	fmt.Fprintf(conn, "Welcome! Please enter your player name: ")
 	playerName := getPlayerInput(conn)

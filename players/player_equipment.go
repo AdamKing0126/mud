@@ -2,6 +2,7 @@ package players
 
 import (
 	"database/sql"
+	"mud/interfaces"
 )
 
 func NewPlayerEquipment() *PlayerEquipment {
@@ -30,39 +31,39 @@ func (pe *PlayerEquipment) GetPlayerUUID() string {
 	return pe.PlayerUUID
 }
 
-func (pe *PlayerEquipment) GetHead() EquippedItem {
+func (pe *PlayerEquipment) GetHead() interfaces.EquippedItem {
 	return pe.Head
 }
 
-func (pe *PlayerEquipment) GetNeck() EquippedItem {
+func (pe *PlayerEquipment) GetNeck() interfaces.EquippedItem {
 	return pe.Neck
 }
 
-func (pe *PlayerEquipment) GetChest() EquippedItem {
+func (pe *PlayerEquipment) GetChest() interfaces.EquippedItem {
 	return pe.Chest
 }
 
-func (pe *PlayerEquipment) GetArms() EquippedItem {
+func (pe *PlayerEquipment) GetArms() interfaces.EquippedItem {
 	return pe.Arms
 }
 
-func (pe *PlayerEquipment) GetHands() EquippedItem {
+func (pe *PlayerEquipment) GetHands() interfaces.EquippedItem {
 	return pe.Hands
 }
 
-func (pe *PlayerEquipment) GetDominantHand() EquippedItem {
+func (pe *PlayerEquipment) GetDominantHand() interfaces.EquippedItem {
 	return pe.DominantHand
 }
 
-func (pe *PlayerEquipment) GetOffHand() EquippedItem {
+func (pe *PlayerEquipment) GetOffHand() interfaces.EquippedItem {
 	return pe.OffHand
 }
 
-func (pe *PlayerEquipment) GetLegs() EquippedItem {
+func (pe *PlayerEquipment) GetLegs() interfaces.EquippedItem {
 	return pe.Legs
 }
 
-func (pe *PlayerEquipment) GetFeet() EquippedItem {
+func (pe *PlayerEquipment) GetFeet() interfaces.EquippedItem {
 	return pe.Feet
 }
 

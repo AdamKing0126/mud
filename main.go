@@ -21,12 +21,12 @@ type CommandRouterInterface interface {
 }
 
 type Server struct {
-	connections map[string]players.Player
+	connections map[string]interfaces.PlayerInterface
 }
 
 func NewServer() *Server {
 	return &Server{
-		connections: make(map[string]players.Player),
+		connections: make(map[string]interfaces.PlayerInterface),
 	}
 }
 
@@ -46,7 +46,7 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 		}
 	}()
 
-	s.connections[player.GetUUID()] = *player
+	s.connections[player.GetUUID()] = player
 	defer delete(s.connections, player.GetUUID())
 
 	notifyPlayersInRoomThatNewPlayerHasJoined(player, s.connections)
@@ -72,7 +72,7 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 	}
 }
 
-func notifyPlayersInRoomThatNewPlayerHasJoined(player *players.Player, connections map[string]players.Player) {
+func notifyPlayersInRoomThatNewPlayerHasJoined(player interfaces.PlayerInterface, connections map[string]interfaces.PlayerInterface) {
 	var playersInRoom []players.Player
 	for _, p := range connections {
 		if p.GetRoom() == player.GetRoom() && p.GetUUID() != player.GetUUID() {

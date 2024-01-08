@@ -3,11 +3,12 @@ package players
 import (
 	"database/sql"
 	"fmt"
+	"mud/interfaces"
 	"mud/items"
 	"strings"
 )
 
-func GetPlayerFromDB(db *sql.DB, playerName string) (*Player, error) {
+func GetPlayerFromDB(db *sql.DB, playerName string) (interfaces.PlayerInterface, error) {
 	var player Player
 	var colorProfileUUID string
 	err := db.QueryRow("SELECT uuid, name, room, area, health, health_max, movement, movement_max, mana, mana_max, logged_in, password, color_profile FROM players WHERE LOWER(name) = LOWER(?)", playerName).
@@ -17,7 +18,7 @@ func GetPlayerFromDB(db *sql.DB, playerName string) (*Player, error) {
 	}
 	player.ColorProfile = ColorProfile{UUID: colorProfileUUID}
 
-	return &player, nil
+	return player, nil
 }
 
 func (player *Player) GetColorProfileFromDB(db *sql.DB) error {

@@ -131,7 +131,7 @@ type MovePlayerCommandHandler struct {
 	Notifier  *notifications.Notifier
 }
 
-func movePlayerToDirection(db *sql.DB, player *players.Player, room *areas.Room, direction string, notifier *notifications.Notifier, currentChannel chan *areas.Action, updateChannel func(string)) {
+func movePlayerToDirection(db *sql.DB, player interfaces.PlayerInterface, room *areas.Room, direction string, notifier *notifications.Notifier, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	if room == nil || room.UUID == "" {
 		display.PrintWithColor(player, "You cannot go that way.", "reset")
 	} else {
@@ -145,7 +145,7 @@ func movePlayerToDirection(db *sql.DB, player *players.Player, room *areas.Room,
 	}
 }
 
-func (h *MovePlayerCommandHandler) Execute(db *sql.DB, player *players.Player, command string, arguments []string, currentChannel chan *areas.Action, updateChannel func(string)) {
+func (h *MovePlayerCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	roomUUID := player.GetRoom()
 	areaUUID := player.GetArea()
 	// currentRoom, err := getRoom(roomUUID, db)
@@ -182,7 +182,7 @@ type ExitsCommandHandler struct {
 	ShowOnlyDirections bool
 }
 
-func (h *ExitsCommandHandler) Execute(db *sql.DB, player *players.Player, command string, arguments []string, currentChannel chan *areas.Action, updateChannel func(string)) {
+func (h *ExitsCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	roomUUID := player.GetRoom()
 	currentRoom, err := getRoom(roomUUID, db)
 	if err != nil {
@@ -275,7 +275,7 @@ func (h *GiveCommandHandler) Execute(db *sql.DB, player *players.Player, command
 
 type LookCommandHandler struct{}
 
-func (h *LookCommandHandler) Execute(db *sql.DB, player *players.Player, command string, arguments []string, currentChannel chan *areas.Action, updateChannel func(string)) {
+func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	roomUUID := player.GetRoom()
 	currentRoom, err := getRoom(roomUUID, db)
 	if err != nil {
@@ -514,7 +514,7 @@ type SayHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func (h *SayHandler) Execute(db *sql.DB, player *players.Player, command string, arguments []string, currentChannel chan *areas.Action, updateChannel func(string)) {
+func (h *SayHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	msg := strings.Join(arguments, " ")
 	display.PrintWithColor(player, fmt.Sprintf("You say \"%s\"\n", msg), "reset")
 	h.Notifier.NotifyRoom(player.GetRoom(), player.GetUUID(), fmt.Sprintf("\n%s says \"%s\"\n", player.GetName(), msg))
@@ -528,7 +528,7 @@ type TellHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func (h *TellHandler) Execute(db *sql.DB, player *players.Player, command string, arguments []string, currentChannel chan *areas.Action, updateChannel func(string)) {
+func (h *TellHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	msg := strings.Join(arguments[1:], " ")
 	retrievedPlayer, err := players.GetPlayerByName(db, arguments[0])
 	if err != nil {
@@ -557,7 +557,7 @@ type AdminSetHealthCommandHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func (h *AdminSetHealthCommandHandler) Execute(db *sql.DB, player *players.Player, command string, arguments []string, currentChannel chan *areas.Action, updateChannel func(string)) {
+func (h *AdminSetHealthCommandHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	target := arguments[0]
 	value := arguments[1]
 
@@ -595,7 +595,7 @@ type EquipHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func printEquipmentElement(player *players.Player, partName string, getterFunc func() *items.EquippedItem) {
+func printEquipmentElement(player interfaces.PlayerInterface, partName string, getterFunc func() interfaces.EquippedItem) {
 	part := getterFunc()
 	partText := "nothing"
 	if part != nil {
@@ -604,7 +604,7 @@ func printEquipmentElement(player *players.Player, partName string, getterFunc f
 	display.PrintWithColor(player, fmt.Sprintf("\n%s: %s", partName, partText), "primary")
 }
 
-func (h *EquipHandler) Execute(db *sql.DB, player *players.Player, command string, arguments []string, currentChannel chan *areas.Action, updateChannel func(string)) {
+func (h *EquipHandler) Execute(db *sql.DB, player interfaces.PlayerInterface, command string, arguments []string, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
 	if len(arguments) == 0 {
 		display.PrintWithColor(player, "\n========================", "primary")
 		display.PrintWithColor(player, "\nYour current equipment:\n", "primary")

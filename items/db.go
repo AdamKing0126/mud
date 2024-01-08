@@ -3,6 +3,7 @@ package items
 import (
 	"database/sql"
 	"fmt"
+	"mud/interfaces"
 	"strings"
 )
 
@@ -89,7 +90,7 @@ func GetEquippedItemsForPlayer(db *sql.DB, playerUUID string) ([]EquippedItem, e
 	return items, nil
 }
 
-func GetItemsForPlayer(db *sql.DB, playerUUID string) ([]Item, error) {
+func GetItemsForPlayer(db *sql.DB, playerUUID string) ([]interfaces.Item, error) {
 	query := `
 		SELECT i.uuid, i.name, i.description, i.equipment_slots
 		FROM item_locations il
@@ -147,10 +148,15 @@ func GetItemsForPlayer(db *sql.DB, playerUUID string) ([]Item, error) {
 		return nil, fmt.Errorf("error iterating over rows: %v", err)
 	}
 
-	return items, nil
+	var itemInterfaces []interfaces.Item
+	for _, item := range items {
+		itemInterfaces = append(itemInterfaces, item)
+	}
+
+	return itemInterfaces, nil
 }
 
-func GetItemByNameForPlayer(db *sql.DB, itemName string, playerUUID string) (*Item, error) {
+func GetItemByNameForPlayer(db *sql.DB, itemName string, playerUUID string) (interfaces.Item, error) {
 	items, err := GetItemsForPlayer(db, playerUUID)
 	if err != nil {
 		return nil, err
@@ -158,7 +164,7 @@ func GetItemByNameForPlayer(db *sql.DB, itemName string, playerUUID string) (*It
 
 	for _, item := range items {
 		if item.GetName() == itemName {
-			return &item, nil
+			return item, nil
 		}
 	}
 

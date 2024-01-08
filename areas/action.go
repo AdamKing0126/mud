@@ -40,12 +40,12 @@ var ActionHandlers = map[string]ActionHandler{
 	"foo": &FooActionHandler{},
 }
 
-func (a *Area) Run(db *sql.DB, ch chan *Action, connections map[string]interfaces.PlayerInterface) {
+func (a *Area) Run(db *sql.DB, ch chan interfaces.ActionInterface, connections map[string]interfaces.PlayerInterface) {
 	ticker := time.NewTicker(time.Second)
 	tickerCounter := 0
 	defer ticker.Stop()
 
-	playerActions := make(map[interfaces.PlayerInterface][]*Action)
+	playerActions := make(map[interfaces.PlayerInterface][]interfaces.ActionInterface)
 
 	for {
 		select {
