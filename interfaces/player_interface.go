@@ -5,7 +5,7 @@ import (
 	"net"
 )
 
-type PlayerInterface interface {
+type Player interface {
 	GetUUID() string
 	GetName() string
 	GetRoom() string
@@ -20,17 +20,21 @@ type PlayerInterface interface {
 	GetConn() net.Conn
 	SetConn(net.Conn)
 	GetColorProfileFromDB(db *sql.DB) error
+	GetEquipment() PlayerEquipment
+	GetInventory() []Item
 	GetEquipmentFromDB(db *sql.DB) error
+	AddItemToInventory(db *sql.DB, item Item) error
 	SetLocation(db *sql.DB, roomUUID string) error
 	Logout(db *sql.DB) error
 	GetCommands() []string
 	SetCommands([]string)
-	GetColorProfile() ColorProfileInterface
+	GetColorProfile() ColorProfile
 	GetLoggedIn() bool
 	Regen(db *sql.DB) error
-	GetAbilities() AbilitiesInterface
+	GetAbilities() Abilities
 	GetArmorClass() int
-	SetAbilities(PlayerAbilitiesInterface)
-	Equip(db *sql.DB, item ItemInterface) bool
+	SetAbilities(PlayerAbilities)
+	Equip(db *sql.DB, item Item) bool
+	Remove(db *sql.DB, itemName string)
 	GetHashedPassword() string
 }

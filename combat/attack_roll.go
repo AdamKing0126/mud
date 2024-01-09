@@ -5,7 +5,7 @@ import (
 	"mud/interfaces"
 )
 
-func AttackRoll(combatant interfaces.CombatantInterface, opponent interfaces.CombatantInterface) bool {
+func AttackRoll(combatant interfaces.Combatant, opponent interfaces.Combatant) bool {
 	abilities := combatant.GetAbilities()
 	attackModifier := abilities.GetAttackModifier("ranged")
 

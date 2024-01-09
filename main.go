@@ -8,6 +8,7 @@ import (
 	"mud/commands"
 	"mud/display"
 	"mud/interfaces"
+	"mud/items"
 	"mud/notifications"
 	"mud/players"
 	"net"
@@ -17,20 +18,20 @@ import (
 )
 
 type CommandRouterInterface interface {
-	HandleCommand(db *sql.DB, player interfaces.PlayerInterface, command []byte, currentChannel chan interfaces.ActionInterface, updateChannel func(string))
+	HandleCommand(db *sql.DB, player interfaces.Player, command []byte, currentChannel chan interfaces.Action, updateChannel func(string))
 }
 
 type Server struct {
-	connections map[string]interfaces.PlayerInterface
+	connections map[string]interfaces.Player
 }
 
 func NewServer() *Server {
 	return &Server{
-		connections: make(map[string]interfaces.PlayerInterface),
+		connections: make(map[string]interfaces.Player),
 	}
 }
 
-func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, areaChannels map[string]chan interfaces.ActionInterface) {
+func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, areaChannels map[string]chan interfaces.Action) {
 	defer conn.Close()
 
 	player, err := players.LoginPlayer(conn, db)
@@ -38,6 +39,13 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 		fmt.Fprintf(conn, "Error: %v\n", err)
 		return
 	}
+
+	// TODO Trying the idea of moving functions like this outside the Player package
+	items, err := items.GetItemsForPlayer(db, player.GetUUID())
+	if err != nil {
+		fmt.Fprintf(conn, "Error retrieving inventory for player: %v\n", err)
+	}
+	player.SetInventory(items)
 
 	defer func() {
 		err := player.Logout(db)
@@ -72,8 +80,8 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 	}
 }
 
-func notifyPlayersInRoomThatNewPlayerHasJoined(player interfaces.PlayerInterface, connections map[string]interfaces.PlayerInterface) {
-	var playersInRoom []interfaces.PlayerInterface
+func notifyPlayersInRoomThatNewPlayerHasJoined(player interfaces.Player, connections map[string]interfaces.Player) {
+	var playersInRoom []interfaces.Player
 	for _, p := range connections {
 		if p.GetRoom() == player.GetRoom() && p.GetUUID() != player.GetUUID() {
 			playersInRoom = append(playersInRoom, p)
@@ -126,14 +134,14 @@ func main() {
 	defer listener.Close()
 	wg := sync.WaitGroup{}
 
-	areaChannels := make(map[string]chan interfaces.ActionInterface)
+	areaChannels := make(map[string]chan interfaces.Action)
 	rows, err := db.Query("SELECT uuid, name, description FROM areas")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	areaInstances := make(map[string]interfaces.AreaInterface)
+	areaInstances := make(map[string]*areas.Area)
 	for rows.Next() {
 		var uuid string
 		var name string
@@ -145,7 +153,7 @@ func main() {
 		}
 
 		areaInstances[uuid] = areas.NewArea(uuid, name, description)
-		areaChannels[uuid] = make(chan interfaces.ActionInterface)
+		areaChannels[uuid] = make(chan interfaces.Action)
 		go areaInstances[uuid].Run(db, areaChannels[uuid], server.connections)
 	}
 

@@ -12,7 +12,7 @@ import (
 )
 
 type CommandRouterInterface interface {
-	HandleCommand(db *sql.DB, player interfaces.PlayerInterface, command []byte, currentChannel chan interfaces.ActionInterface, updateChannel func(string))
+	HandleCommand(db *sql.DB, player interfaces.Player, command []byte, currentChannel chan interfaces.Action, updateChannel func(string))
 }
 
 type CommandRouter struct {
@@ -43,7 +43,7 @@ func RegisterCommands(router *CommandRouter, notifier *notifications.Notifier, c
 	}
 }
 
-func (r *CommandRouter) HandleCommand(db *sql.DB, player interfaces.PlayerInterface, command []byte, currentChannel chan interfaces.ActionInterface, updateChannel func(string)) {
+func (r *CommandRouter) HandleCommand(db *sql.DB, player interfaces.Player, command []byte, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	// Convert the command []byte to a string and trim the extra characters off.
 	commandString := strings.ToLower(strings.TrimSpace(string(command)))
 

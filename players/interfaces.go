@@ -1,6 +1,8 @@
-package interfaces
+package players
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 type Item interface {
 	GetUUID() string
@@ -13,4 +15,13 @@ type Item interface {
 type EquippedItem interface {
 	Item
 	GetEquippedSlot() string
+}
+
+type PlayerEquippedItem struct {
+	Item
+	EquippedSlot string
+}
+
+func (p *PlayerEquippedItem) GetEquippedSlot() string {
+	return p.EquippedSlot
 }
