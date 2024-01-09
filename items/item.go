@@ -16,15 +16,13 @@ const (
 	Feet         = "Feet"
 )
 
-type ItemLocation struct {
-	ItemUUID   uuid.UUID
-	RoomUUID   uuid.UUID
-	PlayerUUID uuid.UUID
-}
-
-type EquippedItem struct {
-	*Item
-	EquippedSlot string
+func NewItem(uuid, name, description string, equipmentSlots []string) *Item {
+	return &Item{
+		UUID:           uuid,
+		Name:           name,
+		Description:    description,
+		EquipmentSlots: equipmentSlots,
+	}
 }
 
 func NewEquippedItem(item *Item, equippedSlot string) *EquippedItem {
@@ -34,24 +32,11 @@ func NewEquippedItem(item *Item, equippedSlot string) *EquippedItem {
 	}
 }
 
-func (ei EquippedItem) GetEquippedSlot() string {
-	return ei.EquippedSlot
-}
-
 type Item struct {
 	UUID           string
 	Name           string
 	Description    string
 	EquipmentSlots []string
-}
-
-func NewItem(uuid, name, description string, equipmentSlots []string) *Item {
-	return &Item{
-		UUID:           uuid,
-		Name:           name,
-		Description:    description,
-		EquipmentSlots: equipmentSlots,
-	}
 }
 
 func (item *Item) GetUUID() string {
@@ -68,4 +53,19 @@ func (item *Item) GetDescription() string {
 
 func (item *Item) GetEquipmentSlots() []string {
 	return item.EquipmentSlots
+}
+
+type EquippedItem struct {
+	*Item
+	EquippedSlot string
+}
+
+func (ei EquippedItem) GetEquippedSlot() string {
+	return ei.EquippedSlot
+}
+
+type ItemLocation struct {
+	ItemUUID   uuid.UUID
+	RoomUUID   uuid.UUID
+	PlayerUUID uuid.UUID
 }

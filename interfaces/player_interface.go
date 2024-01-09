@@ -33,7 +33,7 @@ type Player interface {
 	Logout(db *sql.DB) error
 	Regen(db *sql.DB) error
 	Remove(db *sql.DB, itemName string)
-	SetAbilities(PlayerAbilities)
+	SetAbilities(PlayerAbilities) error
 	SetCommands([]string)
 	SetConn(net.Conn)
 	SetHealth(int)

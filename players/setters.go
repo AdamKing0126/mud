@@ -7,12 +7,13 @@ import (
 	"net"
 )
 
-func (player *Player) SetAbilities(abilities interfaces.PlayerAbilities) {
+func (player *Player) SetAbilities(abilities interfaces.PlayerAbilities) error {
 	playerAbilities, ok := abilities.(*PlayerAbilities)
 	if !ok {
-		fmt.Errorf("error setting abilities")
+		return fmt.Errorf("error setting abilities")
 	}
 	player.PlayerAbilities = *playerAbilities
+	return nil
 }
 
 func (player *Player) SetCommands(commands []string) {
