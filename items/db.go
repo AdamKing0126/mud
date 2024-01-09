@@ -9,7 +9,7 @@ import (
 
 func GetItemsInRoom(db *sql.DB, roomUUID string) ([]Item, error) {
 	query := `
-		SELECT i.uuid, i.name, i.description
+		SELECT i.uuid, i.name, i.description, i.equipment_slots
 		FROM item_locations il
 		JOIN items i ON il.item_uuid = i.uuid
 		WHERE il.room_uuid = ?
@@ -23,10 +23,35 @@ func GetItemsInRoom(db *sql.DB, roomUUID string) ([]Item, error) {
 	var items []Item
 	for rows.Next() {
 		var item Item
-		err := rows.Scan(&item.UUID, &item.Name, &item.Description)
+		var equipmentSlots string
+		err := rows.Scan(&item.UUID, &item.Name, &item.Description, &equipmentSlots)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row: %v", err)
 		}
+
+		for _, slot := range strings.Split(equipmentSlots, ",") {
+			switch slot {
+			case "Head":
+				item.EquipmentSlots = append(item.EquipmentSlots, Head)
+			case "Neck":
+				item.EquipmentSlots = append(item.EquipmentSlots, Neck)
+			case "Chest":
+				item.EquipmentSlots = append(item.EquipmentSlots, Chest)
+			case "Arms":
+				item.EquipmentSlots = append(item.EquipmentSlots, Arms)
+			case "Hands":
+				item.EquipmentSlots = append(item.EquipmentSlots, Hands)
+			case "DominantHand":
+				item.EquipmentSlots = append(item.EquipmentSlots, DominantHand)
+			case "OffHand":
+				item.EquipmentSlots = append(item.EquipmentSlots, OffHand)
+			case "Legs":
+				item.EquipmentSlots = append(item.EquipmentSlots, Legs)
+			case "Feet":
+				item.EquipmentSlots = append(item.EquipmentSlots, Feet)
+			}
+		}
+
 		items = append(items, item)
 	}
 

@@ -8,6 +8,7 @@ import (
 	"mud/commands"
 	"mud/display"
 	"mud/interfaces"
+	"mud/items"
 	"mud/notifications"
 	"mud/players"
 	"net"
@@ -38,6 +39,13 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 		fmt.Fprintf(conn, "Error: %v\n", err)
 		return
 	}
+
+	// TODO Trying the idea of moving functions like this outside the Player package
+	items, err := items.GetItemsForPlayer(db, player.GetUUID())
+	if err != nil {
+		fmt.Fprintf(conn, "Error retrieving inventory for player: %v\n", err)
+	}
+	player.SetInventory(items)
 
 	defer func() {
 		err := player.Logout(db)
@@ -145,7 +153,6 @@ func main() {
 		}
 
 		areaInstances[uuid] = areas.NewArea(uuid, name, description)
-		/// is this interfaces.ActionInterface the problem?
 		areaChannels[uuid] = make(chan interfaces.Action)
 		go areaInstances[uuid].Run(db, areaChannels[uuid], server.connections)
 	}

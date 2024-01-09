@@ -3,6 +3,7 @@ package players
 import (
 	"database/sql"
 	"fmt"
+	"mud/display"
 	"mud/interfaces"
 	"net"
 	"reflect"
@@ -30,6 +31,7 @@ type Player struct {
 	Password        string
 	PlayerAbilities PlayerAbilities
 	Equipment       PlayerEquipment
+	Inventory       []interfaces.Item
 }
 
 func (player *Player) GetArmorClass() int {
@@ -108,6 +110,23 @@ func (player *Player) GetEquipment() interfaces.PlayerEquipment {
 	return &player.Equipment
 }
 
+func (player *Player) GetInventory() []interfaces.Item {
+	return player.Inventory
+}
+
+func (player *Player) SetInventory(inventory []interfaces.Item) {
+	player.Inventory = inventory
+}
+
+func (player *Player) AddItemToInventory(db *sql.DB, item interfaces.Item) error {
+	err := item.SetLocation(db, player.UUID, "")
+	if err != nil {
+		return err
+	}
+	player.SetInventory(append(player.GetInventory(), item))
+	return nil
+}
+
 func (player *Player) SetHealth(health int) {
 	player.Health = health
 }
@@ -136,16 +155,10 @@ func (player *Player) GetCommands() []string {
 	return player.Commands
 }
 
-// TODO Adam - why can't I do this?
-// func (player *Player) GetColorProfile() *ColorProfile {
-// This one works
 func (player *Player) GetColorProfile() interfaces.ColorProfile {
 	return &player.ColorProfile
 }
 
-// TODO Adam - why can't I do this?
-// func (player *Player) GetAbilities() *PlayerAbilities {
-// This one works
 func (player *Player) GetAbilities() interfaces.Abilities {
 	return &player.PlayerAbilities
 }
@@ -229,6 +242,22 @@ func (p *Player) Regen(db *sql.DB) error {
 	return nil
 }
 
+func (player *Player) Remove(db *sql.DB, itemName string) {
+	if player.Equipment.DominantHand.GetName() == itemName {
+		equippedItem := player.Equipment.DominantHand
+		player.AddItemToInventory(db, equippedItem)
+
+		player.Equipment.DominantHand = nil
+		queryString := fmt.Sprintf("UPDATE player_equipments SET DominantHand = '' WHERE player_uuid = '%s'", player.GetUUID())
+		_, err := db.Exec(queryString)
+		if err != nil {
+			fmt.Printf("error setting player_equipment to nil: %v", err)
+		}
+
+		display.PrintWithColor(player, fmt.Sprintf("You remove %s.\n", equippedItem.GetName()), "reset")
+	}
+}
+
 func (player *Player) Equip(db *sql.DB, item interfaces.Item) bool {
 	// get the location where the thing goes
 	val := reflect.ValueOf(&player.Equipment).Elem()
@@ -296,6 +325,14 @@ func (player *Player) Equip(db *sql.DB, item interfaces.Item) bool {
 				fmt.Printf("error inserting into player_equipments: %v", err)
 				return false
 			}
+			if columns[idx] == "DominantHand" {
+				equippedItem := &PlayerEquippedItem{
+					Item:         item,
+					EquippedSlot: columns[idx],
+				}
+				player.Equipment.DominantHand = equippedItem
+			}
+			return true
 		}
 	}
 	return true

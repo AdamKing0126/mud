@@ -21,7 +21,9 @@ type Player interface {
 	SetConn(net.Conn)
 	GetColorProfileFromDB(db *sql.DB) error
 	GetEquipment() PlayerEquipment
+	GetInventory() []Item
 	GetEquipmentFromDB(db *sql.DB) error
+	AddItemToInventory(db *sql.DB, item Item) error
 	SetLocation(db *sql.DB, roomUUID string) error
 	Logout(db *sql.DB) error
 	GetCommands() []string
@@ -33,5 +35,6 @@ type Player interface {
 	GetArmorClass() int
 	SetAbilities(PlayerAbilities)
 	Equip(db *sql.DB, item Item) bool
+	Remove(db *sql.DB, itemName string)
 	GetHashedPassword() string
 }

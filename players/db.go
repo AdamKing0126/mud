@@ -40,6 +40,13 @@ func setPlayerLoggedInStatusInDB(db *sql.DB, playerUUID string, loggedIn bool) e
 	return nil
 }
 
+func (player *Player) GetInventoryFromDB(db *sql.DB) error {
+	// var inventory []interfaces.Item
+	fmt.Println("yo")
+	return nil
+
+}
+
 func (player *Player) GetEquipmentFromDB(db *sql.DB) error {
 	var head, neck, chest, arms, hands, dominantHand, offHand, legs, feet string
 	query := `SELECT uuid, player_uuid, Head, Neck, Chest, Arms, Hands, DominantHand, OffHand, Legs, Feet 

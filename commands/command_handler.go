@@ -399,15 +399,20 @@ func (h *TakeCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 	if len(currentRoom.Items) > 0 {
 		for _, item := range currentRoom.Items {
 			if item.GetName() == arguments[0] {
-				item.SetLocation(db, "", player.GetUUID())
-				query := "UPDATE item_locations SET room_uuid = '', player_uuid = ? WHERE item_uuid = ?"
-				_, err := db.Exec(query, player.GetUUID(), item.GetUUID())
+				err := player.AddItemToInventory(db, item)
 				if err != nil {
-					display.PrintWithColor(player, fmt.Sprintf("Failed to update item location: %v\n", err), "danger")
+					fmt.Printf("error adding item to inventory: %v", err)
+					break
 				}
 				display.PrintWithColor(player, fmt.Sprintf("You take the %s.\n", item.GetName()), "reset")
 				h.Notifier.NotifyRoom(player.GetRoom(), player.GetUUID(), fmt.Sprintf("\n%s takes %s.\n", player.GetName(), item.GetName()))
 				break
+				// item.SetLocation(db, "", player.GetUUID())
+				// query := "UPDATE item_locations SET room_uuid = '', player_uuid = ? WHERE item_uuid = ?"
+				// _, err := db.Exec(query, player.GetUUID(), item.GetUUID())
+				// if err != nil {
+				// 	display.PrintWithColor(player, fmt.Sprintf("Failed to update item location: %v\n", err), "danger")
+				// }
 			}
 		}
 	} else {
@@ -623,18 +628,15 @@ func (h *EquipHandler) Execute(db *sql.DB, player interfaces.Player, command str
 		return
 	}
 
-	playerItems, err := items.GetItemsForPlayer(db, player.GetUUID())
-	if err != nil {
-		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
-	}
+	playerItems := player.GetInventory()
 
 	if len(playerItems) > 0 {
 		for _, item := range playerItems {
 			if item.GetName() == arguments[0] {
 				if player.Equip(db, item) {
+					display.PrintWithColor(player, fmt.Sprintf("You wield %s.\n", item.GetName()), "reset")
 					h.Notifier.NotifyRoom(player.GetRoom(), player.GetUUID(), fmt.Sprintf("\n%s wields %s.\n", player.GetName(), item.GetName()))
 				}
-
 				break
 			}
 		}
@@ -662,14 +664,6 @@ func (h *RemoveHandler) Execute(db *sql.DB, player interfaces.Player, command st
 		return
 	}
 
-	items, err := items.GetEquippedItemsForPlayer(db, player.GetUUID())
-	if err != nil {
-		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
-	}
-	for _, item := range items {
-		if item.GetName() == arguments[0] {
-			display.PrintWithColor(player, "Sure you want to remove it?", "danger")
-		}
-	}
+	player.Remove(db, arguments[0])
 
 }

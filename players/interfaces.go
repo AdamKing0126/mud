@@ -16,3 +16,12 @@ type EquippedItem interface {
 	Item
 	GetEquippedSlot() string
 }
+
+type PlayerEquippedItem struct {
+	Item
+	EquippedSlot string
+}
+
+func (p *PlayerEquippedItem) GetEquippedSlot() string {
+	return p.EquippedSlot
+}
