@@ -600,31 +600,9 @@ type EquipHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func printEquipmentElement(player interfaces.Player, partName string, getterFunc func() interfaces.EquippedItem) {
-	part := getterFunc()
-	partText := "nothing"
-	if part != nil {
-		partText = part.GetName()
-	}
-	display.PrintWithColor(player, fmt.Sprintf("\n%s: %s", partName, partText), "primary")
-}
-
 func (h *EquipHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	if len(arguments) == 0 {
-		display.PrintWithColor(player, "\n========================", "primary")
-		display.PrintWithColor(player, "\nYour current equipment:\n", "primary")
-
-		equipment := player.GetEquipment()
-		printEquipmentElement(player, "Head", equipment.GetHead)
-		printEquipmentElement(player, "Neck", equipment.GetNeck)
-		printEquipmentElement(player, "Chest", equipment.GetChest)
-		printEquipmentElement(player, "Arms", equipment.GetArms)
-		printEquipmentElement(player, "Hands", equipment.GetHands)
-		printEquipmentElement(player, "DominantHand", equipment.GetDominantHand)
-		printEquipmentElement(player, "OffHand", equipment.GetOffHand)
-		printEquipmentElement(player, "Legs", equipment.GetLegs)
-		printEquipmentElement(player, "Feet", equipment.GetFeet)
-		display.PrintWithColor(player, "\n========================\n\n", "primary")
+		player.DisplayEquipment()
 		return
 	}
 

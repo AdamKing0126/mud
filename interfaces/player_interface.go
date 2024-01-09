@@ -6,35 +6,36 @@ import (
 )
 
 type Player interface {
-	GetUUID() string
-	GetName() string
-	GetRoom() string
-	GetArea() string
-	GetHealth() int
-	GetHealthMax() int
-	GetMovement() int
-	GetMovementMax() int
-	GetMana() int
-	GetManaMax() int
-	SetHealth(int)
-	GetConn() net.Conn
-	SetConn(net.Conn)
-	GetColorProfileFromDB(db *sql.DB) error
-	GetEquipment() PlayerEquipment
-	GetInventory() []Item
-	GetEquipmentFromDB(db *sql.DB) error
 	AddItemToInventory(db *sql.DB, item Item) error
-	SetLocation(db *sql.DB, roomUUID string) error
-	Logout(db *sql.DB) error
-	GetCommands() []string
-	SetCommands([]string)
-	GetColorProfile() ColorProfile
-	GetLoggedIn() bool
-	Regen(db *sql.DB) error
+	DisplayEquipment()
+	Equip(db *sql.DB, item Item) bool
 	GetAbilities() Abilities
 	GetArmorClass() int
-	SetAbilities(PlayerAbilities)
-	Equip(db *sql.DB, item Item) bool
-	Remove(db *sql.DB, itemName string)
+	GetArea() string
+	GetColorProfile() ColorProfile
+	GetColorProfileFromDB(db *sql.DB) error
+	GetCommands() []string
+	GetConn() net.Conn
+	GetEquipment() PlayerEquipment
+	GetEquipmentFromDB(db *sql.DB) error
 	GetHashedPassword() string
+	GetHealth() int
+	GetHealthMax() int
+	GetInventory() []Item
+	GetLoggedIn() bool
+	GetMana() int
+	GetManaMax() int
+	GetMovement() int
+	GetMovementMax() int
+	GetName() string
+	GetRoom() string
+	GetUUID() string
+	Logout(db *sql.DB) error
+	Regen(db *sql.DB) error
+	Remove(db *sql.DB, itemName string)
+	SetAbilities(PlayerAbilities)
+	SetCommands([]string)
+	SetConn(net.Conn)
+	SetHealth(int)
+	SetLocation(db *sql.DB, roomUUID string) error
 }

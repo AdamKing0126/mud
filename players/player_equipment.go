@@ -2,7 +2,6 @@ package players
 
 import (
 	"database/sql"
-	"fmt"
 	"mud/interfaces"
 )
 
@@ -54,10 +53,6 @@ func (pe *PlayerEquipment) GetHands() interfaces.EquippedItem {
 
 func (pe *PlayerEquipment) GetDominantHand() interfaces.EquippedItem {
 	return pe.DominantHand
-}
-
-func (pe *PlayerEquipment) SetDominantHand(item *Item) {
-	fmt.Println("poo")
 }
 
 func (pe *PlayerEquipment) GetOffHand() interfaces.EquippedItem {

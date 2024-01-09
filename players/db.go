@@ -7,6 +7,25 @@ import (
 	"strings"
 )
 
+func setPlayerLoggedInStatusInDB(db *sql.DB, playerUUID string, loggedIn bool) error {
+	_, err := db.Exec("UPDATE players SET logged_in = ? WHERE uuid = ?", loggedIn, playerUUID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetPlayerByName(db *sql.DB, name string) (*Player, error) {
+	var player Player
+	var playerAbilities PlayerAbilities
+	err := db.QueryRow("SELECT p.uuid, p.name, p.room, p.area, p.health, p.movement, p.mana, p.logged_in, pa.intelligence, pa.dexterity, pa.charisma, pa.constitution, pa.wisdom, pa.strength FROM players p JOIN player_attributes pa ON p.uuid = pa.player_uuid WHERE LOWER(p.name) = LOWER(?)", name).
+		Scan(&player.UUID, &player.Name, &player.Room, &player.Area, &player.Health, &player.Movement, &player.Mana, &player.LoggedIn, &playerAbilities.Intelligence, &playerAbilities.Dexterity, &playerAbilities.Charisma, &playerAbilities.Constitution, &playerAbilities.Wisdom, &playerAbilities.Strength)
+	if err != nil {
+		return nil, err
+	}
+	return &player, nil
+}
+
 func GetPlayerFromDB(db *sql.DB, playerName string) (*Player, error) {
 	var player Player
 	var colorProfileUUID string
@@ -29,14 +48,6 @@ func (player *Player) GetColorProfileFromDB(db *sql.DB) error {
 		return err
 	}
 	player.ColorProfile = colorProfile
-	return nil
-}
-
-func setPlayerLoggedInStatusInDB(db *sql.DB, playerUUID string, loggedIn bool) error {
-	_, err := db.Exec("UPDATE players SET logged_in = ? WHERE uuid = ?", loggedIn, playerUUID)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 

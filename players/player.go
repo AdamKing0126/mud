@@ -34,90 +34,6 @@ type Player struct {
 	Inventory       []interfaces.Item
 }
 
-func (player *Player) GetArmorClass() int {
-	// 10 + armor_bonus + shield_bonus + dexterity_modifier + other_modifiers
-	base := 10
-	armorBonus := 0
-	shieldBonus := 0
-	dexModifier := player.PlayerAbilities.GetDexterityModifier()
-	otherModifiers := 0
-	return base + armorBonus + shieldBonus + dexModifier + otherModifiers
-}
-
-func (player *Player) GetSizeModifier() int {
-	// Need to update this.  Probably need to move this out, so it can be used by players and monsters
-
-	sizeTable := map[string]int{
-		"colossal":   -8,
-		"gargantuan": -4,
-		"huge":       -2,
-		"large":      -1,
-		"medium":     0,
-		"small":      1,
-		"tiny":       2,
-		"diminutive": 4,
-		"fine":       8,
-	}
-	return sizeTable["medium"]
-}
-
-func (player *Player) GetUUID() string {
-	return player.UUID
-}
-
-func (player *Player) GetName() string {
-	return player.Name
-}
-
-func (player *Player) GetRoom() string {
-	return player.Room
-}
-
-func (player *Player) GetArea() string {
-	return player.Area
-}
-
-func (player *Player) GetHealth() int {
-	return player.Health
-}
-
-func (player *Player) GetHealthMax() int {
-	return player.HealthMax
-}
-
-func (player *Player) GetMana() int {
-	return player.Mana
-}
-
-func (player *Player) GetManaMax() int {
-	return player.ManaMax
-}
-
-func (player *Player) GetMovement() int {
-	return player.Movement
-}
-
-func (player *Player) GetMovementMax() int {
-	return player.MovementMax
-}
-
-func (player *Player) GetHashedPassword() string {
-	return player.Password
-}
-
-// func (player *Player) GetEquipment() *PlayerEquipment {
-func (player *Player) GetEquipment() interfaces.PlayerEquipment {
-	return &player.Equipment
-}
-
-func (player *Player) GetInventory() []interfaces.Item {
-	return player.Inventory
-}
-
-func (player *Player) SetInventory(inventory []interfaces.Item) {
-	player.Inventory = inventory
-}
-
 func (player *Player) AddItemToInventory(db *sql.DB, item interfaces.Item) error {
 	err := item.SetLocation(db, player.UUID, "")
 	if err != nil {
@@ -127,115 +43,27 @@ func (player *Player) AddItemToInventory(db *sql.DB, item interfaces.Item) error
 	return nil
 }
 
-func (player *Player) SetHealth(health int) {
-	player.Health = health
-}
+func (player *Player) Regen(db *sql.DB) error {
+	healthRegen := calculateHealthRegen(player)
+	manaRegen := calculateManaRegen(player)
+	movementRegen := calculateMovementRegen(player)
 
-func (player *Player) SetMana(mana int) {
-	player.Mana = mana
-}
-
-func (player *Player) SetMovement(movement int) {
-	player.Movement = movement
-}
-
-func (player *Player) GetConn() net.Conn {
-	return player.Conn
-}
-
-func (player *Player) SetConn(conn net.Conn) {
-	player.Conn = conn
-}
-
-func (player *Player) GetLoggedIn() bool {
-	return player.LoggedIn
-}
-
-func (player *Player) GetCommands() []string {
-	return player.Commands
-}
-
-func (player *Player) GetColorProfile() interfaces.ColorProfile {
-	return &player.ColorProfile
-}
-
-func (player *Player) GetAbilities() interfaces.Abilities {
-	return &player.PlayerAbilities
-}
-
-func (player *Player) SetCommands(commands []string) {
-	player.Commands = commands
-}
-
-func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
-	area_rows, err := db.Query("SELECT area_uuid FROM rooms WHERE uuid=?", roomUUID)
-	if err != nil {
-		return fmt.Errorf("error retrieving area: %v", err)
-	}
-	defer area_rows.Close()
-
-	if !area_rows.Next() {
-		return fmt.Errorf("room with UUID %s does not have an area", roomUUID)
+	player.Health = int(float64(player.Health) * healthRegen)
+	if player.Health > player.HealthMax {
+		player.Health = player.HealthMax
 	}
 
-	var areaUUID string
-	err = area_rows.Scan(&areaUUID)
-	if err != nil {
-		return err
+	player.Mana = int(float64(player.Mana) * manaRegen)
+	if player.Mana > player.ManaMax {
+		player.Mana = player.ManaMax
 	}
 
-	player.Area = areaUUID
-	player.Room = roomUUID
-
-	area_rows.Close()
-
-	stmt, err := db.Prepare("UPDATE players SET area = ?, room = ?, movement = ? WHERE uuid = ?")
-	if err != nil {
-		return err
+	player.Movement = int(float64(player.Movement) * movementRegen)
+	if player.Movement > player.MovementMax {
+		player.Movement = player.MovementMax
 	}
 
-	defer stmt.Close()
-
-	player.SetMovement(player.GetMovement() - 1)
-	newMovement := player.GetMovement()
-	_, err = stmt.Exec(areaUUID, roomUUID, newMovement, player.UUID)
-	if err != nil {
-		return err
-	}
-
-	stmt.Close()
-	return nil
-}
-
-func (player *Player) SetAbilities(abilities interfaces.PlayerAbilities) {
-	playerAbilities, ok := abilities.(*PlayerAbilities)
-	if !ok {
-		fmt.Errorf("error setting abilities")
-	}
-	player.PlayerAbilities = *playerAbilities
-}
-
-func (p *Player) Regen(db *sql.DB) error {
-	healthRegen := calculateHealthRegen(p)
-	manaRegen := calculateManaRegen(p)
-	movementRegen := calculateMovementRegen(p)
-
-	p.Health = int(float64(p.Health) * healthRegen)
-	if p.Health > p.HealthMax {
-		p.Health = p.HealthMax
-	}
-
-	p.Mana = int(float64(p.Mana) * manaRegen)
-	if p.Mana > p.ManaMax {
-		p.Mana = p.ManaMax
-	}
-
-	p.Movement = int(float64(p.Movement) * movementRegen)
-	if p.Movement > p.MovementMax {
-		p.Movement = p.MovementMax
-	}
-
-	_, err := db.Exec("UPDATE players SET health = ?, mana = ?, movement = ? WHERE uuid = ?", p.Health, p.Mana, p.Movement, p.UUID)
+	_, err := db.Exec("UPDATE players SET health = ?, mana = ?, movement = ? WHERE uuid = ?", player.Health, player.Mana, player.Movement, player.UUID)
 	if err != nil {
 		return err
 	}
@@ -338,25 +166,28 @@ func (player *Player) Equip(db *sql.DB, item interfaces.Item) bool {
 	return true
 }
 
-func GetPlayerByName(db *sql.DB, name string) (*Player, error) {
-	var player Player
-	var playerAbilities PlayerAbilities
-	err := db.QueryRow("SELECT p.uuid, p.name, p.room, p.area, p.health, p.movement, p.mana, p.logged_in, pa.intelligence, pa.dexterity, pa.charisma, pa.constitution, pa.wisdom, pa.strength FROM players p JOIN player_attributes pa ON p.uuid = pa.player_uuid WHERE LOWER(p.name) = LOWER(?)", name).
-		Scan(&player.UUID, &player.Name, &player.Room, &player.Area, &player.Health, &player.Movement, &player.Mana, &player.LoggedIn, &playerAbilities.Intelligence, &playerAbilities.Dexterity, &playerAbilities.Charisma, &playerAbilities.Constitution, &playerAbilities.Wisdom, &playerAbilities.Strength)
-	if err != nil {
-		return nil, err
+func printEquipmentElement(player interfaces.Player, partName string, getterFunc func() interfaces.EquippedItem) {
+	part := getterFunc()
+	partText := "nothing"
+	if part != nil {
+		partText = part.GetName()
 	}
-	return &player, nil
+	display.PrintWithColor(player, fmt.Sprintf("\n%s: %s", partName, partText), "primary")
 }
 
-func calculateHealthRegen(p *Player) float64 {
-	return 1.1
-}
+func (player *Player) DisplayEquipment() {
+	display.PrintWithColor(player, "\n========================", "primary")
+	display.PrintWithColor(player, "\nYour current equipment:\n", "primary")
 
-func calculateManaRegen(p *Player) float64 {
-	return 1.1
-}
-
-func calculateMovementRegen(p *Player) float64 {
-	return 1.1
+	equipment := player.GetEquipment()
+	printEquipmentElement(player, "Head", equipment.GetHead)
+	printEquipmentElement(player, "Neck", equipment.GetNeck)
+	printEquipmentElement(player, "Chest", equipment.GetChest)
+	printEquipmentElement(player, "Arms", equipment.GetArms)
+	printEquipmentElement(player, "Hands", equipment.GetHands)
+	printEquipmentElement(player, "DominantHand", equipment.GetDominantHand)
+	printEquipmentElement(player, "OffHand", equipment.GetOffHand)
+	printEquipmentElement(player, "Legs", equipment.GetLegs)
+	printEquipmentElement(player, "Feet", equipment.GetFeet)
+	display.PrintWithColor(player, "\n========================\n\n", "primary")
 }
