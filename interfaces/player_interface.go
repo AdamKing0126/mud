@@ -28,7 +28,7 @@ type Player interface {
 	GetMovement() int
 	GetMovementMax() int
 	GetName() string
-	GetRoom() string
+	GetRoomUUID() string
 	GetUUID() string
 	Logout(db *sql.DB) error
 	Regen(db *sql.DB) error

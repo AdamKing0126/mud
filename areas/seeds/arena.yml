@@ -20,6 +20,9 @@ rooms:
   - uuid: f883e17b-c322-4198-b753-5552b6dd03df
     name: Arena Floor
     description: The arena floor where the gladiators fight.
+    mobs: 
+      - 49d6f745-5680-4b76-856a-b58be0a76ce6
+      - 7bfb0762-1a05-4710-9824-589a360692c6
     exits:
       south: afbd9110-e203-4035-9802-7a2bc09c408c
       east: 189a729d-4e40-4184-a732-e2c45c66ff46

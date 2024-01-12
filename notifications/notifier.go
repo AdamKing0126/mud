@@ -18,7 +18,7 @@ func (n *Notifier) NotifyRoom(roomID string, playerUUID string, message string) 
 	fmt.Println("Notifying room", roomID, "with message", message)
 	var playersInRoom []interfaces.Player
 	for _, player := range n.Players {
-		if player.GetRoom() == roomID && player.GetUUID() != playerUUID {
+		if player.GetRoomUUID() == roomID && player.GetUUID() != playerUUID {
 			playersInRoom = append(playersInRoom, player)
 		}
 	}

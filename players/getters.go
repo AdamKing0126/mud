@@ -79,7 +79,7 @@ func (player *Player) GetName() string {
 	return player.Name
 }
 
-func (player *Player) GetRoom() string {
+func (player *Player) GetRoomUUID() string {
 	return player.Room
 }
 

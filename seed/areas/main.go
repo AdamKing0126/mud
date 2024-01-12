@@ -16,6 +16,7 @@ type RoomImport struct {
 	Name        string            `yaml:"name"`
 	Description string            `yaml:"description"`
 	Exits       map[string]string `yaml:"exits"`
+	Mobs        []string          `yaml:"mobs"`
 }
 
 type AreaImport struct {
@@ -113,6 +114,12 @@ func SeedAreasAndRooms() {
 				_, err := db.Exec(sqlStatement)
 				if err != nil {
 					log.Fatalf("Failed to insert room: %v", err)
+				}
+				for _, mob := range room.Mobs {
+					_, err := db.Exec("UPDATE mobs SET room_uuid = ?, area_uuid = ? WHERE uuid = ?", room.UUID, area.UUID, mob)
+					if err != nil {
+						log.Fatalf("Failed to attach mob to room: %v", err)
+					}
 				}
 			}
 

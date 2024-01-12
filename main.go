@@ -9,6 +9,7 @@ import (
 	"mud/display"
 	"mud/interfaces"
 	"mud/items"
+	"mud/navigation"
 	"mud/notifications"
 	"mud/players"
 	"net"
@@ -31,7 +32,7 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, areaChannels map[string]chan interfaces.Action) {
+func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, areaChannels map[string]chan interfaces.Action, roomToAreaMap map[string]string) {
 	defer conn.Close()
 
 	player, err := players.LoginPlayer(conn, db)
@@ -83,7 +84,7 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 func notifyPlayersInRoomThatNewPlayerHasJoined(player interfaces.Player, connections map[string]interfaces.Player) {
 	var playersInRoom []interfaces.Player
 	for _, p := range connections {
-		if p.GetRoom() == player.GetRoom() && p.GetUUID() != player.GetUUID() {
+		if p.GetRoomUUID() == player.GetRoomUUID() && p.GetUUID() != player.GetUUID() {
 			playersInRoom = append(playersInRoom, p)
 		}
 	}
@@ -109,6 +110,38 @@ func openDatabase() (*sql.DB, error) {
 	return db, nil
 }
 
+func loadAreas(db *sql.DB, server *Server) (map[string]*areas.Area, map[string]string, map[string]chan interfaces.Action, error) {
+	areaInstances := make(map[string]*areas.Area)
+	roomToAreaMap := make(map[string]string)
+	areaChannels := make(map[string]chan interfaces.Action)
+
+	queryString := `
+		SELECT r.uuid, a.uuid, a.name, a.description 
+		FROM rooms r
+		JOIN areas a ON r.area_uuid = a.uuid;
+	`
+	rows, err := db.Query(queryString)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("error retrieving areas/rooms: %v", err)
+	}
+	for rows.Next() {
+		var roomUUID, areaUUID, name, description string
+		err := rows.Scan(&roomUUID, &areaUUID, &name, &description)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("error scanning areas/rooms: %v", err)
+		}
+		_, ok := areaInstances[areaUUID]
+		if !ok {
+			areaInstances[areaUUID] = areas.NewArea(areaUUID, name, description)
+			areaChannels[areaUUID] = make(chan interfaces.Action)
+			go areaInstances[areaUUID].Run(db, areaChannels[areaUUID], server.connections)
+		}
+		roomToAreaMap[roomUUID] = areaUUID
+	}
+
+	return areaInstances, roomToAreaMap, areaChannels, nil
+}
+
 func main() {
 	db, err := openDatabase()
 	if err != nil {
@@ -120,7 +153,14 @@ func main() {
 	server := NewServer()
 	notifier := notifications.NewNotifier(server.connections)
 
-	commands.RegisterCommands(router, notifier, commands.CommandHandlers)
+	areaInstances, roomToAreaMap, areaChannels, err := loadAreas(db, server)
+	if err != nil {
+		fmt.Printf("error loading areas: %v", err)
+	}
+
+	navigator := navigation.NewNavigator(areaInstances, roomToAreaMap, db)
+
+	commands.RegisterCommands(router, notifier, navigator, commands.CommandHandlers)
 	if len(router.Handlers) == 0 {
 		fmt.Println("Warning: no commands registered. Exiting...")
 		return
@@ -134,29 +174,6 @@ func main() {
 	defer listener.Close()
 	wg := sync.WaitGroup{}
 
-	areaChannels := make(map[string]chan interfaces.Action)
-	rows, err := db.Query("SELECT uuid, name, description FROM areas")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	areaInstances := make(map[string]*areas.Area)
-	for rows.Next() {
-		var uuid string
-		var name string
-		var description string
-		err := rows.Scan(&uuid, &name, &description)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		areaInstances[uuid] = areas.NewArea(uuid, name, description)
-		areaChannels[uuid] = make(chan interfaces.Action)
-		go areaInstances[uuid].Run(db, areaChannels[uuid], server.connections)
-	}
-
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -165,6 +182,6 @@ func main() {
 		}
 
 		wg.Add(1)
-		go server.handleConnection(conn, router, db, areaChannels)
+		go server.handleConnection(conn, router, db, areaChannels, roomToAreaMap)
 	}
 }
