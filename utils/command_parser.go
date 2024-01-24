@@ -4,16 +4,16 @@ import (
 	"database/sql"
 	"math"
 	"mud/interfaces"
-	"mud/navigation"
 	"mud/notifications"
+	worldState "mud/world_state"
 	"strings"
 )
 
 type CommandHandlerWithPriority struct {
-	Handler   CommandHandler
-	Notifier  notifications.Notifier
-	Navigator navigation.Navigator
-	Priority  int
+	Handler    CommandHandler
+	Notifier   notifications.Notifier
+	WorldState worldState.WorldState
+	Priority   int
 }
 
 type CommandHandler interface {
@@ -24,8 +24,8 @@ type Notifiable interface {
 	SetNotifier(notifier *notifications.Notifier)
 }
 
-type Navigatable interface {
-	SetNavigator(navigator *navigation.Navigator)
+type UsesWorldState interface {
+	SetWorldState(worldState *worldState.WorldState)
 }
 
 type CommandParser struct {

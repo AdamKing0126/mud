@@ -146,6 +146,11 @@ func LoginPlayer(conn net.Conn, db *sql.DB) (*Player, error) {
 		return nil, err
 	}
 
+	err = player.GetInventoryFromDB(db)
+	if err != nil {
+		return nil, err
+	}
+
 	err = setPlayerLoggedInStatusInDB(db, player.GetUUID(), true)
 	if err != nil {
 		return nil, err

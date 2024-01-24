@@ -8,10 +8,9 @@ import (
 	"mud/commands"
 	"mud/display"
 	"mud/interfaces"
-	"mud/items"
-	"mud/navigation"
 	"mud/notifications"
 	"mud/players"
+	"mud/world_state"
 	"net"
 	"sync"
 
@@ -32,21 +31,22 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, areaChannels map[string]chan interfaces.Action, roomToAreaMap map[string]string) {
+func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, areaChannels map[string]chan interfaces.Action, roomToAreaMap map[string]string, worldState *world_state.WorldState) {
 	defer conn.Close()
 
+	// maybe I should pass the router in here?
 	player, err := players.LoginPlayer(conn, db)
 	if err != nil {
 		fmt.Fprintf(conn, "Error: %v\n", err)
 		return
 	}
 
-	// TODO Trying the idea of moving functions like this outside the Player package
-	items, err := items.GetItemsForPlayer(db, player.GetUUID())
-	if err != nil {
-		fmt.Fprintf(conn, "Error retrieving inventory for player: %v\n", err)
-	}
-	player.SetInventory(items)
+	// // TODO Trying the idea of moving functions like this outside the Player package
+	// items, err := items.GetItemsForPlayer(db, player.GetUUID())
+	// if err != nil {
+	// 	fmt.Fprintf(conn, "Error retrieving inventory for player: %v\n", err)
+	// }
+	// player.SetInventory(items)
 
 	defer func() {
 		err := player.Logout(db)
@@ -57,6 +57,12 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 
 	s.connections[player.GetUUID()] = player
 	defer delete(s.connections, player.GetUUID())
+
+	// this method adds more queries than are needed, because we have already
+	// fetched the player's data when we logged them in.
+	// TODO fix
+	currentRoom := worldState.GetRoom(player.GetRoomUUID(), false)
+	worldState.AddPlayerToRoom(currentRoom.UUID, player)
 
 	notifyPlayersInRoomThatNewPlayerHasJoined(player, s.connections)
 
@@ -142,6 +148,16 @@ func loadAreas(db *sql.DB, server *Server) (map[string]*areas.Area, map[string]s
 	return areaInstances, roomToAreaMap, areaChannels, nil
 }
 
+func logoutAllPlayers(db *sql.DB) {
+	queryString := `
+		UPDATE players SET logged_in = 0 WHERE logged_in = 1;
+	`
+	_, err := db.Exec(queryString)
+	if err != nil {
+		fmt.Printf("error logging out players: %v", err)
+	}
+}
+
 func main() {
 	db, err := openDatabase()
 	if err != nil {
@@ -153,14 +169,15 @@ func main() {
 	server := NewServer()
 	notifier := notifications.NewNotifier(server.connections)
 
+	logoutAllPlayers(db)
 	areaInstances, roomToAreaMap, areaChannels, err := loadAreas(db, server)
 	if err != nil {
 		fmt.Printf("error loading areas: %v", err)
 	}
 
-	navigator := navigation.NewNavigator(areaInstances, roomToAreaMap, db)
+	worldState := world_state.NewWorldState(areaInstances, roomToAreaMap, db)
 
-	commands.RegisterCommands(router, notifier, navigator, commands.CommandHandlers)
+	commands.RegisterCommands(router, notifier, worldState, commands.CommandHandlers)
 	if len(router.Handlers) == 0 {
 		fmt.Println("Warning: no commands registered. Exiting...")
 		return
@@ -182,6 +199,6 @@ func main() {
 		}
 
 		wg.Add(1)
-		go server.handleConnection(conn, router, db, areaChannels, roomToAreaMap)
+		go server.handleConnection(conn, router, db, areaChannels, roomToAreaMap, worldState)
 	}
 }

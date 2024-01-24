@@ -8,10 +8,10 @@ import (
 	"mud/display"
 	"mud/interfaces"
 	"mud/items"
-	"mud/navigation"
 	"mud/notifications"
 	"mud/players"
 	"mud/utils"
+	"mud/world_state"
 	"strconv"
 	"strings"
 )
@@ -39,113 +39,36 @@ var CommandHandlers = map[string]utils.CommandHandlerWithPriority{
 	"status":     {Handler: &PlayerStatusHandler{}, Priority: 2},
 	"equip":      {Handler: &EquipHandler{}, Priority: 2},
 	"remove":     {Handler: &RemoveHandler{}, Priority: 2},
+	"whoami":     {Handler: &WhoAmIHandler{}, Priority: 10},
 }
 
-func getRoom(roomUUID string, db *sql.DB) (*areas.Room, error) {
-	query := `
-		SELECT r.UUID, r.area_uuid, r.name, r.description,
-			r.exit_north, r.exit_south, r.exit_east, r.exit_west,
-			r.exit_up, r.exit_down,
-			a.UUID AS area_uuid, a.name AS area_name, a.description AS area_description
-		FROM rooms r
-		LEFT JOIN areas a ON r.area_uuid = a.UUID
-		WHERE r.UUID = ?`
+type WhoAmIHandler struct{}
 
-	room_rows, err := db.Query(query, roomUUID)
-	if err != nil {
-		return nil, err
-	}
+func (*WhoAmIHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+	display.PrintWithColor(player, player.GetName(), "reset")
 
-	defer room_rows.Close()
-	if !room_rows.Next() {
-		return nil, fmt.Errorf("room with UUID %s does not exist", roomUUID)
-	}
-
-	var northExitUUID, southExitUUID, eastExitUUID, westExitUUID, upExitUUID, downExitUUID string
-	room := &areas.Room{Exits: areas.ExitInfo{}}
-	err = room_rows.Scan(
-		&room.UUID, &room.AreaUUID, &room.Name, &room.Description,
-		&northExitUUID, &southExitUUID, &eastExitUUID, &westExitUUID,
-		&upExitUUID, &downExitUUID,
-		&room.Area.UUID, &room.Area.Name, &room.Area.Description,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	exitUUIDs := map[string]*string{
-		"North": &northExitUUID,
-		"South": &southExitUUID,
-		"West":  &westExitUUID,
-		"East":  &eastExitUUID,
-		"Down":  &downExitUUID,
-		"Up":    &upExitUUID,
-	}
-
-	for direction, uuid := range exitUUIDs {
-		if *uuid != "" {
-			switch direction {
-			case "North":
-				room.Exits.North = &areas.Room{UUID: *uuid}
-			case "South":
-				room.Exits.South = &areas.Room{UUID: *uuid}
-			case "West":
-				room.Exits.West = &areas.Room{UUID: *uuid}
-			case "East":
-				room.Exits.East = &areas.Room{UUID: *uuid}
-			case "Down":
-				room.Exits.Down = &areas.Room{UUID: *uuid}
-			case "Up":
-				room.Exits.Up = &areas.Room{UUID: *uuid}
-			}
-		}
-	}
-
-	items, err := items.GetItemsInRoom(db, roomUUID)
-	if err != nil {
-		return nil, err
-	}
-
-	itemInterfaces := make([]interfaces.Item, len(items))
-	for i := range items {
-		itemInterfaces[i] = &items[i]
-	}
-
-	room.Items = itemInterfaces
-
-	players, err := players.GetPlayersInRoom(db, roomUUID)
-	if err != nil {
-		return nil, err
-	}
-
-	playersInRoom := make([]areas.PlayerInRoomInterface, len(players))
-	for i, p := range players {
-		playersInRoom[i] = &p
-	}
-	room.Players = playersInRoom
-
-	return room, nil
 }
 
 type MovePlayerCommandHandler struct {
-	Direction string
-	Notifier  *notifications.Notifier
-	Navigator *navigation.Navigator
+	Direction  string
+	Notifier   *notifications.Notifier
+	WorldState *world_state.WorldState
 }
 
-// func movePlayerToDirection(db *sql.DB, player interfaces.Player, room *areas.Room, notifier *notifications.Notifier, navigator *navigation.Navigator, currentChannel chan interfaces.Action, updateChannel func(string)) {
-func movePlayerToDirection(db *sql.DB, player interfaces.Player, room *areas.Room, direction string, notifier *notifications.Notifier, navigator *navigation.Navigator, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func movePlayerToDirection(worldState *world_state.WorldState, db *sql.DB, player interfaces.Player, room *areas.Room, direction string, notifier *notifications.Notifier, world_state *world_state.WorldState, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	if room == nil || room.UUID == "" {
 		display.PrintWithColor(player, "You cannot go that way.", "reset")
 	} else {
 		display.PrintWithColor(player, "=======================\n\n", "secondary")
 		notifier.NotifyRoom(player.GetRoomUUID(), player.GetUUID(), fmt.Sprintf("\n%s goes %s.\n", player.GetName(), direction))
+		worldState.RemovePlayerFromRoom(player.GetRoomUUID(), player)
 
 		player.SetLocation(db, room.UUID)
+		worldState.AddPlayerToRoom(room.UUID, player)
 		notifier.NotifyRoom(room.UUID, player.GetUUID(), fmt.Sprintf("\n%s has arrived.\n", player.GetName()))
 
 		var lookArgs []string
-		lookHandler := &LookCommandHandler{Navigator: navigator}
+		lookHandler := &LookCommandHandler{WorldState: world_state}
 		lookHandler.Execute(db, player, "look", lookArgs, currentChannel, updateChannel)
 	}
 }
@@ -154,22 +77,21 @@ func (h *MovePlayerCommandHandler) Execute(db *sql.DB, player interfaces.Player,
 	playerRoomUUID := player.GetRoomUUID()
 	areaUUID := player.GetArea()
 
-	// the bug is in here....
-	currentRoom := h.Navigator.GetRoom(playerRoomUUID)
+	currentRoom := h.WorldState.GetRoom(playerRoomUUID, true)
 
 	switch h.Direction {
 	case "north":
-		movePlayerToDirection(db, player, currentRoom.Exits.North, h.Direction, h.Notifier, h.Navigator, currentChannel, updateChannel)
+		movePlayerToDirection(h.WorldState, db, player, currentRoom.Exits.North, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
 	case "south":
-		movePlayerToDirection(db, player, currentRoom.Exits.South, h.Direction, h.Notifier, h.Navigator, currentChannel, updateChannel)
+		movePlayerToDirection(h.WorldState, db, player, currentRoom.Exits.South, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
 	case "west":
-		movePlayerToDirection(db, player, currentRoom.Exits.West, h.Direction, h.Notifier, h.Navigator, currentChannel, updateChannel)
+		movePlayerToDirection(h.WorldState, db, player, currentRoom.Exits.West, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
 	case "east":
-		movePlayerToDirection(db, player, currentRoom.Exits.East, h.Direction, h.Notifier, h.Navigator, currentChannel, updateChannel)
+		movePlayerToDirection(h.WorldState, db, player, currentRoom.Exits.East, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
 	case "up":
-		movePlayerToDirection(db, player, currentRoom.Exits.Up, h.Direction, h.Notifier, h.Navigator, currentChannel, updateChannel)
+		movePlayerToDirection(h.WorldState, db, player, currentRoom.Exits.Up, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
 	default:
-		movePlayerToDirection(db, player, currentRoom.Exits.Down, h.Direction, h.Notifier, h.Navigator, currentChannel, updateChannel)
+		movePlayerToDirection(h.WorldState, db, player, currentRoom.Exits.Down, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
 	}
 
 	if areaUUID != player.GetArea() {
@@ -181,22 +103,22 @@ func (h *MovePlayerCommandHandler) SetNotifier(notifier *notifications.Notifier)
 	h.Notifier = notifier
 }
 
-func (h *MovePlayerCommandHandler) SetNavigator(navigator *navigation.Navigator) {
-	h.Navigator = navigator
+func (h *MovePlayerCommandHandler) SetWorldState(world_state *world_state.WorldState) {
+	h.WorldState = world_state
 }
 
 type ExitsCommandHandler struct {
 	ShowOnlyDirections bool
-	Navigator          *navigation.Navigator
+	WorldState         *world_state.WorldState
 }
 
-func (h *ExitsCommandHandler) SetNavigator(navigator *navigation.Navigator) {
-	h.Navigator = navigator
+func (h *ExitsCommandHandler) SetWorldState(world_state *world_state.WorldState) {
+	h.WorldState = world_state
 }
 
 func (h *ExitsCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	roomUUID := player.GetRoomUUID()
-	currentRoom := h.Navigator.GetRoom(roomUUID)
+	currentRoom := h.WorldState.GetRoom(roomUUID, true)
 
 	exits := map[string]*areas.Room{
 		"North": currentRoom.Exits.North,
@@ -213,10 +135,11 @@ func (h *ExitsCommandHandler) Execute(db *sql.DB, player interfaces.Player, comm
 	for direction, exit := range exits {
 		if exit != nil {
 			abbreviatedDirections = append(abbreviatedDirections, direction)
-			exitRoom, err := getRoom(exit.UUID, db)
-			if err != nil {
-				display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
-			}
+			exitRoom := h.WorldState.GetRoom(exit.UUID, false)
+			// exitRoom, err := getRoom(exit.UUID, db)
+			// if err != nil {
+			// 	display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
+			// }
 			longDirections = append(longDirections, fmt.Sprintf("%s: %s", direction, exitRoom.Name))
 		}
 	}
@@ -247,7 +170,12 @@ func (h *LogoutCommandHandler) SetNotifier(notifier *notifications.Notifier) {
 }
 
 type GiveCommandHandler struct {
-	Notifier *notifications.Notifier
+	Notifier   *notifications.Notifier
+	WorldState *world_state.WorldState
+}
+
+func (h *GiveCommandHandler) SetWorldState(worldState *world_state.WorldState) {
+	h.WorldState = worldState
 }
 
 func (h *GiveCommandHandler) SetNotifier(notifier *notifications.Notifier) {
@@ -255,6 +183,12 @@ func (h *GiveCommandHandler) SetNotifier(notifier *notifications.Notifier) {
 }
 
 func (h *GiveCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+	// TODO Adam
+	// switch from DB-backed to WorldState-backed.
+	// what does that mean, exactly?
+	// in WorldState.Areas[areaIdx].Rooms[roomIdx].Players
+	// transfer Inventory item from one player to another
+	// plus a DB call to save it.
 	item, err := items.GetItemByNameForPlayer(db, arguments[0], player.GetUUID())
 	if err != nil {
 		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
@@ -282,16 +216,16 @@ func (h *GiveCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 }
 
 type LookCommandHandler struct {
-	Navigator *navigation.Navigator
+	WorldState *world_state.WorldState
 }
 
-func (h *LookCommandHandler) SetNavigator(navigator *navigation.Navigator) {
-	h.Navigator = navigator
+func (h *LookCommandHandler) SetWorldState(world_state *world_state.WorldState) {
+	h.WorldState = world_state
 }
 
 func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	roomUUID := player.GetRoomUUID()
-	currentRoom := h.Navigator.GetRoom(roomUUID)
+	currentRoom := h.WorldState.GetRoom(roomUUID, true)
 
 	if len(arguments) == 0 {
 		display.PrintWithColor(player, fmt.Sprintf("%s\n", currentRoom.Name), "primary")
@@ -316,7 +250,7 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 			display.PrintWithColor(player, "\n", "reset")
 		}
 
-		exitsHandler := &ExitsCommandHandler{ShowOnlyDirections: true, Navigator: h.Navigator}
+		exitsHandler := &ExitsCommandHandler{ShowOnlyDirections: true, WorldState: h.WorldState}
 		exitsHandler.Execute(db, player, "exits", arguments, currentChannel, updateChannel)
 	} else if len(arguments) == 1 {
 
@@ -336,10 +270,7 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 			if lookDirection == direction {
 				directionMatch = true
 				if exit != nil {
-					exitRoom, err := getRoom(exit.UUID, db)
-					if err != nil {
-						display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
-					}
+					exitRoom := h.WorldState.GetRoom(exit.UUID, false)
 					display.PrintWithColor(player, fmt.Sprintf("You look %s.  You see %s\n", direction, exitRoom.Name), "reset")
 				} else {
 					display.PrintWithColor(player, "You don't see anything in that direction\n", "reset")
@@ -381,40 +312,42 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 	}
 }
 
-type AreaCommandHandler struct{}
+type AreaCommandHandler struct {
+	WorldState *world_state.WorldState
+}
+
+func (h *AreaCommandHandler) SetWorldState(world_state *world_state.WorldState) {
+	h.WorldState = world_state
+}
 
 func (h *AreaCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
-	roomUUID := player.GetRoomUUID()
-	currentRoom, err := getRoom(roomUUID, db)
-	if err != nil {
-		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
-		return
-	}
+	for _, area := range h.WorldState.Areas {
+		if area.UUID == player.GetArea() {
+			display.PrintWithColor(player, fmt.Sprintf("%s\n", area.Name), "primary")
+			display.PrintWithColor(player, fmt.Sprintf("%s\n", area.Description), "secondary")
+			display.PrintWithColor(player, "-----------------------\n\n", "secondary")
+		}
 
-	display.PrintWithColor(player, fmt.Sprintf("%s\n", currentRoom.Area.Name), "primary")
-	display.PrintWithColor(player, fmt.Sprintf("%s\n", currentRoom.Area.Description), "secondary")
-	display.PrintWithColor(player, "-----------------------\n\n", "secondary")
+	}
 }
 
 type TakeCommandHandler struct {
-	Notifier *notifications.Notifier
+	Notifier   *notifications.Notifier
+	WorldState *world_state.WorldState
 }
 
 func (h *TakeCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	roomUUID := player.GetRoomUUID()
-	currentRoom, err := getRoom(roomUUID, db)
-	if err != nil {
-		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
-	}
+	currentRoom := h.WorldState.GetRoom(roomUUID, true)
 
 	if len(currentRoom.Items) > 0 {
 		for _, item := range currentRoom.Items {
 			if item.GetName() == arguments[0] {
-				err := player.AddItemToInventory(db, item)
+				err := h.WorldState.TransferItemFromRoomToPlayer(currentRoom, item, player)
 				if err != nil {
-					fmt.Printf("error adding item to inventory: %v", err)
-					break
+					fmt.Printf("error transferring item from room to player: %v", err)
 				}
+
 				display.PrintWithColor(player, fmt.Sprintf("You take the %s.\n", item.GetName()), "reset")
 				h.Notifier.NotifyRoom(player.GetRoomUUID(), player.GetUUID(), fmt.Sprintf("\n%s takes %s.\n", player.GetName(), item.GetName()))
 				break
@@ -429,10 +362,17 @@ func (h *TakeCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 	} else {
 		display.PrintWithColor(player, "You don't see that here.\n", "reset")
 	}
+
+	smth := h.WorldState.GetRoom(roomUUID, true)
+	fmt.Printf("room: %v", smth.Name)
 }
 
 func (h *TakeCommandHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
+}
+
+func (h *TakeCommandHandler) SetWorldState(world_state *world_state.WorldState) {
+	h.WorldState = world_state
 }
 
 type DropCommandHandler struct {
@@ -495,20 +435,22 @@ func (h *PlayerStatusHandler) Execute(db *sql.DB, player interfaces.Player, comm
 	display.PrintWithColor(player, "*******************************\n", "danger")
 }
 
-type InventoryCommandHandler struct{}
+type InventoryCommandHandler struct {
+	WorldState *world_state.WorldState
+}
+
+func (h *InventoryCommandHandler) SetWorldState(world_state *world_state.WorldState) {
+	h.WorldState = world_state
+}
 
 func (h *InventoryCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
-	playerItems, err := items.GetItemsForPlayer(db, player.GetUUID())
-	if err != nil {
-		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
-	}
+	display.PrintWithColor(player, "You are carryin/g:\n", "secondary")
+	playerInventory := player.GetInventory()
 
-	display.PrintWithColor(player, "You are carrying:\n", "secondary")
-
-	if len(playerItems) == 0 {
+	if len(playerInventory) == 0 {
 		display.PrintWithColor(player, "Nothing\n", "reset")
 	} else {
-		for _, item := range playerItems {
+		for _, item := range playerInventory {
 			display.PrintWithColor(player, fmt.Sprintf("%s\n", item.GetName()), "reset")
 		}
 	}

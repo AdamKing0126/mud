@@ -3,6 +3,7 @@ package players
 import (
 	"database/sql"
 	"fmt"
+	"mud/interfaces"
 	"mud/items"
 	"strings"
 )
@@ -52,8 +53,24 @@ func (player *Player) GetColorProfileFromDB(db *sql.DB) error {
 }
 
 func (player *Player) GetInventoryFromDB(db *sql.DB) error {
-	// var inventory []interfaces.Item
-	fmt.Println("yo")
+	queryString := `SELECT i.uuid, i.name, i.description, i.equipment_slots FROM item_locations il JOIN items i ON il.player_uuid = ? AND il.item_uuid = i.uuid;`
+	rows, err := db.Query(queryString, player.UUID)
+	if err != nil {
+		fmt.Printf("error querying: %v", err)
+	}
+	var inventory []interfaces.Item
+	for rows.Next() {
+		var uuid, name, description, slots string
+		err := rows.Scan(&uuid, &name, &description, &slots)
+		equipmentSlots := strings.Split(slots, ",")
+		if err == nil {
+			fmt.Println("uh oh")
+		}
+		item := items.NewItem(uuid, name, description, equipmentSlots)
+		inventory = append(inventory, item)
+	}
+
+	player.Inventory = inventory
 	return nil
 
 }
