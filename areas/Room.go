@@ -3,11 +3,16 @@ package areas
 import (
 	"mud/interfaces"
 	"mud/mobs"
+	"net"
 )
 
 type PlayerInRoomInterface interface {
 	GetUUID() string
 	GetName() string
+	GetInventory() []interfaces.Item
+	SetInventory([]interfaces.Item)
+	GetColorProfile() interfaces.ColorProfile
+	GetConn() net.Conn
 }
 
 type Room struct {

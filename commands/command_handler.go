@@ -116,7 +116,7 @@ func (h *ExitsCommandHandler) SetWorldState(world_state *world_state.WorldState)
 	h.WorldState = world_state
 }
 
-func (h *ExitsCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func (h *ExitsCommandHandler) Execute(_ *sql.DB, player interfaces.Player, _ string, _ []string, _ chan interfaces.Action, _ func(string)) {
 	roomUUID := player.GetRoomUUID()
 	currentRoom := h.WorldState.GetRoom(roomUUID, true)
 
@@ -136,10 +136,6 @@ func (h *ExitsCommandHandler) Execute(db *sql.DB, player interfaces.Player, comm
 		if exit != nil {
 			abbreviatedDirections = append(abbreviatedDirections, direction)
 			exitRoom := h.WorldState.GetRoom(exit.UUID, false)
-			// exitRoom, err := getRoom(exit.UUID, db)
-			// if err != nil {
-			// 	display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
-			// }
 			longDirections = append(longDirections, fmt.Sprintf("%s: %s", direction, exitRoom.Name))
 		}
 	}
@@ -156,7 +152,7 @@ type LogoutCommandHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func (h *LogoutCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func (h *LogoutCommandHandler) Execute(db *sql.DB, player interfaces.Player, _ string, _ []string, _ chan interfaces.Action, _ func(string)) {
 	display.PrintWithColor(player, "Goodbye!\n", "reset")
 	if err := player.Logout(db); err != nil {
 		fmt.Printf("Error logging out player: %v\n", err)
@@ -183,36 +179,25 @@ func (h *GiveCommandHandler) SetNotifier(notifier *notifications.Notifier) {
 }
 
 func (h *GiveCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
-	// TODO Adam
-	// switch from DB-backed to WorldState-backed.
-	// what does that mean, exactly?
-	// in WorldState.Areas[areaIdx].Rooms[roomIdx].Players
-	// transfer Inventory item from one player to another
-	// plus a DB call to save it.
+
 	item, err := items.GetItemByNameForPlayer(db, arguments[0], player.GetUUID())
 	if err != nil {
 		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 		return
 	}
-	playersInRoom, err := players.GetPlayersInRoom(db, player.GetRoomUUID())
+	giver, receiver, err := h.WorldState.TransferItemFromPlayerToPlayer(item, player, arguments[1])
 	if err != nil {
-		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
+		fmt.Printf("%v", err)
+		return
+	}
+	err = item.SetLocation(db, receiver.GetUUID(), "")
+	if err != nil {
+		fmt.Printf("error setting item location: %v", err)
 		return
 	}
 
-	for _, playerInRoom := range playersInRoom {
-		if strings.ToLower(playerInRoom.GetName()) == arguments[1] {
-			err := item.SetLocation(db, playerInRoom.GetUUID(), "")
-			if err != nil {
-				fmt.Println(err)
-			}
-			display.PrintWithColor(player, fmt.Sprintf("You give %s to %s\n", item.GetName(), arguments[1]), "reset")
-			h.Notifier.NotifyPlayer(playerInRoom.GetUUID(), fmt.Sprintf("\n%s gives you %s\n", player.GetName(), item.GetName()))
-			return
-		}
-	}
-
-	display.PrintWithColor(player, fmt.Sprintf("You don't see %s here.\n", arguments[1]), "reset")
+	display.PrintWithColor(giver, fmt.Sprintf("You give %s to %s\n", item.GetName(), receiver.GetName()), "reset")
+	h.Notifier.NotifyPlayer(receiver.GetUUID(), fmt.Sprintf("\n%s gives you %s\n", giver.GetName(), item.GetName()))
 }
 
 type LookCommandHandler struct {
@@ -444,7 +429,7 @@ func (h *InventoryCommandHandler) SetWorldState(world_state *world_state.WorldSt
 }
 
 func (h *InventoryCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
-	display.PrintWithColor(player, "You are carryin/g:\n", "secondary")
+	display.PrintWithColor(player, "You are carrying:\n", "secondary")
 	playerInventory := player.GetInventory()
 
 	if len(playerInventory) == 0 {
@@ -550,7 +535,8 @@ func (h *AdminSetHealthCommandHandler) SetNotifier(notifier *notifications.Notif
 }
 
 type EquipHandler struct {
-	Notifier *notifications.Notifier
+	Notifier   *notifications.Notifier
+	WorldState *world_state.WorldState
 }
 
 func (h *EquipHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
@@ -567,6 +553,7 @@ func (h *EquipHandler) Execute(db *sql.DB, player interfaces.Player, command str
 				if player.Equip(db, item) {
 					display.PrintWithColor(player, fmt.Sprintf("You wield %s.\n", item.GetName()), "reset")
 					h.Notifier.NotifyRoom(player.GetRoomUUID(), player.GetUUID(), fmt.Sprintf("\n%s wields %s.\n", player.GetName(), item.GetName()))
+					h.WorldState.RemoveItemFromPlayerInventory(player, item)
 				}
 				break
 			}
@@ -579,6 +566,10 @@ func (h *EquipHandler) Execute(db *sql.DB, player interfaces.Player, command str
 
 func (h *EquipHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
+}
+
+func (h *EquipHandler) SetWorldState(worldState *world_state.WorldState) {
+	h.WorldState = worldState
 }
 
 type RemoveHandler struct {

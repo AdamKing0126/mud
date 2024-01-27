@@ -41,13 +41,6 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 		return
 	}
 
-	// // TODO Trying the idea of moving functions like this outside the Player package
-	// items, err := items.GetItemsForPlayer(db, player.GetUUID())
-	// if err != nil {
-	// 	fmt.Fprintf(conn, "Error retrieving inventory for player: %v\n", err)
-	// }
-	// player.SetInventory(items)
-
 	defer func() {
 		err := player.Logout(db)
 		if err != nil {

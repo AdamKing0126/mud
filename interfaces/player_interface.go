@@ -38,4 +38,5 @@ type Player interface {
 	SetConn(net.Conn)
 	SetHealth(int)
 	SetLocation(db *sql.DB, roomUUID string) error
+	SetInventory([]Item)
 }
