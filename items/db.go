@@ -78,6 +78,8 @@ func (item *Item) SetLocation(db *sql.DB, playerUUID string, roomUUID string) er
 
 // TODO Adam - Possible to just remove this entirely?
 // These should all belong on the player object.
+// Yes but how are they loaded, when the player first logs in?
+// Seems like we need this, but it's not currently being called anyplace
 func GetEquippedItemsForPlayer(db *sql.DB, playerUUID string) ([]EquippedItem, error) {
 	query := `
 	SELECT i.uuid, i.name,

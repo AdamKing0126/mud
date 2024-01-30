@@ -126,8 +126,8 @@ func SeedPlayers() {
 		players := []players.Player{
 			{
 				Name:         "Reg",
-				Area:         "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9",
-				Room:         "189a729d-4e40-4184-a732-e2c45c66ff46",
+				AreaUUID:     "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9",
+				RoomUUID:     "189a729d-4e40-4184-a732-e2c45c66ff46",
 				Health:       100,
 				HealthMax:    100,
 				Movement:     100,
@@ -139,8 +139,8 @@ func SeedPlayers() {
 			},
 			{
 				Name:         "Admin",
-				Area:         "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9",
-				Room:         "189a729d-4e40-4184-a732-e2c45c66ff46",
+				AreaUUID:     "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9",
+				RoomUUID:     "189a729d-4e40-4184-a732-e2c45c66ff46",
 				Health:       100,
 				HealthMax:    100,
 				Movement:     100,
@@ -156,7 +156,7 @@ func SeedPlayers() {
 		for _, p := range players {
 			playerUUID := uuid.New().String()
 			_, err := db.Exec("INSERT INTO players (uuid, name, area, room, health, health_max, movement, movement_max, mana, mana_max, color_profile, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-				playerUUID, p.Name, p.Area, p.Room, p.Health, p.HealthMax, p.Movement, p.MovementMax, p.Mana, p.ManaMax, p.ColorProfile.GetUUID(), p.Password)
+				playerUUID, p.Name, p.AreaUUID, p.RoomUUID, p.Health, p.HealthMax, p.Movement, p.MovementMax, p.Mana, p.ManaMax, p.ColorProfile.GetUUID(), p.Password)
 			if err != nil {
 				log.Fatalf("Failed to insert player: %v", err)
 			}

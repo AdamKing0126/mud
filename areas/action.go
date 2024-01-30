@@ -59,7 +59,7 @@ func (a *Area) Run(db *sql.DB, ch chan interfaces.Action, connections map[string
 				playersInArea = make([]interfaces.Player, 0, len(connections))
 				for _, player := range connections {
 					areaUUID := a.GetUUID()
-					playerArea := player.GetArea()
+					playerArea := player.GetAreaUUID()
 					if playerArea == areaUUID {
 						playersInArea = append(playersInArea, player)
 					}

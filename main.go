@@ -34,7 +34,6 @@ func NewServer() *Server {
 func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, areaChannels map[string]chan interfaces.Action, roomToAreaMap map[string]string, worldState *world_state.WorldState) {
 	defer conn.Close()
 
-	// maybe I should pass the router in here?
 	player, err := players.LoginPlayer(conn, db)
 	if err != nil {
 		fmt.Fprintf(conn, "Error: %v\n", err)
@@ -51,15 +50,16 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 	s.connections[player.GetUUID()] = player
 	defer delete(s.connections, player.GetUUID())
 
-	// this method adds more queries than are needed, because we have already
-	// fetched the player's data when we logged them in.
-	// TODO fix
 	currentRoom := worldState.GetRoom(player.GetRoomUUID(), false)
-	worldState.AddPlayerToRoom(currentRoom.UUID, player)
-
+	currentRoom.AddPlayer(player)
+	// TODO I removed this, we probably don't need this function inside WorldState, right?
+	// worldState.AddPlayerToRoom(currentRoom.GetUUID(), player)
+	// No, currently as it stands we still need taht functionality, at least while
+	// moving players from one room to another.
+	player.Room = currentRoom
 	notifyPlayersInRoomThatNewPlayerHasJoined(player, s.connections)
 
-	ch := areaChannels[player.GetArea()]
+	ch := areaChannels[player.GetAreaUUID()]
 
 	updateChannel := func(newArea string) {
 		ch = areaChannels[newArea]
@@ -109,8 +109,9 @@ func openDatabase() (*sql.DB, error) {
 	return db, nil
 }
 
-func loadAreas(db *sql.DB, server *Server) (map[string]*areas.Area, map[string]string, map[string]chan interfaces.Action, error) {
+func loadAreas(db *sql.DB, server *Server) (map[string]interfaces.Area, map[string]string, map[string]chan interfaces.Action, error) {
 	areaInstances := make(map[string]*areas.Area)
+	areaInstancesInterface := make(map[string]interfaces.Area)
 	roomToAreaMap := make(map[string]string)
 	areaChannels := make(map[string]chan interfaces.Action)
 
@@ -132,13 +133,14 @@ func loadAreas(db *sql.DB, server *Server) (map[string]*areas.Area, map[string]s
 		_, ok := areaInstances[areaUUID]
 		if !ok {
 			areaInstances[areaUUID] = areas.NewArea(areaUUID, name, description)
+			areaInstancesInterface[areaUUID] = areaInstances[areaUUID]
 			areaChannels[areaUUID] = make(chan interfaces.Action)
 			go areaInstances[areaUUID].Run(db, areaChannels[areaUUID], server.connections)
 		}
 		roomToAreaMap[roomUUID] = areaUUID
 	}
 
-	return areaInstances, roomToAreaMap, areaChannels, nil
+	return areaInstancesInterface, roomToAreaMap, areaChannels, nil
 }
 
 func logoutAllPlayers(db *sql.DB) {

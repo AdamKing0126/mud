@@ -6,12 +6,14 @@ import (
 )
 
 type Player interface {
-	AddItemToInventory(db *sql.DB, item Item) error
+	AddItem(db *sql.DB, item Item) error
+	RemoveItem(item Item) error
 	DisplayEquipment()
 	Equip(db *sql.DB, item Item) bool
 	GetAbilities() Abilities
 	GetArmorClass() int
-	GetArea() string
+	GetArea() Area
+	GetAreaUUID() string
 	GetColorProfile() ColorProfile
 	GetColorProfileFromDB(db *sql.DB) error
 	GetCommands() []string
@@ -22,12 +24,14 @@ type Player interface {
 	GetHealth() int
 	GetHealthMax() int
 	GetInventory() []Item
+	GetItemFromInventory(string) Item
 	GetLoggedIn() bool
 	GetMana() int
 	GetManaMax() int
 	GetMovement() int
 	GetMovementMax() int
 	GetName() string
+	GetRoom() Room
 	GetRoomUUID() string
 	GetUUID() string
 	Logout(db *sql.DB) error

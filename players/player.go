@@ -16,8 +16,10 @@ func NewPlayer(conn net.Conn) *Player {
 type Player struct {
 	UUID            string
 	Name            string
-	Room            string
-	Area            string
+	RoomUUID        string
+	Room            interfaces.Room
+	AreaUUID        string
+	Area            interfaces.Area
 	Health          int
 	HealthMax       int
 	Mana            int
@@ -34,12 +36,27 @@ type Player struct {
 	Inventory       []interfaces.Item
 }
 
-func (player *Player) AddItemToInventory(db *sql.DB, item interfaces.Item) error {
+func (player *Player) AddItem(db *sql.DB, item interfaces.Item) error {
 	err := item.SetLocation(db, player.UUID, "")
 	if err != nil {
 		return err
 	}
 	player.SetInventory(append(player.GetInventory(), item))
+	return nil
+}
+
+func (player *Player) RemoveItem(item interfaces.Item) error {
+	itemIndex := -1
+	for idx := range player.GetInventory() {
+		if player.Inventory[idx] == item {
+			itemIndex = idx
+			break
+		}
+	}
+	if itemIndex == -1 {
+		return fmt.Errorf("item %s is not found in player %s inventory", item.GetUUID(), player.GetUUID())
+	}
+	player.Inventory = append(player.Inventory[:itemIndex], player.Inventory[itemIndex+1:]...)
 	return nil
 }
 
@@ -73,7 +90,7 @@ func (player *Player) Regen(db *sql.DB) error {
 func (player *Player) Remove(db *sql.DB, itemName string) {
 	if player.Equipment.DominantHand.GetName() == itemName {
 		equippedItem := player.Equipment.DominantHand
-		player.AddItemToInventory(db, equippedItem)
+		player.AddItem(db, equippedItem)
 
 		player.Equipment.DominantHand = nil
 		queryString := fmt.Sprintf("UPDATE player_equipments SET DominantHand = '' WHERE player_uuid = '%s'", player.GetUUID())

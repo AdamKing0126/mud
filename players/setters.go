@@ -49,8 +49,8 @@ func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
 		return err
 	}
 
-	player.Area = areaUUID
-	player.Room = roomUUID
+	player.AreaUUID = areaUUID
+	player.RoomUUID = roomUUID
 
 	area_rows.Close()
 

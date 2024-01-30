@@ -38,8 +38,8 @@ func createPlayer(conn net.Conn, db *sql.DB, playerName string) (*Player, error)
 	player.Password = HashPassword(password)
 
 	// default start point
-	player.Area = "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9"
-	player.Room = "189a729d-4e40-4184-a732-e2c45c66ff46"
+	player.AreaUUID = "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9"
+	player.RoomUUID = "189a729d-4e40-4184-a732-e2c45c66ff46"
 	player.UUID = uuid.New().String()
 
 	// "default" light mode color profile.  Should let the user choose?
@@ -63,7 +63,7 @@ func createPlayer(conn net.Conn, db *sql.DB, playerName string) (*Player, error)
 	}
 
 	_, err = tx.Exec("INSERT INTO players (uuid, name, area, room, health, health_max, movement, movement_max, mana, mana_max, color_profile, password, logged_in) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		player.UUID, player.Name, player.Area, player.Room, player.Health, player.HealthMax, player.Movement, player.MovementMax, player.Mana, player.ManaMax, player.ColorProfile.GetUUID(), player.Password, true)
+		player.UUID, player.Name, player.AreaUUID, player.RoomUUID, player.Health, player.HealthMax, player.Movement, player.MovementMax, player.Mana, player.ManaMax, player.ColorProfile.GetUUID(), player.Password, true)
 	if err != nil {
 		tx.Rollback()
 		log.Fatalf("Failed to insert player: %v", err)

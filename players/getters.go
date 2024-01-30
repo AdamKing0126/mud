@@ -19,7 +19,11 @@ func (player *Player) GetArmorClass() int {
 	return base + armorBonus + shieldBonus + dexModifier + otherModifiers
 }
 
-func (player *Player) GetArea() string {
+func (player *Player) GetAreaUUID() string {
+	return player.AreaUUID
+}
+
+func (player *Player) GetArea() interfaces.Area {
 	return player.Area
 }
 
@@ -55,6 +59,16 @@ func (player *Player) GetInventory() []interfaces.Item {
 	return player.Inventory
 }
 
+func (player *Player) GetItemFromInventory(itemName string) interfaces.Item {
+	inventory := player.GetInventory()
+	for idx := range inventory {
+		if inventory[idx].GetName() == itemName {
+			return inventory[idx]
+		}
+	}
+	return nil
+}
+
 func (player *Player) GetLoggedIn() bool {
 	return player.LoggedIn
 }
@@ -80,6 +94,10 @@ func (player *Player) GetName() string {
 }
 
 func (player *Player) GetRoomUUID() string {
+	return player.RoomUUID
+}
+
+func (player *Player) GetRoom() interfaces.Room {
 	return player.Room
 }
 
