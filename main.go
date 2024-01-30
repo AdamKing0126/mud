@@ -57,6 +57,7 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 	// No, currently as it stands we still need taht functionality, at least while
 	// moving players from one room to another.
 	player.Room = currentRoom
+	player.Area = worldState.Areas[player.GetAreaUUID()]
 	notifyPlayersInRoomThatNewPlayerHasJoined(player, s.connections)
 
 	ch := areaChannels[player.GetAreaUUID()]

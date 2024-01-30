@@ -12,7 +12,6 @@ import (
 	"mud/players"
 	"mud/utils"
 	"mud/world_state"
-	"reflect"
 	"strconv"
 	"strings"
 )
@@ -84,10 +83,11 @@ func movePlayerToDirection(worldState *world_state.WorldState, db *sql.DB, playe
 }
 
 func (h *MovePlayerCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
-	playerRoomUUID := player.GetRoomUUID()
+	// playerRoomUUID := player.GetRoomUUID()
 	areaUUID := player.GetAreaUUID()
 
-	currentRoom := h.WorldState.GetRoom(playerRoomUUID, true)
+	// currentRoom := h.WorldState.GetRoom(playerRoomUUID, true)
+	currentRoom := player.GetRoom()
 	exits := currentRoom.GetExits()
 
 	switch h.Direction {
@@ -128,8 +128,7 @@ func (h *ExitsCommandHandler) SetWorldState(world_state *world_state.WorldState)
 }
 
 func (h *ExitsCommandHandler) Execute(_ *sql.DB, player interfaces.Player, _ string, _ []string, _ chan interfaces.Action, _ func(string)) {
-	roomUUID := player.GetRoomUUID()
-	currentRoom := h.WorldState.GetRoom(roomUUID, true)
+	currentRoom := player.GetRoom()
 	exits := currentRoom.GetExits()
 	exitMap := map[string]interfaces.Room{
 		"North": exits.GetNorth(),
@@ -189,12 +188,7 @@ func (h *LogoutCommandHandler) SetWorldState(worldState *world_state.WorldState)
 }
 
 type GiveCommandHandler struct {
-	Notifier   *notifications.Notifier
-	WorldState *world_state.WorldState
-}
-
-func (h *GiveCommandHandler) SetWorldState(worldState *world_state.WorldState) {
-	h.WorldState = worldState
+	Notifier *notifications.Notifier
 }
 
 func (h *GiveCommandHandler) SetNotifier(notifier *notifications.Notifier) {
@@ -215,10 +209,6 @@ func (h *GiveCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 		return
 	}
 
-	// Todo Adam I built `WorldState#TransferItem` but I don't need to call
-	// that function, because I can operate directly on the players.
-	// do I need to make some helper function which handles both the Remove/Add?
-	// or is this ok?
 	player.RemoveItem(item)
 	recipient.AddItem(db, item)
 
@@ -235,13 +225,7 @@ func (h *LookCommandHandler) SetWorldState(world_state *world_state.WorldState) 
 }
 
 func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
-	roomUUID := player.GetRoomUUID()
-	currentRoom := h.WorldState.GetRoom(roomUUID, true)
-	playerRoom := player.GetRoom()
-
-	if !reflect.DeepEqual(currentRoom, playerRoom) {
-		fmt.Printf("whoopsie, currentRoom != playerRoom\n")
-	}
+	currentRoom := player.GetRoom()
 
 	if len(arguments) == 0 {
 		display.PrintWithColor(player, fmt.Sprintf("%s\n", currentRoom.GetName()), "primary")
@@ -328,29 +312,21 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 	}
 }
 
-type AreaCommandHandler struct {
-	WorldState *world_state.WorldState
-}
-
-func (h *AreaCommandHandler) SetWorldState(world_state *world_state.WorldState) {
-	h.WorldState = world_state
-}
+type AreaCommandHandler struct{}
 
 func (h *AreaCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
-	area := h.WorldState.GetArea(player.GetAreaUUID())
+	area := player.GetArea()
 	display.PrintWithColor(player, fmt.Sprintf("%s\n", area.GetName()), "primary")
 	display.PrintWithColor(player, fmt.Sprintf("%s\n", area.GetDescription()), "secondary")
 	display.PrintWithColor(player, "-----------------------\n\n", "secondary")
 }
 
 type TakeCommandHandler struct {
-	Notifier   *notifications.Notifier
-	WorldState *world_state.WorldState
+	Notifier *notifications.Notifier
 }
 
 func (h *TakeCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
-	roomUUID := player.GetRoomUUID()
-	currentRoom := h.WorldState.GetRoom(roomUUID, true)
+	currentRoom := player.GetRoom()
 	items := currentRoom.GetItems()
 
 	if len(items) > 0 {
@@ -376,23 +352,13 @@ func (h *TakeCommandHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
 }
 
-func (h *TakeCommandHandler) SetWorldState(world_state *world_state.WorldState) {
-	h.WorldState = world_state
-}
-
 type DropCommandHandler struct {
-	Notifier   *notifications.Notifier
-	WorldState *world_state.WorldState
+	Notifier *notifications.Notifier
 }
 
 func (h *DropCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	roomUUID := player.GetRoomUUID()
-	room := h.WorldState.GetRoom(roomUUID, false)
-	playerRoom := player.GetRoom()
-
-	if !reflect.DeepEqual(room, playerRoom) {
-		fmt.Printf("whoopsie, currentRoom != playerRoom\n")
-	}
+	room := player.GetRoom()
 
 	playerItems := player.GetInventory()
 	if len(playerItems) > 0 {
@@ -402,10 +368,6 @@ func (h *DropCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 					fmt.Printf("error removing item: %s", err)
 				}
 				room.AddItem(db, item)
-				// err := h.WorldState.TransferItem(player, room, item)
-				// if err != nil {
-				// 	display.PrintWithColor(player, fmt.Sprintf("Failed to update item location: %v\n", err), "danger")
-				// }
 				query := "UPDATE item_locations SET room_uuid = ?, player_uuid = NULL WHERE item_uuid = ?"
 				_, err := db.Exec(query, roomUUID, item.GetUUID())
 				if err != nil {
@@ -423,10 +385,6 @@ func (h *DropCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 
 func (h *DropCommandHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
-}
-
-func (h *DropCommandHandler) SetWorldState(worldState *world_state.WorldState) {
-	h.WorldState = worldState
 }
 
 type PlayerStatusHandler struct{}
@@ -455,13 +413,7 @@ func (h *PlayerStatusHandler) Execute(db *sql.DB, player interfaces.Player, comm
 	display.PrintWithColor(player, "*******************************\n", "danger")
 }
 
-type InventoryCommandHandler struct {
-	WorldState *world_state.WorldState
-}
-
-func (h *InventoryCommandHandler) SetWorldState(world_state *world_state.WorldState) {
-	h.WorldState = world_state
-}
+type InventoryCommandHandler struct{}
 
 func (h *InventoryCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	display.PrintWithColor(player, "You are carrying:\n", "secondary")
@@ -570,8 +522,7 @@ func (h *AdminSetHealthCommandHandler) SetNotifier(notifier *notifications.Notif
 }
 
 type EquipHandler struct {
-	Notifier   *notifications.Notifier
-	WorldState *world_state.WorldState
+	Notifier *notifications.Notifier
 }
 
 func (h *EquipHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
@@ -589,7 +540,6 @@ func (h *EquipHandler) Execute(db *sql.DB, player interfaces.Player, command str
 					display.PrintWithColor(player, fmt.Sprintf("You wield %s.\n", item.GetName()), "reset")
 					h.Notifier.NotifyRoom(player.GetRoomUUID(), player.GetUUID(), fmt.Sprintf("\n%s wields %s.\n", player.GetName(), item.GetName()))
 					player.RemoveItem(item)
-					// h.WorldState.RemoveItemFromPlayerInventory(player, item)
 				}
 				break
 			}
@@ -597,15 +547,10 @@ func (h *EquipHandler) Execute(db *sql.DB, player interfaces.Player, command str
 	} else {
 		display.PrintWithColor(player, "You don't have that item.\n", "warning")
 	}
-
 }
 
 func (h *EquipHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
-}
-
-func (h *EquipHandler) SetWorldState(worldState *world_state.WorldState) {
-	h.WorldState = worldState
 }
 
 type RemoveHandler struct {
