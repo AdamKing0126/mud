@@ -52,12 +52,10 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 
 	currentRoom := worldState.GetRoom(player.GetRoomUUID(), false)
 	currentRoom.AddPlayer(player)
-	// TODO I removed this, we probably don't need this function inside WorldState, right?
-	// worldState.AddPlayerToRoom(currentRoom.GetUUID(), player)
-	// No, currently as it stands we still need taht functionality, at least while
-	// moving players from one room to another.
+
 	player.Room = currentRoom
 	player.Area = worldState.Areas[player.GetAreaUUID()]
+
 	notifyPlayersInRoomThatNewPlayerHasJoined(player, s.connections)
 
 	ch := areaChannels[player.GetAreaUUID()]
@@ -90,7 +88,7 @@ func notifyPlayersInRoomThatNewPlayerHasJoined(player interfaces.Player, connect
 	}
 
 	for _, p := range playersInRoom {
-		fmt.Fprintf(p.GetConn(), "\n%s has entered the room.\n", player.GetName())
+		fmt.Fprintf(p.GetConn(), "\n%s has joined the game.\n", player.GetName())
 		display.PrintWithColor(p, fmt.Sprintf("\nHP: %d Mana: %d Mvt: %d> ", player.GetHealth(), player.GetMana(), player.GetMovement()), "primary")
 	}
 }
