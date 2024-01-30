@@ -44,6 +44,10 @@ func (a *Area) SetRooms(rooms []interfaces.Room) {
 }
 
 func (a *Area) SetRoomAtIndex(idx int, room interfaces.Room) {
+	if idx < 0 || idx >= len(a.Rooms) {
+		fmt.Printf("Index out of bounds: %d", idx)
+		return
+	}
 	a.Rooms[idx] = room
 }
 

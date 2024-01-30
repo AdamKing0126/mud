@@ -43,4 +43,5 @@ type Player interface {
 	SetHealth(int)
 	SetLocation(db *sql.DB, roomUUID string) error
 	SetInventory([]Item)
+	SetRoom(Room)
 }

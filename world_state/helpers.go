@@ -15,51 +15,78 @@ func getRoomFromAreaByUUID(area interfaces.Area, roomUUID string) interfaces.Roo
 			return room
 		}
 	}
-	fmt.Println("Room not found")
+	fmt.Printf("Room %s not found for area %s - %s\n", roomUUID, area.GetName(), area.GetUUID())
 	return nil
 }
 
-func retrieveRoomFromDB(db *sql.DB, area interfaces.Area, roomUUID string, followExits bool) interfaces.Room {
+func retrieveRoomFromDB(db *sql.DB, area interfaces.Area, requestedRoomUUID string, followExits bool) interfaces.Room {
 	var retrievedRoom interfaces.Room
-	fmt.Println("rooms in memory does not match rooms in DB, must make a call to the DB")
 	queryString := `
-            SELECT r.UUID, r.area_uuid, r.name, r.description,
-                r.exit_north, r.exit_south, r.exit_east, r.exit_west,
-                r.exit_up, r.exit_down,
-                a.UUID AS area_uuid, a.name AS area_name, a.description AS area_description
-            FROM rooms r
-            LEFT JOIN areas a ON r.area_uuid = a.UUID
-            WHERE a.UUID = ? AND r.UUID = ?`
-	row := db.QueryRow(queryString, area.GetUUID(), roomUUID)
-	var uuid, roomAreaUUID, roomName, roomDescription, exitNorth, exitSouth, exitEast, exitWest, exitUp, exitDown, areaUUID, areaName, areaDescription string
-	err := row.Scan(&uuid, &roomAreaUUID, &roomName, &roomDescription, &exitNorth, &exitSouth, &exitEast, &exitWest, &exitUp, &exitDown, &areaUUID, &areaName, &areaDescription)
+	SELECT r.UUID, r.area_uuid, r.name, r.description,
+		r.exit_north, r.exit_south, r.exit_east, r.exit_west,
+		r.exit_up, r.exit_down,
+		a.UUID AS area_uuid, a.name AS area_name, a.description AS area_description
+	FROM rooms r
+	LEFT JOIN areas a ON r.area_uuid = a.UUID
+	WHERE a.UUID = ?`
+	rows, err := db.Query(queryString, area.GetUUID())
 	if err != nil {
-		if err == sql.ErrNoRows {
-			// Handle no result
-			fmt.Println("No rows were returned!")
-			return nil
-		} else {
-			// Handle other errors
-			fmt.Printf("error scanning row: %v", err)
-			return nil
+		fmt.Printf("Error querying rows: %v", err)
+	}
+	for rows.Next() {
+		var roomUUID, roomAreaUUID, roomName, roomDescription, exitNorth, exitSouth, exitEast, exitWest, exitUp, exitDown, areaUUID, areaName, areaDescription string
+		err := rows.Scan(&roomUUID, &roomAreaUUID, &roomName, &roomDescription, &exitNorth, &exitSouth, &exitEast, &exitWest, &exitUp, &exitDown, &areaUUID, &areaName, &areaDescription)
+		if err != nil {
+			fmt.Printf("error scanning rows: %v", err)
+		}
+		room := areas.NewRoomWithAreaInfo(roomUUID, roomAreaUUID, roomName, roomDescription, area.GetName(), area.GetDescription(), exitNorth, exitSouth, exitEast, exitWest, exitUp, exitDown)
+		area.SetRooms(append(area.GetRooms(), room))
+		if roomUUID == requestedRoomUUID {
+			retrievedRoom = room
 		}
 	}
-	room := areas.NewRoomWithAreaInfo(uuid, roomAreaUUID, roomName, roomDescription, area.GetName(), area.GetDescription(), exitNorth, exitSouth, exitEast, exitWest, exitUp, exitDown)
-	area.SetRooms(append(area.GetRooms(), room))
-	if room.UUID == roomUUID {
-		retrievedRoom = room
-	}
+	defer rows.Close()
+
+	// var retrievedRoom interfaces.Room
+	// fmt.Println("rooms in memory does not match rooms in DB, must make a call to the DB")
+	// queryString := `
+	//         SELECT r.UUID, r.area_uuid, r.name, r.description,
+	//             r.exit_north, r.exit_south, r.exit_east, r.exit_west,
+	//             r.exit_up, r.exit_down,
+	//             a.UUID AS area_uuid, a.name AS area_name, a.description AS area_description
+	//         FROM rooms r
+	//         LEFT JOIN areas a ON r.area_uuid = a.UUID
+	//         WHERE a.UUID = ? AND r.UUID = ?`
+	// row := db.QueryRow(queryString, area.GetUUID(), roomUUID)
+	// var uuid, roomAreaUUID, roomName, roomDescription, exitNorth, exitSouth, exitEast, exitWest, exitUp, exitDown, areaUUID, areaName, areaDescription string
+	// err := row.Scan(&uuid, &roomAreaUUID, &roomName, &roomDescription, &exitNorth, &exitSouth, &exitEast, &exitWest, &exitUp, &exitDown, &areaUUID, &areaName, &areaDescription)
+	// if err != nil {
+	// 	if err == sql.ErrNoRows {
+	// 		// Handle no result
+	// 		fmt.Println("No rows were returned!")
+	// 		return nil
+	// 	} else {
+	// 		// Handle other errors
+	// 		fmt.Printf("error scanning row: %v", err)
+	// 		return nil
+	// 	}
+	// }
+	// room := areas.NewRoomWithAreaInfo(uuid, roomAreaUUID, roomName, roomDescription, area.GetName(), area.GetDescription(), exitNorth, exitSouth, exitEast, exitWest, exitUp, exitDown)
+	// area.SetRooms(append(area.GetRooms(), room))
+	// if room.UUID == roomUUID {
+	// 	retrievedRoom = room
+	// }
 
 	// now that we have loaded all the rooms in the area, we can go back and hook up all the
 	// exits.  if one of the exits happens to exist in a different area, we can make a db query to retrieve that one.
-	for idx, roomInArea := range area.GetRooms() {
+	for _, roomInArea := range area.GetRooms() {
 		if followExits {
 			setExits(db, area, roomInArea)
 		}
 		setItems(db, roomInArea)
 		setPlayers(db, roomInArea)
 
-		area.SetRoomAtIndex(idx, roomInArea)
+		// area.SetRoomAtIndex(idx, roomInArea)
 	}
 	return retrievedRoom
 }
@@ -92,6 +119,7 @@ func setExits(db *sql.DB, area interfaces.Area, roomInArea interfaces.Room) {
 	exitInfo.East = getExitRoom(area, exits.GetEast(), db)
 	exitInfo.Up = getExitRoom(area, exits.GetUp(), db)
 	exitInfo.Down = getExitRoom(area, exits.GetDown(), db)
+	roomInArea.SetExits(&exitInfo)
 }
 
 func setPlayers(db *sql.DB, roomInArea interfaces.Room) {

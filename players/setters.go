@@ -16,6 +16,10 @@ func (player *Player) SetAbilities(abilities interfaces.PlayerAbilities) error {
 	return nil
 }
 
+func (player *Player) SetRoom(room interfaces.Room) {
+	player.Room = room
+}
+
 func (player *Player) SetCommands(commands []string) {
 	player.Commands = commands
 }

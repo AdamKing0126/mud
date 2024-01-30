@@ -109,6 +109,7 @@ func openDatabase() (*sql.DB, error) {
 	return db, nil
 }
 
+// TODO should this function be moved into the world_state package?
 func loadAreas(db *sql.DB, server *Server) (map[string]interfaces.Area, map[string]string, map[string]chan interfaces.Action, error) {
 	areaInstances := make(map[string]*areas.Area)
 	areaInstancesInterface := make(map[string]interfaces.Area)

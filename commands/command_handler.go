@@ -240,7 +240,7 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 	playerRoom := player.GetRoom()
 
 	if !reflect.DeepEqual(currentRoom, playerRoom) {
-		fmt.Printf("whoopsie, currentRoom != playerRoom")
+		fmt.Printf("whoopsie, currentRoom != playerRoom\n")
 	}
 
 	if len(arguments) == 0 {
@@ -388,12 +388,13 @@ type DropCommandHandler struct {
 func (h *DropCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	roomUUID := player.GetRoomUUID()
 	room := h.WorldState.GetRoom(roomUUID, false)
+	playerRoom := player.GetRoom()
 
-	playerItems, err := items.GetItemsForPlayer(db, player.GetUUID())
-	if err != nil {
-		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
+	if !reflect.DeepEqual(room, playerRoom) {
+		fmt.Printf("whoopsie, currentRoom != playerRoom\n")
 	}
 
+	playerItems := player.GetInventory()
 	if len(playerItems) > 0 {
 		for _, item := range playerItems {
 			if item.GetName() == arguments[0] {
@@ -406,7 +407,7 @@ func (h *DropCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 				// 	display.PrintWithColor(player, fmt.Sprintf("Failed to update item location: %v\n", err), "danger")
 				// }
 				query := "UPDATE item_locations SET room_uuid = ?, player_uuid = NULL WHERE item_uuid = ?"
-				_, err = db.Exec(query, roomUUID, item.GetUUID())
+				_, err := db.Exec(query, roomUUID, item.GetUUID())
 				if err != nil {
 					display.PrintWithColor(player, fmt.Sprintf("Failed to update item location: %v\n", err), "danger")
 				}

@@ -40,6 +40,7 @@ func (worldState *WorldState) AddPlayerToRoom(roomUUID string, player interfaces
 		return err
 	}
 	room.AddPlayer(player)
+	player.SetRoom(room)
 
 	return nil
 }
