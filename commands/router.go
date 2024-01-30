@@ -6,7 +6,6 @@ import (
 	"mud/display"
 	"mud/interfaces"
 	"mud/notifications"
-	"mud/utils"
 	"mud/world_state"
 	"strings"
 	"sync"
@@ -17,30 +16,30 @@ type CommandRouterInterface interface {
 }
 
 type CommandRouter struct {
-	Handlers map[string]utils.CommandHandler
+	Handlers map[string]CommandHandler
 	mu       sync.RWMutex
 }
 
 func NewCommandRouter() *CommandRouter {
 	return &CommandRouter{
-		Handlers: make(map[string]utils.CommandHandler),
+		Handlers: make(map[string]CommandHandler),
 		mu:       sync.RWMutex{},
 	}
 }
 
-func (r *CommandRouter) RegisterHandler(command string, handler utils.CommandHandler) {
+func (r *CommandRouter) RegisterHandler(command string, handler CommandHandler) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	r.Handlers[command] = handler
 }
 
-func RegisterCommands(router *CommandRouter, notifier *notifications.Notifier, worldState *world_state.WorldState, commands map[string]utils.CommandHandlerWithPriority) {
+func RegisterCommands(router *CommandRouter, notifier *notifications.Notifier, worldState *world_state.WorldState, commands map[string]CommandHandlerWithPriority) {
 	for command, handlerWithPriority := range commands {
-		if notifiable, ok := handlerWithPriority.Handler.(utils.Notifiable); ok {
+		if notifiable, ok := handlerWithPriority.Handler.(Notifiable); ok {
 			notifiable.SetNotifier(notifier)
 		}
-		if worldStateable, ok := handlerWithPriority.Handler.(utils.UsesWorldState); ok {
+		if worldStateable, ok := handlerWithPriority.Handler.(UsesWorldState); ok {
 			worldStateable.SetWorldState(worldState)
 		}
 		router.RegisterHandler(command, handlerWithPriority.Handler)
@@ -54,7 +53,7 @@ func (r *CommandRouter) HandleCommand(db *sql.DB, player interfaces.Player, comm
 	commandBlocks := strings.Split(commandString, ";")
 	for _, command := range commandBlocks {
 		// Parse the command string.
-		commandParser := utils.NewCommandParser(strings.TrimSpace(command), CommandHandlers)
+		commandParser := NewCommandParser(strings.TrimSpace(command), CommandHandlers)
 
 		// Get the command name and arguments.
 		commandName := commandParser.GetCommandName()
