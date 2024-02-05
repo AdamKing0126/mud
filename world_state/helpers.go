@@ -47,36 +47,6 @@ func retrieveRoomFromDB(db *sql.DB, area interfaces.Area, requestedRoomUUID stri
 	}
 	defer rows.Close()
 
-	// var retrievedRoom interfaces.Room
-	// fmt.Println("rooms in memory does not match rooms in DB, must make a call to the DB")
-	// queryString := `
-	//         SELECT r.UUID, r.area_uuid, r.name, r.description,
-	//             r.exit_north, r.exit_south, r.exit_east, r.exit_west,
-	//             r.exit_up, r.exit_down,
-	//             a.UUID AS area_uuid, a.name AS area_name, a.description AS area_description
-	//         FROM rooms r
-	//         LEFT JOIN areas a ON r.area_uuid = a.UUID
-	//         WHERE a.UUID = ? AND r.UUID = ?`
-	// row := db.QueryRow(queryString, area.GetUUID(), roomUUID)
-	// var uuid, roomAreaUUID, roomName, roomDescription, exitNorth, exitSouth, exitEast, exitWest, exitUp, exitDown, areaUUID, areaName, areaDescription string
-	// err := row.Scan(&uuid, &roomAreaUUID, &roomName, &roomDescription, &exitNorth, &exitSouth, &exitEast, &exitWest, &exitUp, &exitDown, &areaUUID, &areaName, &areaDescription)
-	// if err != nil {
-	// 	if err == sql.ErrNoRows {
-	// 		// Handle no result
-	// 		fmt.Println("No rows were returned!")
-	// 		return nil
-	// 	} else {
-	// 		// Handle other errors
-	// 		fmt.Printf("error scanning row: %v", err)
-	// 		return nil
-	// 	}
-	// }
-	// room := areas.NewRoomWithAreaInfo(uuid, roomAreaUUID, roomName, roomDescription, area.GetName(), area.GetDescription(), exitNorth, exitSouth, exitEast, exitWest, exitUp, exitDown)
-	// area.SetRooms(append(area.GetRooms(), room))
-	// if room.UUID == roomUUID {
-	// 	retrievedRoom = room
-	// }
-
 	// now that we have loaded all the rooms in the area, we can go back and hook up all the
 	// exits.  if one of the exits happens to exist in a different area, we can make a db query to retrieve that one.
 	for _, roomInArea := range area.GetRooms() {
@@ -85,8 +55,6 @@ func retrieveRoomFromDB(db *sql.DB, area interfaces.Area, requestedRoomUUID stri
 		}
 		setItems(db, roomInArea)
 		setPlayers(db, roomInArea)
-
-		// area.SetRoomAtIndex(idx, roomInArea)
 	}
 	return retrievedRoom
 }

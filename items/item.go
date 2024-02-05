@@ -1,6 +1,10 @@
 package items
 
 import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
+
 	"github.com/google/uuid"
 )
 
@@ -15,6 +19,35 @@ const (
 	Legs         = "Legs"
 	Feet         = "Feet"
 )
+
+func NewItemFromTemplate(db *sql.DB, templateUUID string) (*Item, error) {
+	var name, description string
+	var equipmentSlotsJSON string
+	query := `SELECT name, description, equipment_slots
+				FROM item_templates 
+				WHERE uuid = ?`
+	err := db.QueryRow(query, templateUUID).Scan(&name, &description, &equipmentSlotsJSON)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan row: %v", err)
+	}
+
+	itemUUID := uuid.NewString()
+	query = `INSERT INTO items (uuid, name, description, equipment_slots)
+				VALUES (?, ?, ?, ?)`
+	_, err = db.Exec(query, itemUUID, name, description, equipmentSlotsJSON)
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert item: %v", err)
+	}
+
+	var equipmentSlots []string
+	err = json.Unmarshal([]byte(equipmentSlotsJSON), &equipmentSlots)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan row: %v", err)
+	}
+
+	fmt.Printf("creating item with equipmentSlots %v", equipmentSlots)
+	return NewItem(itemUUID, name, description, equipmentSlots), nil
+}
 
 func NewItem(uuid, name, description string, equipmentSlots []string) *Item {
 	return &Item{

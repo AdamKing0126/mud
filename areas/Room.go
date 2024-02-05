@@ -6,7 +6,6 @@ import (
 	"mud/interfaces"
 	"mud/mobs"
 
-	// "mud/utils"
 	"net"
 )
 

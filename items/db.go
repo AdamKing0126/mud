@@ -2,6 +2,7 @@ package items
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"mud/interfaces"
 	"strings"
@@ -23,13 +24,19 @@ func GetItemsInRoom(db *sql.DB, roomUUID string) ([]Item, error) {
 	var items []Item
 	for rows.Next() {
 		var item Item
-		var equipmentSlots string
-		err := rows.Scan(&item.UUID, &item.Name, &item.Description, &equipmentSlots)
+		var equipmentSlotsJSON string
+		var equipmentSlots []string
+		err := rows.Scan(&item.UUID, &item.Name, &item.Description, &equipmentSlotsJSON)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row: %v", err)
 		}
 
-		for _, slot := range strings.Split(equipmentSlots, ",") {
+		err = json.Unmarshal([]byte(equipmentSlotsJSON), &equipmentSlots)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal JSON: %v", err)
+		}
+
+		for _, slot := range equipmentSlots {
 			switch slot {
 			case "Head":
 				item.EquipmentSlots = append(item.EquipmentSlots, Head)
@@ -74,47 +81,6 @@ func (item *Item) SetLocation(db *sql.DB, playerUUID string, roomUUID string) er
 		return err
 	}
 	return nil
-}
-
-// TODO Adam - Possible to just remove this entirely?
-// These should all belong on the player object.
-// Yes but how are they loaded, when the player first logs in?
-// Seems like we need this, but it's not currently being called anyplace
-func GetEquippedItemsForPlayer(db *sql.DB, playerUUID string) ([]EquippedItem, error) {
-	query := `
-	SELECT i.uuid, i.name,
-	CASE
-		WHEN pe.Head = i.uuid THEN 'Head'
-		WHEN pe.Neck = i.uuid THEN 'Neck'
-		WHEN pe.Chest = i.uuid THEN 'Chest'
-		WHEN pe.Arms = i.uuid THEN 'Arms'
-		WHEN pe.Hands = i.uuid THEN 'Hands'
-		WHEN pe.DominantHand = i.uuid THEN 'DominantHand'
-		WHEN pe.Legs = i.uuid THEN 'Legs'
-		WHEN pe.Feet = i.uuid THEN 'Feet'
-		ELSE NULL
-	END AS equipped_slot
-	FROM item_locations il
-	JOIN items i on il.item_uuid = i.uuid
-	JOIN player_equipments pe on pe.player_uuid = il.player_uuid
-	`
-
-	rows, err := db.Query(query, playerUUID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %v", err)
-	}
-
-	var items []EquippedItem
-	for rows.Next() {
-		var item EquippedItem
-		err := rows.Scan(&item.UUID, &item.Name, &item.EquippedSlot)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan row: %v", err)
-		}
-		items = append(items, item)
-	}
-
-	return items, nil
 }
 
 func GetItemsForPlayer(db *sql.DB, playerUUID string) ([]interfaces.Item, error) {

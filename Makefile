@@ -11,6 +11,7 @@ drop_db:
 
 seed_db:
 	go run ./seed/mobs/main.go
+	go run ./seed/items/main.go
 	go run ./seed/areas/main.go
 	go run ./seed/display/main.go	
 	go run ./seed/players/main.go

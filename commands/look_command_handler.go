@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
-	"mud/items"
 	"mud/world_state"
 	"strings"
 )
@@ -75,12 +74,8 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 		if !directionMatch {
 			target := arguments[0]
 			found := false
-			itemsForPlayer, err := items.GetItemsForPlayer(db, player.GetUUID())
-			if err != nil {
-				display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
-			}
 
-			items := append(currentRoom.GetItems(), itemsForPlayer...)
+			items := append(currentRoom.GetItems(), player.GetInventory()...)
 			for _, item := range items {
 				if item.GetName() == target {
 					display.PrintWithColor(player, fmt.Sprintf("%s\n", item.GetName()), "reset")

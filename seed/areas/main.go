@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"mud/items"
 
-	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"gopkg.in/yaml.v2"
 )
@@ -17,6 +17,7 @@ type RoomImport struct {
 	Description string            `yaml:"description"`
 	Exits       map[string]string `yaml:"exits"`
 	Mobs        []string          `yaml:"mobs"`
+	Items       []string          `yaml:"items"`
 }
 
 type AreaImport struct {
@@ -58,6 +59,13 @@ func SeedAreasAndRooms() {
 		  exit_west VARCHAR(36),
 		  exit_up VARCHAR(36),
 		  exit_down VARCHAR(36)
+		);
+
+		CREATE TABLE IF NOT EXISTS item_templates (
+			uuid VARCHAR(36) PRIMARY KEY,
+			name TEXT,
+			description TEXT,
+			equipment_slots TEXT
 		);
 
 		CREATE TABLE IF NOT EXISTS items (
@@ -109,7 +117,7 @@ func SeedAreasAndRooms() {
 				log.Fatalf("Failed to insert area: %v", err)
 			}
 
-			for _, room := range area.Rooms {
+			for idx, room := range area.Rooms {
 				sqlStatement := fmt.Sprintf("INSERT INTO rooms (uuid, area_uuid, name, description, exit_north, exit_south, exit_west, exit_east, exit_up, exit_down) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')", room.UUID, area.UUID, room.Name, room.Description, room.Exits["north"], room.Exits["south"], room.Exits["west"], room.Exits["east"], room.Exits["up"], room.Exits["down"])
 				_, err := db.Exec(sqlStatement)
 				if err != nil {
@@ -121,18 +129,30 @@ func SeedAreasAndRooms() {
 						log.Fatalf("Failed to attach mob to room: %v", err)
 					}
 				}
+				for _, item := range room.Items {
+					newItem, err := items.NewItemFromTemplate(db, item)
+					if err != nil {
+						log.Fatalf("error creating item from template, %v", err)
+					}
+
+					_, item_location_err := db.Exec("INSERT INTO item_locations (item_uuid, room_uuid, player_uuid) VALUES (?, ?, NULL)", newItem.UUID, area.Rooms[idx].UUID)
+					if item_location_err != nil {
+						log.Fatalf("Failed to insert item location: %v", item_location_err)
+					}
+
+				}
 			}
 
-			item_uuid := uuid.New().String()
-			_, item_err := db.Exec("INSERT INTO items (uuid, name, description, equipment_slots) VALUES (?, ?, ?, ?)", item_uuid, "sword", "A sword", "DominantHand,OffHand")
-			if item_err != nil {
-				log.Fatalf("Failed to insert item: %v", item_err)
-			}
+			// item_uuid := uuid.New().String()
+			// _, item_err := db.Exec("INSERT INTO items (uuid, name, description, equipment_slots) VALUES (?, ?, ?, ?)", item_uuid, "sword", "A sword", "DominantHand,OffHand")
+			// if item_err != nil {
+			// 	log.Fatalf("Failed to insert item: %v", item_err)
+			// }
 
-			_, item_location_err := db.Exec("INSERT INTO item_locations (item_uuid, room_uuid, player_uuid) VALUES (?, ?, NULL)", item_uuid, area.Rooms[0].UUID)
-			if item_location_err != nil {
-				log.Fatalf("Failed to insert item location: %v", item_location_err)
-			}
+			// _, item_location_err := db.Exec("INSERT INTO item_locations (item_uuid, room_uuid, player_uuid) VALUES (?, ?, NULL)", item_uuid, area.Rooms[0].UUID)
+			// if item_location_err != nil {
+			// 	log.Fatalf("Failed to insert item location: %v", item_location_err)
+			// }
 		}
 	}
 }
