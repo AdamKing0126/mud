@@ -103,6 +103,8 @@ func (h *LookCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, comm
 			for _, mobInRoom := range currentRoom.GetMobs() {
 				if strings.ToLower(mobInRoom.GetName()) == target {
 					display.PrintWithColor(player, fmt.Sprintf("You see %s.\n", mobInRoom.GetName()), "danger")
+					found = true
+					break
 				}
 			}
 

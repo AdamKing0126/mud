@@ -2,6 +2,7 @@
 
 help:
 	@echo "drop_db - Remove the database"
+	@echo "create_mobs_table - do this first"
 	@echo "seed_db - Seed the database"
 	@echo "build - Build the project"
 	@echo "run_server - Run the server"
@@ -20,6 +21,7 @@ else
 endif
 
 seed_db:
+	go run ./seed/mobs/main.go
 	go run ./seed/items/main.go
 	go run ./seed/areas/main.go
 	go run ./seed/display/main.go	

@@ -21,7 +21,7 @@ func (mob *Mob) GetArmorDescription() string {
 	return mob.ArmorDescription
 }
 
-func (mob *Mob) GetChallengeRating() float32 {
+func (mob *Mob) GetChallengeRating() float64 {
 	return mob.ChallengeRating
 }
 

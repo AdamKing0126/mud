@@ -16,7 +16,7 @@ type SQLiteDatabase struct {
 }
 
 func NewSQLiteDatabase(databaseFile string) (*SQLiteDatabase, error) {
-	db, err := sql.Open("sqlite3", databaseFile)
+	db, err := sqlx.Open("sqlite3", databaseFile)
 	if err != nil {
 		return nil, err
 	}

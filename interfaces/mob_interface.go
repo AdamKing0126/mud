@@ -6,7 +6,7 @@ type Mob interface {
 	GetAlignment() string
 	GetArmorClass() int32
 	GetArmorDescription() string
-	GetChallengeRating() float32
+	GetChallengeRating() float64
 	GetCharisma() int32
 	GetCharismaSave() int32
 	GetConditionImmunities() string
@@ -36,4 +36,5 @@ type Mob interface {
 	GetType() string
 	GetWisdom() int32
 	GetWisdomSave() int32
+	RollHitDice() int
 }
