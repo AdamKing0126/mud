@@ -1,12 +1,13 @@
 package players
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
 	"net"
 	"reflect"
+
+	"github.com/jmoiron/sqlx"
 )
 
 func NewPlayer(conn net.Conn) *Player {
@@ -36,7 +37,7 @@ type Player struct {
 	Inventory       []interfaces.Item
 }
 
-func (player *Player) AddItem(db *sql.DB, item interfaces.Item) error {
+func (player *Player) AddItem(db *sqlx.DB, item interfaces.Item) error {
 	err := item.SetLocation(db, player.UUID, "")
 	if err != nil {
 		return err
@@ -60,7 +61,7 @@ func (player *Player) RemoveItem(item interfaces.Item) error {
 	return nil
 }
 
-func (player *Player) Regen(db *sql.DB) error {
+func (player *Player) Regen(db *sqlx.DB) error {
 	healthRegen := calculateHealthRegen(player)
 	manaRegen := calculateManaRegen(player)
 	movementRegen := calculateMovementRegen(player)
@@ -87,7 +88,7 @@ func (player *Player) Regen(db *sql.DB) error {
 	return nil
 }
 
-func (player *Player) Remove(db *sql.DB, itemName string) {
+func (player *Player) Remove(db *sqlx.DB, itemName string) {
 	if player.Equipment.DominantHand.GetName() == itemName {
 		equippedItem := player.Equipment.DominantHand
 		player.AddItem(db, equippedItem)
@@ -103,7 +104,7 @@ func (player *Player) Remove(db *sql.DB, itemName string) {
 	}
 }
 
-func (player *Player) Equip(db *sql.DB, item interfaces.Item) bool {
+func (player *Player) Equip(db *sqlx.DB, item interfaces.Item) bool {
 	// get the location where the thing goes
 	val := reflect.ValueOf(&player.Equipment).Elem()
 	itemEquipSlots := []string{}

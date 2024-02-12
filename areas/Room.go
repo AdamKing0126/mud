@@ -1,12 +1,12 @@
 package areas
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/interfaces"
-	"mud/mobs"
 
 	"net"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type PlayerInRoomInterface interface {
@@ -27,7 +27,7 @@ type Room struct {
 	Exits       *ExitInfo
 	Items       []interfaces.Item
 	Players     []interfaces.Player
-	Mobs        []mobs.Mob
+	Mobs        []interfaces.Mob
 }
 
 func (room *Room) GetUUID() string {
@@ -36,6 +36,10 @@ func (room *Room) GetUUID() string {
 
 func (room *Room) GetPlayers() []interfaces.Player {
 	return room.Players
+}
+
+func (room *Room) GetMobs() []interfaces.Mob {
+	return room.Mobs
 }
 
 func (room *Room) GetPlayerByName(playerName string) interfaces.Player {
@@ -98,6 +102,10 @@ func (room *Room) SetPlayers(players []interfaces.Player) {
 	room.Players = players
 }
 
+func (room *Room) SetMobs(mobs []interfaces.Mob) {
+	room.Mobs = mobs
+}
+
 func (room *Room) SetItems(items []interfaces.Item) {
 	room.Items = items
 }
@@ -112,7 +120,7 @@ func NewRoomWithAreaInfo(uuid string, area_uuid string, name string, description
 	return &Room{UUID: uuid, AreaUUID: area_uuid, Name: name, Description: description, Area: *areaInfo, Exits: exitInfo}
 }
 
-func (room *Room) AddItem(db *sql.DB, item interfaces.Item) error {
+func (room *Room) AddItem(db *sqlx.DB, item interfaces.Item) error {
 	room.Items = append(room.Items, item)
 	err := item.SetLocation(db, "", room.UUID)
 	if err != nil {

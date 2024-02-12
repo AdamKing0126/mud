@@ -1,9 +1,7 @@
 package interfaces
 
-import (
-	"database/sql"
-)
+import "github.com/jmoiron/sqlx"
 
 type CommandRouter interface {
-	HandleCommand(db *sql.DB, player Player, command []byte)
+	HandleCommand(db *sqlx.DB, player Player, command []byte)
 }

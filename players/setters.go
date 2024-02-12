@@ -1,10 +1,11 @@
 package players
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/interfaces"
 	"net"
+
+	"github.com/jmoiron/sqlx"
 )
 
 func (player *Player) SetAbilities(abilities interfaces.PlayerAbilities) error {
@@ -36,7 +37,7 @@ func (player *Player) SetInventory(inventory []interfaces.Item) {
 	player.Inventory = inventory
 }
 
-func (player *Player) SetLocation(db *sql.DB, roomUUID string) error {
+func (player *Player) SetLocation(db *sqlx.DB, roomUUID string) error {
 	area_rows, err := db.Query("SELECT area_uuid FROM rooms WHERE uuid=?", roomUUID)
 	if err != nil {
 		return fmt.Errorf("error retrieving area: %v", err)

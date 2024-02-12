@@ -9,15 +9,14 @@ import (
 	"reflect"
 	"strings"
 
-	"database/sql"
-
+	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
 	nextUrl := "https://api.open5e.com/v1/monsters/"
 
-	db, err := sql.Open("sqlite3", "../sql_database/monster_imports.db")
+	db, err := sqlx.Open("sqlite3", "./sql_database/monster_imports.db")
 	if err != nil {
 		log.Fatalf("Failed to open SQLite database: %v", err)
 	} else {
@@ -157,7 +156,7 @@ func examineResult(result interface{}) {
 	}
 }
 
-func writeMonstersToDB(db *sql.DB, monsters []MonsterImport) {
+func writeMonstersToDB(db *sqlx.DB, monsters []MonsterImport) {
 
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS mob_imports (
@@ -203,8 +202,8 @@ func writeMonstersToDB(db *sql.DB, monsters []MonsterImport) {
 			special_abilities STRING,
 			speed STRING,
 			spell_list STRING,
-			strength STRING,
-			strength_save STRING,
+			strength INTEGER,
+			strength_save INTEGER,
 			subtype STRING,
 			type STRING,
 			wisdom INTEGER,

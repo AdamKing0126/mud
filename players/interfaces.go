@@ -1,14 +1,12 @@
 package players
 
-import (
-	"database/sql"
-)
+import "github.com/jmoiron/sqlx"
 
 type Item interface {
 	GetUUID() string
 	GetName() string
 	GetDescription() string
-	SetLocation(db *sql.DB, playerUUID string, roomUUID string) error
+	SetLocation(db *sqlx.DB, playerUUID string, roomUUID string) error
 	GetEquipmentSlots() []string
 }
 

@@ -1,18 +1,20 @@
 package world_state
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/interfaces"
+
+	"github.com/jmoiron/sqlx"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type WorldState struct {
 	Areas         map[string]interfaces.Area
 	RoomToAreaMap map[string]string
-	DB            *sql.DB
+	DB            *sqlx.DB
 }
 
-func NewWorldState(areas map[string]interfaces.Area, roomToAreaMap map[string]string, db *sql.DB) *WorldState {
+func NewWorldState(areas map[string]interfaces.Area, roomToAreaMap map[string]string, db *sqlx.DB) *WorldState {
 	return &WorldState{Areas: areas, RoomToAreaMap: roomToAreaMap, DB: db}
 }
 

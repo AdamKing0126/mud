@@ -1,25 +1,26 @@
 package interfaces
 
 import (
-	"database/sql"
 	"net"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type Player interface {
-	AddItem(db *sql.DB, item Item) error
+	AddItem(db *sqlx.DB, item Item) error
 	RemoveItem(item Item) error
 	DisplayEquipment()
-	Equip(db *sql.DB, item Item) bool
+	Equip(db *sqlx.DB, item Item) bool
 	GetAbilities() Abilities
 	GetArmorClass() int
 	GetArea() Area
 	GetAreaUUID() string
 	GetColorProfile() ColorProfile
-	GetColorProfileFromDB(db *sql.DB) error
+	GetColorProfileFromDB(db *sqlx.DB) error
 	GetCommands() []string
 	GetConn() net.Conn
 	GetEquipment() PlayerEquipment
-	GetEquipmentFromDB(db *sql.DB) error
+	GetEquipmentFromDB(db *sqlx.DB) error
 	GetHashedPassword() string
 	GetHealth() int
 	GetHealthMax() int
@@ -34,14 +35,14 @@ type Player interface {
 	GetRoom() Room
 	GetRoomUUID() string
 	GetUUID() string
-	Logout(db *sql.DB) error
-	Regen(db *sql.DB) error
-	Remove(db *sql.DB, itemName string)
+	Logout(db *sqlx.DB) error
+	Regen(db *sqlx.DB) error
+	Remove(db *sqlx.DB, itemName string)
 	SetAbilities(PlayerAbilities) error
 	SetCommands([]string)
 	SetConn(net.Conn)
 	SetHealth(int)
-	SetLocation(db *sql.DB, roomUUID string) error
+	SetLocation(db *sqlx.DB, roomUUID string) error
 	SetInventory([]Item)
 	SetRoom(Room)
 }

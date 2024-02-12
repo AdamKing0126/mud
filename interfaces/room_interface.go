@@ -1,6 +1,6 @@
 package interfaces
 
-import "database/sql"
+import "github.com/jmoiron/sqlx"
 
 type Room interface {
 	GetUUID() string
@@ -9,11 +9,13 @@ type Room interface {
 	GetPlayers() []Player
 	GetPlayerByName(string) Player
 	SetPlayers([]Player)
+	GetMobs() []Mob
+	SetMobs([]Mob)
 	GetExits() ExitInfo
 	SetItems([]Item)
 	GetItems() []Item
 	AddPlayer(Player)
-	AddItem(*sql.DB, Item) error
+	AddItem(*sqlx.DB, Item) error
 	RemoveItem(Item) error
 	RemovePlayer(Player) error
 	SetExits(ExitInfo)

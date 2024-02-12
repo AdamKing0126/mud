@@ -1,20 +1,21 @@
 package commands
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
 	"mud/notifications"
 	"mud/players"
 	"strconv"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type AdminSetHealthCommandHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func (h *AdminSetHealthCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func (h *AdminSetHealthCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	target := arguments[0]
 	value := arguments[1]
 

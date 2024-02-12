@@ -1,6 +1,6 @@
 package interfaces
 
-import "database/sql"
+import "github.com/jmoiron/sqlx"
 
 type Area interface {
 	GetUUID() string
@@ -10,5 +10,5 @@ type Area interface {
 	GetRoomByUUID(string) (Room, error)
 	SetRooms([]Room)
 	SetRoomAtIndex(idx int, room Room)
-	Run(db *sql.DB, ch chan Action, connections map[string]Player)
+	Run(db *sqlx.DB, ch chan Action, connections map[string]Player)
 }

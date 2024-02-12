@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -29,7 +30,7 @@ func HashPassword(password string) string {
 	return string(hashedPassword)
 }
 
-func createPlayer(conn net.Conn, db *sql.DB, playerName string) (*Player, error) {
+func createPlayer(conn net.Conn, db *sqlx.DB, playerName string) (*Player, error) {
 	player := &Player{}
 	player.Name = playerName
 
@@ -103,7 +104,7 @@ func createPlayer(conn net.Conn, db *sql.DB, playerName string) (*Player, error)
 // each one of these steps results in another database query, but I thought it
 // best to keep the actions atomic for now, rather than trying to build one
 // huge query which has joins all over the place.
-func LoginPlayer(conn net.Conn, db *sql.DB) (*Player, error) {
+func LoginPlayer(conn net.Conn, db *sqlx.DB) (*Player, error) {
 
 	fmt.Fprintf(conn, "Welcome! Please enter your player name: ")
 	playerName := getPlayerInput(conn)
@@ -159,7 +160,7 @@ func LoginPlayer(conn net.Conn, db *sql.DB) (*Player, error) {
 	return player, nil
 }
 
-func (player *Player) Logout(db *sql.DB) error {
+func (player *Player) Logout(db *sqlx.DB) error {
 	stmt, err := db.Prepare("UPDATE players SET logged_in = FALSE WHERE uuid = ?")
 	if err != nil {
 		return err

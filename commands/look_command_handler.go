@@ -1,12 +1,13 @@
 package commands
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
 	"mud/world_state"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type LookCommandHandler struct {
@@ -17,7 +18,7 @@ func (h *LookCommandHandler) SetWorldState(world_state *world_state.WorldState) 
 	h.WorldState = world_state
 }
 
-func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func (h *LookCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	currentRoom := player.GetRoom()
 
 	if len(arguments) == 0 {
@@ -31,6 +32,13 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 				display.PrintWithColor(player, fmt.Sprintf("%s\n", item.GetName()), "primary")
 			}
 			display.PrintWithColor(player, "\n", "reset")
+		}
+
+		if len(currentRoom.GetMobs()) > 0 {
+			for _, mob := range currentRoom.GetMobs() {
+				display.PrintWithColor(player, fmt.Sprintf("%s\n", mob.GetName()), "warning")
+			}
+
 		}
 
 		if len(currentRoom.GetPlayers()) > 1 {
@@ -89,6 +97,12 @@ func (h *LookCommandHandler) Execute(db *sql.DB, player interfaces.Player, comma
 					display.PrintWithColor(player, fmt.Sprintf("You see %s.\n", playerInRoom.GetName()), "reset")
 					found = true
 					break
+				}
+			}
+
+			for _, mobInRoom := range currentRoom.GetMobs() {
+				if strings.ToLower(mobInRoom.GetName()) == target {
+					display.PrintWithColor(player, fmt.Sprintf("You see %s.\n", mobInRoom.GetName()), "danger")
 				}
 			}
 

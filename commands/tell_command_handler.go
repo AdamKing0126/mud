@@ -1,20 +1,21 @@
 package commands
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
 	"mud/notifications"
 	"mud/players"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type TellHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func (h *TellHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func (h *TellHandler) Execute(db *sqlx.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	msg := strings.Join(arguments[1:], " ")
 	retrievedPlayer, err := players.GetPlayerByName(db, arguments[0])
 	if err != nil {

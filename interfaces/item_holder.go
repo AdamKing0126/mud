@@ -1,8 +1,8 @@
 package interfaces
 
-import "database/sql"
+import "github.com/jmoiron/sqlx"
 
 type ItemHolder interface {
-	AddItem(db *sql.DB, item Item) error
+	AddItem(db *sqlx.DB, item Item) error
 	RemoveItem(item Item) error
 }

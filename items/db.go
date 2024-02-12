@@ -1,14 +1,15 @@
 package items
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"mud/interfaces"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
 )
 
-func GetItemsInRoom(db *sql.DB, roomUUID string) ([]Item, error) {
+func GetItemsInRoom(db *sqlx.DB, roomUUID string) ([]Item, error) {
 	query := `
 		SELECT i.uuid, i.name, i.description, i.equipment_slots
 		FROM item_locations il
@@ -69,7 +70,7 @@ func GetItemsInRoom(db *sql.DB, roomUUID string) ([]Item, error) {
 	return items, nil
 }
 
-func (item *Item) SetLocation(db *sql.DB, playerUUID string, roomUUID string) error {
+func (item *Item) SetLocation(db *sqlx.DB, playerUUID string, roomUUID string) error {
 	var query string
 	if playerUUID != "" {
 		query = fmt.Sprintf("UPDATE item_locations SET room_uuid = '', player_uuid = '%s' WHERE item_uuid = '%s'", playerUUID, item.UUID)
@@ -83,7 +84,7 @@ func (item *Item) SetLocation(db *sql.DB, playerUUID string, roomUUID string) er
 	return nil
 }
 
-func GetItemsForPlayer(db *sql.DB, playerUUID string) ([]interfaces.Item, error) {
+func GetItemsForPlayer(db *sqlx.DB, playerUUID string) ([]interfaces.Item, error) {
 	query := `
 		SELECT i.uuid, i.name, i.description, i.equipment_slots
 		FROM item_locations il
@@ -149,7 +150,7 @@ func GetItemsForPlayer(db *sql.DB, playerUUID string) ([]interfaces.Item, error)
 	return itemInterfaces, nil
 }
 
-func GetItemByNameForPlayer(db *sql.DB, itemName string, playerUUID string) (interfaces.Item, error) {
+func GetItemByNameForPlayer(db *sqlx.DB, itemName string, playerUUID string) (interfaces.Item, error) {
 	items, err := GetItemsForPlayer(db, playerUUID)
 	if err != nil {
 		return nil, err

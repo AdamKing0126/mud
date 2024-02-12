@@ -1,12 +1,13 @@
 package commands
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
 	"mud/notifications"
 	"mud/world_state"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type MovePlayerCommandHandler struct {
@@ -15,7 +16,7 @@ type MovePlayerCommandHandler struct {
 	WorldState *world_state.WorldState
 }
 
-func movePlayerToDirection(worldState *world_state.WorldState, db *sql.DB, player interfaces.Player, room interfaces.Room, direction string, notifier *notifications.Notifier, world_state *world_state.WorldState, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func movePlayerToDirection(worldState *world_state.WorldState, db *sqlx.DB, player interfaces.Player, room interfaces.Room, direction string, notifier *notifications.Notifier, world_state *world_state.WorldState, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	if room == nil || room.GetUUID() == "" {
 		display.PrintWithColor(player, "You cannot go that way.", "reset")
 	} else {
@@ -34,7 +35,7 @@ func movePlayerToDirection(worldState *world_state.WorldState, db *sql.DB, playe
 	}
 }
 
-func (h *MovePlayerCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func (h *MovePlayerCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	areaUUID := player.GetAreaUUID()
 
 	currentRoom := player.GetRoom()

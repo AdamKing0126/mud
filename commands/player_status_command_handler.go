@@ -1,17 +1,18 @@
 package commands
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/combat"
 	"mud/display"
 	"mud/interfaces"
 	"mud/players"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type PlayerStatusCommandHandler struct{}
 
-func (h *PlayerStatusCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func (h *PlayerStatusCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	playerAbilities := &players.PlayerAbilities{}
 
 	query := "SELECT * FROM player_abilities WHERE player_uuid = ?"

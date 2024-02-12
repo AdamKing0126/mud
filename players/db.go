@@ -1,14 +1,15 @@
 package players
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/interfaces"
 	"mud/items"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
 )
 
-func setPlayerLoggedInStatusInDB(db *sql.DB, playerUUID string, loggedIn bool) error {
+func setPlayerLoggedInStatusInDB(db *sqlx.DB, playerUUID string, loggedIn bool) error {
 	_, err := db.Exec("UPDATE players SET logged_in = ? WHERE uuid = ?", loggedIn, playerUUID)
 	if err != nil {
 		return err
@@ -16,7 +17,7 @@ func setPlayerLoggedInStatusInDB(db *sql.DB, playerUUID string, loggedIn bool) e
 	return nil
 }
 
-func GetPlayerByName(db *sql.DB, name string) (*Player, error) {
+func GetPlayerByName(db *sqlx.DB, name string) (*Player, error) {
 	var player Player
 	var playerAbilities PlayerAbilities
 	err := db.QueryRow("SELECT p.uuid, p.name, p.room, p.area, p.health, p.movement, p.mana, p.logged_in, pa.intelligence, pa.dexterity, pa.charisma, pa.constitution, pa.wisdom, pa.strength FROM players p JOIN player_attributes pa ON p.uuid = pa.player_uuid WHERE LOWER(p.name) = LOWER(?)", name).
@@ -27,7 +28,7 @@ func GetPlayerByName(db *sql.DB, name string) (*Player, error) {
 	return &player, nil
 }
 
-func GetPlayerFromDB(db *sql.DB, playerName string) (*Player, error) {
+func GetPlayerFromDB(db *sqlx.DB, playerName string) (*Player, error) {
 	var player Player
 	var colorProfileUUID string
 	err := db.QueryRow("SELECT uuid, name, room, area, health, health_max, movement, movement_max, mana, mana_max, logged_in, password, color_profile FROM players WHERE LOWER(name) = LOWER(?)", playerName).
@@ -40,7 +41,7 @@ func GetPlayerFromDB(db *sql.DB, playerName string) (*Player, error) {
 	return &player, nil
 }
 
-func (player *Player) GetColorProfileFromDB(db *sql.DB) error {
+func (player *Player) GetColorProfileFromDB(db *sqlx.DB) error {
 	var colorProfile = ColorProfile{}
 	query := `SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color 
 	FROM color_profiles WHERE uuid = ?;`
@@ -52,7 +53,7 @@ func (player *Player) GetColorProfileFromDB(db *sql.DB) error {
 	return nil
 }
 
-func (player *Player) GetInventoryFromDB(db *sql.DB) error {
+func (player *Player) GetInventoryFromDB(db *sqlx.DB) error {
 	queryString := `SELECT i.uuid, i.name, i.description, i.equipment_slots FROM item_locations il JOIN items i ON il.player_uuid = ? AND il.item_uuid = i.uuid;`
 	rows, err := db.Query(queryString, player.UUID)
 	if err != nil {
@@ -75,7 +76,7 @@ func (player *Player) GetInventoryFromDB(db *sql.DB) error {
 
 }
 
-func (player *Player) GetEquipmentFromDB(db *sql.DB) error {
+func (player *Player) GetEquipmentFromDB(db *sqlx.DB) error {
 	var head, neck, chest, arms, hands, dominantHand, offHand, legs, feet string
 	query := `SELECT uuid, player_uuid, Head, Neck, Chest, Arms, Hands, DominantHand, OffHand, Legs, Feet 
 			  FROM player_equipments 
@@ -145,7 +146,7 @@ func (player *Player) GetEquipmentFromDB(db *sql.DB) error {
 }
 
 // Used when creating a new player, fetch a ColorProfile to assign to the new player
-func getColorProfileFromDB(db *sql.DB, colorProfileUUID string) (*ColorProfile, error) {
+func getColorProfileFromDB(db *sqlx.DB, colorProfileUUID string) (*ColorProfile, error) {
 	var colorProfile ColorProfile
 	query := `SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color
 				FROM color_profiles
@@ -159,7 +160,7 @@ func getColorProfileFromDB(db *sql.DB, colorProfileUUID string) (*ColorProfile, 
 	return &colorProfile, nil
 }
 
-func GetPlayersInRoom(db *sql.DB, roomUUID string) ([]Player, error) {
+func GetPlayersInRoom(db *sqlx.DB, roomUUID string) ([]Player, error) {
 	// Would it be better to rely on the `connections` structure attached to the server
 	// or is it better to query the db for this info?
 	query := `

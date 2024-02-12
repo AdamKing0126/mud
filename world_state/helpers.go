@@ -1,12 +1,14 @@
 package world_state
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/areas"
 	"mud/interfaces"
 	"mud/items"
+	"mud/mobs"
 	"mud/players"
+
+	"github.com/jmoiron/sqlx"
 )
 
 func getRoomFromAreaByUUID(area interfaces.Area, roomUUID string) interfaces.Room {
@@ -19,7 +21,7 @@ func getRoomFromAreaByUUID(area interfaces.Area, roomUUID string) interfaces.Roo
 	return nil
 }
 
-func retrieveRoomFromDB(db *sql.DB, area interfaces.Area, requestedRoomUUID string, followExits bool) interfaces.Room {
+func retrieveRoomFromDB(db *sqlx.DB, area interfaces.Area, requestedRoomUUID string, followExits bool) interfaces.Room {
 	var retrievedRoom interfaces.Room
 	queryString := `
 	SELECT r.UUID, r.area_uuid, r.name, r.description,
@@ -55,11 +57,12 @@ func retrieveRoomFromDB(db *sql.DB, area interfaces.Area, requestedRoomUUID stri
 		}
 		setItems(db, roomInArea)
 		setPlayers(db, roomInArea)
+		setMobs(db, roomInArea)
 	}
 	return retrievedRoom
 }
 
-func getExitRoom(area interfaces.Area, room interfaces.Room, db *sql.DB) interfaces.Room {
+func getExitRoom(area interfaces.Area, room interfaces.Room, db *sqlx.DB) interfaces.Room {
 	if room != nil {
 		if room.GetName() == "" {
 			exitRoom := getRoomFromAreaByUUID(area, room.GetUUID())
@@ -78,7 +81,7 @@ func getExitRoom(area interfaces.Area, room interfaces.Room, db *sql.DB) interfa
 	return nil
 }
 
-func setExits(db *sql.DB, area interfaces.Area, roomInArea interfaces.Room) {
+func setExits(db *sqlx.DB, area interfaces.Area, roomInArea interfaces.Room) {
 	exits := roomInArea.GetExits()
 	exitInfo := areas.ExitInfo{}
 	exitInfo.South = getExitRoom(area, exits.GetSouth(), db)
@@ -90,7 +93,21 @@ func setExits(db *sql.DB, area interfaces.Area, roomInArea interfaces.Room) {
 	roomInArea.SetExits(&exitInfo)
 }
 
-func setPlayers(db *sql.DB, roomInArea interfaces.Room) {
+func setMobs(db *sqlx.DB, roomInArea interfaces.Room) {
+	// retrieve the mobs and attach them to the room in the WorldState
+	mobsInRoom, err := mobs.GetMobsInRoom(db, roomInArea.GetUUID())
+	if err != nil {
+		fmt.Printf("error retrieving mobs: %v", err)
+	}
+
+	mobInterfaces := make([]interfaces.Mob, len(mobsInRoom))
+	for i, mob := range mobsInRoom {
+		mobInterfaces[i] = &mob
+	}
+	roomInArea.SetMobs(mobInterfaces)
+}
+
+func setPlayers(db *sqlx.DB, roomInArea interfaces.Room) {
 	// retrieve the players and attach them to the room in the WorldState
 	playersInRoom, err := players.GetPlayersInRoom(db, roomInArea.GetUUID())
 	if err != nil {
@@ -103,7 +120,7 @@ func setPlayers(db *sql.DB, roomInArea interfaces.Room) {
 	roomInArea.SetPlayers(playerInterfaces)
 }
 
-func setItems(db *sql.DB, roomInArea interfaces.Room) {
+func setItems(db *sqlx.DB, roomInArea interfaces.Room) {
 	// retrieve the items and attach them to the room in the WorldState
 	itemsInRoom, err := items.GetItemsInRoom(db, roomInArea.GetUUID())
 	if err != nil {

@@ -1,8 +1,9 @@
 package players
 
 import (
-	"database/sql"
 	"mud/interfaces"
+
+	"github.com/jmoiron/sqlx"
 )
 
 func NewPlayerEquipment() *PlayerEquipment {
@@ -68,6 +69,6 @@ func (pe *PlayerEquipment) GetFeet() interfaces.EquippedItem {
 }
 
 // TODO working on this, I can't remember at the moment why i left this in here
-func (pe *PlayerEquipment) GetEquippedLocation(db *sql.DB, item EquippedItem) string {
+func (pe *PlayerEquipment) GetEquippedLocation(db *sqlx.DB, item EquippedItem) string {
 	return "foo"
 }

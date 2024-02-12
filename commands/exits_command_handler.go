@@ -1,12 +1,13 @@
 package commands
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
 	"mud/world_state"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type ExitsCommandHandler struct {
@@ -18,7 +19,7 @@ func (h *ExitsCommandHandler) SetWorldState(world_state *world_state.WorldState)
 	h.WorldState = world_state
 }
 
-func (h *ExitsCommandHandler) Execute(_ *sql.DB, player interfaces.Player, _ string, _ []string, _ chan interfaces.Action, _ func(string)) {
+func (h *ExitsCommandHandler) Execute(_ *sqlx.DB, player interfaces.Player, _ string, _ []string, _ chan interfaces.Action, _ func(string)) {
 	currentRoom := player.GetRoom()
 	exits := currentRoom.GetExits()
 	exitMap := map[string]interfaces.Room{

@@ -1,11 +1,12 @@
 package commands
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
 	"mud/notifications"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type GiveCommandHandler struct {
@@ -16,7 +17,7 @@ func (h *GiveCommandHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
 }
 
-func (h *GiveCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func (h *GiveCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	item := player.GetItemFromInventory(arguments[0])
 	if item == nil {
 		display.PrintWithColor(player, "You don't have that item", "reset")

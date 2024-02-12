@@ -1,11 +1,11 @@
 package items
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 	Feet         = "Feet"
 )
 
-func NewItemFromTemplate(db *sql.DB, templateUUID string) (*Item, error) {
+func NewItemFromTemplate(db *sqlx.DB, templateUUID string) (*Item, error) {
 	var name, description string
 	var equipmentSlotsJSON string
 	query := `SELECT name, description, equipment_slots

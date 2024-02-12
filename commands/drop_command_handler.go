@@ -1,18 +1,19 @@
 package commands
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
 	"mud/notifications"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type DropCommandHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func (h *DropCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func (h *DropCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	roomUUID := player.GetRoomUUID()
 	room := player.GetRoom()
 

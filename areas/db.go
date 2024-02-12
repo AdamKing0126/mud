@@ -1,11 +1,12 @@
 package areas
 
 import (
-	"database/sql"
 	"fmt"
+
+	"github.com/jmoiron/sqlx"
 )
 
-func GetRoomFromDB(roomUUID string, db *sql.DB) (*Room, error) {
+func GetRoomFromDB(roomUUID string, db *sqlx.DB) (*Room, error) {
 	query := `
 		SELECT r.UUID, r.area_uuid, r.name, r.description,
 			r.exit_north, r.exit_south, r.exit_east, r.exit_west,

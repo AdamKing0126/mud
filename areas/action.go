@@ -1,11 +1,12 @@
 package areas
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
 	"time"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type Action struct {
@@ -27,12 +28,12 @@ func (a *Action) GetArguments() []string {
 }
 
 type ActionHandler interface {
-	Execute(db *sql.DB, player interfaces.Player, action *Action, updateChannel func(string))
+	Execute(db *sqlx.DB, player interfaces.Player, action *Action, updateChannel func(string))
 }
 
 type FooActionHandler struct{}
 
-func (h *FooActionHandler) Execute(db *sql.DB, player interfaces.Player, action *Action, updateChannel func(string)) {
+func (h *FooActionHandler) Execute(db *sqlx.DB, player interfaces.Player, action *Action, updateChannel func(string)) {
 	display.PrintWithColor(player, "FooActionHandler.Execute()\n", "danger")
 }
 
@@ -40,7 +41,7 @@ var ActionHandlers = map[string]ActionHandler{
 	"foo": &FooActionHandler{},
 }
 
-func (a *Area) Run(db *sql.DB, ch chan interfaces.Action, connections map[string]interfaces.Player) {
+func (a *Area) Run(db *sqlx.DB, ch chan interfaces.Action, connections map[string]interfaces.Player) {
 	ticker := time.NewTicker(time.Second)
 	tickerCounter := 0
 	defer ticker.Stop()

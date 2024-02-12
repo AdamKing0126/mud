@@ -1,13 +1,19 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"mud/items"
+	"mud/mobs"
+	"reflect"
+	"strings"
 
+	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
+	"github.com/jmoiron/sqlx/reflectx"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/mitchellh/mapstructure"
 	"gopkg.in/yaml.v2"
 )
 
@@ -27,8 +33,9 @@ type AreaImport struct {
 	Rooms       []RoomImport `yaml:"rooms"`
 }
 
-func SeedAreasAndRooms() {
-	db, err := sql.Open("sqlite3", "./sql_database/mud.db")
+func SeedAreasAndRooms(dbPath string, monstersImportDbPath string) error {
+	// db, err := sql.Open("sqlite3", dbPath)
+	db, err := sqlx.Connect("sqlite3", dbPath)
 	if err != nil {
 		log.Fatalf("Failed to open SQLite database: %v", err)
 	} else {
@@ -36,10 +43,21 @@ func SeedAreasAndRooms() {
 		if err != nil {
 			log.Fatalf("Failed to ping database: %v", err)
 		}
-		fmt.Println("Database opened successfully")
+		fmt.Println("Mud Database opened successfully")
 	}
-
 	defer db.Close()
+
+	monstersDB, err := sqlx.Connect("sqlite3", monstersImportDbPath)
+	if err != nil {
+		log.Fatalf("Failed to open Monster Imports database: %v", err)
+	} else {
+		err := db.Ping()
+		if err != nil {
+			log.Fatalf("Failed to ping database Monster Imports: %v", err)
+		}
+		fmt.Println("Monster Imports Database opened successfully")
+	}
+	defer monstersDB.Close()
 
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS areas (
@@ -117,19 +135,63 @@ func SeedAreasAndRooms() {
 				log.Fatalf("Failed to insert area: %v", err)
 			}
 
-			for idx, room := range area.Rooms {
+			// for idx, room := range area.Rooms {
+			for _, room := range area.Rooms {
 				sqlStatement := fmt.Sprintf("INSERT INTO rooms (uuid, area_uuid, name, description, exit_north, exit_south, exit_west, exit_east, exit_up, exit_down) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')", room.UUID, area.UUID, room.Name, room.Description, room.Exits["north"], room.Exits["south"], room.Exits["west"], room.Exits["east"], room.Exits["up"], room.Exits["down"])
 				_, err := db.Exec(sqlStatement)
 				if err != nil {
 					log.Fatalf("Failed to insert room: %v", err)
 				}
-				for _, mob := range room.Mobs {
-					_, err := db.Exec("UPDATE mobs SET room_uuid = ?, area_uuid = ? WHERE uuid = ?", room.UUID, area.UUID, mob)
+				for _, slug := range room.Mobs {
+					// get the mob by slug from the monsters_import database
+
+					var tableNames []string
+					err = monstersDB.Select(&tableNames, "SELECT name from sqlite_master WHERE type='table';")
 					if err != nil {
-						log.Fatalf("Failed to attach mob to room: %v", err)
+						log.Fatalf("%v", err)
 					}
+
+					row := monstersDB.QueryRowx("SELECT * from mob_imports where slug = ?", slug)
+
+					// have to create a result interface, in order to ignore columns in the
+					// table which are not present on the struct
+					result := make(map[string]interface{})
+					err = row.MapScan(result)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					var mob mobs.Mob
+					err = mapstructure.Decode(result, &mob)
+
+					if err != nil {
+						log.Fatalf("failed to fetch mob from mob_imports: %v", err)
+					}
+
+					mob.RoomUUID = room.UUID
+					mob.AreaUUID = area.UUID
+
+					fmt.Println("yo")
+					mapper := reflectx.NewMapperFunc("db", strings.ToLower)
+
+					fieldInfos := mapper.TypeMap(reflect.TypeOf(mobs.Mob{})).Names
+					fields := make([]string, 0, len(fieldInfos))
+					for field := range fieldInfos {
+						fields = append(fields, field)
+					}
+
+					columns := strings.Join(fields, ", :")
+					columns = ":" + columns
+
+					query := fmt.Sprintf("INSERT INTO mobs (%s) VALUES (%s)", strings.Join(fields, ", "), columns)
+
+					_, err := db.NamedExec(query, mob)
+					if err != nil {
+						log.Fatalf("failed to insert mob into mobs: %v", err)
+					}
+
 				}
-				for _, item := range room.Items {
+				for idx, item := range room.Items {
 					newItem, err := items.NewItemFromTemplate(db, item)
 					if err != nil {
 						log.Fatalf("error creating item from template, %v", err)
@@ -143,20 +205,23 @@ func SeedAreasAndRooms() {
 				}
 			}
 
-			// item_uuid := uuid.New().String()
-			// _, item_err := db.Exec("INSERT INTO items (uuid, name, description, equipment_slots) VALUES (?, ?, ?, ?)", item_uuid, "sword", "A sword", "DominantHand,OffHand")
-			// if item_err != nil {
-			// 	log.Fatalf("Failed to insert item: %v", item_err)
-			// }
+			item_uuid := uuid.New().String()
+			_, item_err := db.Exec("INSERT INTO items (uuid, name, description, equipment_slots) VALUES (?, ?, ?, ?)", item_uuid, "sword", "A sword", "DominantHand,OffHand")
+			if item_err != nil {
+				log.Fatalf("Failed to insert item: %v", item_err)
+			}
 
-			// _, item_location_err := db.Exec("INSERT INTO item_locations (item_uuid, room_uuid, player_uuid) VALUES (?, ?, NULL)", item_uuid, area.Rooms[0].UUID)
-			// if item_location_err != nil {
-			// 	log.Fatalf("Failed to insert item location: %v", item_location_err)
-			// }
+			_, item_location_err := db.Exec("INSERT INTO item_locations (item_uuid, room_uuid, player_uuid) VALUES (?, ?, NULL)", item_uuid, area.Rooms[0].UUID)
+			if item_location_err != nil {
+				log.Fatalf("Failed to insert item location: %v", item_location_err)
+			}
 		}
 	}
+	return nil
 }
 
 func main() {
-	SeedAreasAndRooms()
+	dbPath := "./sql_database/mud.db"
+	monstersImportDbPath := "./sql_database/monster_imports.db"
+	SeedAreasAndRooms(dbPath, monstersImportDbPath)
 }

@@ -2,6 +2,8 @@ package sql_database
 
 import (
 	"database/sql"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type Database interface {
@@ -10,7 +12,7 @@ type Database interface {
 }
 
 type SQLiteDatabase struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
 func NewSQLiteDatabase(databaseFile string) (*SQLiteDatabase, error) {

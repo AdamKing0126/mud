@@ -9,8 +9,17 @@ help:
 drop_db:
 	rm -f ./sql_database/mud.db
 
-seed_db:
+
+test ?= false
+
+create_mobs_table:
+ifeq ($(test), true)
+	go run ./seed/mobs/main.go -test=true
+else
 	go run ./seed/mobs/main.go
+endif
+
+seed_db:
 	go run ./seed/items/main.go
 	go run ./seed/areas/main.go
 	go run ./seed/display/main.go	

@@ -1,12 +1,12 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 
+	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"gopkg.in/yaml.v2"
 )
@@ -19,7 +19,7 @@ type ItemImport struct {
 }
 
 func SeedItems() {
-	db, err := sql.Open("sqlite3", "./sql_database/mud.db")
+	db, err := sqlx.Open("sqlite3", "./sql_database/mud.db")
 	if err != nil {
 		log.Fatalf("Failed to open SQLite database: %v", err)
 	} else {

@@ -1,15 +1,16 @@
 package commands
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type InventoryCommandHandler struct{}
 
-func (h *InventoryCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func (h *InventoryCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	display.PrintWithColor(player, "You are carrying:\n", "secondary")
 	playerInventory := player.GetInventory()
 

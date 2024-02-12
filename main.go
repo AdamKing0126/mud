@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"database/sql"
 	"fmt"
 	"mud/areas"
 	"mud/commands"
@@ -14,11 +13,12 @@ import (
 	"net"
 	"sync"
 
+	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type CommandRouterInterface interface {
-	HandleCommand(db *sql.DB, player interfaces.Player, command []byte, currentChannel chan interfaces.Action, updateChannel func(string))
+	HandleCommand(db *sqlx.DB, player interfaces.Player, command []byte, currentChannel chan interfaces.Action, updateChannel func(string))
 }
 
 type Server struct {
@@ -31,7 +31,7 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sql.DB, areaChannels map[string]chan interfaces.Action, roomToAreaMap map[string]string, worldState *world_state.WorldState) {
+func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sqlx.DB, areaChannels map[string]chan interfaces.Action, roomToAreaMap map[string]string, worldState *world_state.WorldState) {
 	defer conn.Close()
 
 	player, err := players.LoginPlayer(conn, db)
@@ -93,8 +93,8 @@ func notifyPlayersInRoomThatNewPlayerHasJoined(player interfaces.Player, connect
 	}
 }
 
-func openDatabase() (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", "./sql_database/mud.db")
+func openDatabase() (*sqlx.DB, error) {
+	db, err := sqlx.Connect("sqlite3", "./sql_database/mud.db")
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func openDatabase() (*sql.DB, error) {
 }
 
 // TODO should this function be moved into the world_state package?
-func loadAreas(db *sql.DB, server *Server) (map[string]interfaces.Area, map[string]string, map[string]chan interfaces.Action, error) {
+func loadAreas(db *sqlx.DB, server *Server) (map[string]interfaces.Area, map[string]string, map[string]chan interfaces.Action, error) {
 	areaInstances := make(map[string]*areas.Area)
 	areaInstancesInterface := make(map[string]interfaces.Area)
 	roomToAreaMap := make(map[string]string)
@@ -143,7 +143,7 @@ func loadAreas(db *sql.DB, server *Server) (map[string]interfaces.Area, map[stri
 	return areaInstancesInterface, roomToAreaMap, areaChannels, nil
 }
 
-func logoutAllPlayers(db *sql.DB) {
+func logoutAllPlayers(db *sqlx.DB) {
 	queryString := `
 		UPDATE players SET logged_in = 0 WHERE logged_in = 1;
 	`

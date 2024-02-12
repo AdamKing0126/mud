@@ -1,8 +1,6 @@
 package players
 
-import (
-	"database/sql"
-)
+import "github.com/jmoiron/sqlx"
 
 type ColorProfile struct {
 	UUID        string
@@ -36,7 +34,7 @@ func (c *ColorProfile) GetColor(colorUse string) string {
 	}
 }
 
-func NewColorProfileFromDB(db *sql.DB, uuid string) (*ColorProfile, error) {
+func NewColorProfileFromDB(db *sqlx.DB, uuid string) (*ColorProfile, error) {
 	var colorProfile ColorProfile
 	err := db.QueryRow("SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color FROM color_profiles WHERE uuid = ?", uuid).
 		Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)

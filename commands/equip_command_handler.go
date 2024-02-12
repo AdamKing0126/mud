@@ -1,18 +1,19 @@
 package commands
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
 	"mud/notifications"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type EquipHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func (h *EquipHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func (h *EquipHandler) Execute(db *sqlx.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	if len(arguments) == 0 {
 		player.DisplayEquipment()
 		return

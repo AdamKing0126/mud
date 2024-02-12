@@ -1,18 +1,19 @@
 package commands
 
 import (
-	"database/sql"
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
 	"mud/notifications"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type TakeCommandHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func (h *TakeCommandHandler) Execute(db *sql.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func (h *TakeCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
 	currentRoom := player.GetRoom()
 	items := currentRoom.GetItems()
 
