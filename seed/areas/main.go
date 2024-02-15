@@ -4,12 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"mud/items"
 	"mud/mobs"
 	"reflect"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/jmoiron/sqlx/reflectx"
 	_ "github.com/mattn/go-sqlite3"
@@ -34,8 +32,7 @@ type AreaImport struct {
 }
 
 func SeedAreasAndRooms(dbPath string, monstersImportDbPath string) error {
-	// db, err := sql.Open("sqlite3", dbPath)
-	db, err := sqlx.Connect("sqlite3", dbPath)
+	db, err := sqlx.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Fatalf("Failed to open SQLite database: %v", err)
 	} else {
@@ -161,17 +158,22 @@ func SeedAreasAndRooms(dbPath string, monstersImportDbPath string) error {
 						log.Fatal(err)
 					}
 
-					var mob mobs.Mob
-					err = mapstructure.Decode(result, &mob)
+					actions, ok := result["actions"].([]uint8)
+					if !ok {
+						log.Fatalf("actions is not a []uint8")
+					}
+					delete(result, "actions")
 
+					var mob mobs.MobDB
+					err = mapstructure.Decode(result, &mob)
 					if err != nil {
 						log.Fatalf("failed to fetch mob from mob_imports: %v", err)
 					}
 
+					mob.Actions = string(actions)
 					mob.RoomUUID = room.UUID
 					mob.AreaUUID = area.UUID
 
-					fmt.Println("yo")
 					mapper := reflectx.NewMapperFunc("db", strings.ToLower)
 
 					fieldInfos := mapper.TypeMap(reflect.TypeOf(mobs.Mob{})).Names
@@ -185,36 +187,36 @@ func SeedAreasAndRooms(dbPath string, monstersImportDbPath string) error {
 
 					query := fmt.Sprintf("INSERT INTO mobs (%s) VALUES (%s)", strings.Join(fields, ", "), columns)
 
-					_, err := db.NamedExec(query, mob)
+					_, err = db.NamedExec(query, mob)
 					if err != nil {
 						log.Fatalf("failed to insert mob into mobs: %v", err)
 					}
 
 				}
-				for idx, item := range room.Items {
-					newItem, err := items.NewItemFromTemplate(db, item)
-					if err != nil {
-						log.Fatalf("error creating item from template, %v", err)
-					}
+				// for idx, item := range room.Items {
+				// 	newItem, err := items.NewItemFromTemplate(db, item)
+				// 	if err != nil {
+				// 		log.Fatalf("error creating item from template, %v", err)
+				// 	}
 
-					_, item_location_err := db.Exec("INSERT INTO item_locations (item_uuid, room_uuid, player_uuid) VALUES (?, ?, NULL)", newItem.UUID, area.Rooms[idx].UUID)
-					if item_location_err != nil {
-						log.Fatalf("Failed to insert item location: %v", item_location_err)
-					}
+				// 	_, item_location_err := db.Exec("INSERT INTO item_locations (item_uuid, room_uuid, player_uuid) VALUES (?, ?, NULL)", newItem.UUID, area.Rooms[idx].UUID)
+				// 	if item_location_err != nil {
+				// 		log.Fatalf("Failed to insert item location: %v", item_location_err)
+				// 	}
 
-				}
+				// }
 			}
 
-			item_uuid := uuid.New().String()
-			_, item_err := db.Exec("INSERT INTO items (uuid, name, description, equipment_slots) VALUES (?, ?, ?, ?)", item_uuid, "sword", "A sword", "DominantHand,OffHand")
-			if item_err != nil {
-				log.Fatalf("Failed to insert item: %v", item_err)
-			}
+			// item_uuid := uuid.New().String()
+			// _, item_err := db.Exec("INSERT INTO items (uuid, name, description, equipment_slots) VALUES (?, ?, ?, ?)", item_uuid, "sword", "A sword", "DominantHand,OffHand")
+			// if item_err != nil {
+			// 	log.Fatalf("Failed to insert item: %v", item_err)
+			// }
 
-			_, item_location_err := db.Exec("INSERT INTO item_locations (item_uuid, room_uuid, player_uuid) VALUES (?, ?, NULL)", item_uuid, area.Rooms[0].UUID)
-			if item_location_err != nil {
-				log.Fatalf("Failed to insert item location: %v", item_location_err)
-			}
+			// _, item_location_err := db.Exec("INSERT INTO item_locations (item_uuid, room_uuid, player_uuid) VALUES (?, ?, NULL)", item_uuid, area.Rooms[0].UUID)
+			// if item_location_err != nil {
+			// 	log.Fatalf("Failed to insert item location: %v", item_location_err)
+			// }
 		}
 	}
 	return nil

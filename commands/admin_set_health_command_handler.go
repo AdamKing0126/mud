@@ -39,7 +39,7 @@ func (h *AdminSetHealthCommandHandler) Execute(db *sqlx.DB, player interfaces.Pl
 		display.PrintWithColor(player, fmt.Sprintf("Error converting value to int: %v\n", err), "danger")
 		return
 	}
-	h.Notifier.Players[retrievedPlayer.GetUUID()].SetHealth(intValue)
+	h.Notifier.Players[retrievedPlayer.GetUUID()].SetHealth(int32(intValue))
 	display.PrintWithColor(player, fmt.Sprintf("You set %s's health to %d\n", target, intValue), "reset")
 	h.Notifier.NotifyPlayer(retrievedPlayer.GetUUID(), fmt.Sprintf("\n%s magically sets your health to %d\n", player.GetName(), intValue))
 

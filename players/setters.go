@@ -29,7 +29,7 @@ func (player *Player) SetConn(conn net.Conn) {
 	player.Conn = conn
 }
 
-func (player *Player) SetHealth(health int) {
+func (player *Player) SetHealth(health int32) {
 	player.Health = health
 }
 
@@ -77,10 +77,10 @@ func (player *Player) SetLocation(db *sqlx.DB, roomUUID string) error {
 	return nil
 }
 
-func (player *Player) SetMana(mana int) {
+func (player *Player) SetMana(mana int32) {
 	player.Mana = mana
 }
 
-func (player *Player) SetMovement(movement int) {
+func (player *Player) SetMovement(movement int32) {
 	player.Movement = movement
 }

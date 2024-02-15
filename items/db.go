@@ -9,7 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func GetItemsInRoom(db *sqlx.DB, roomUUID string) ([]Item, error) {
+func GetItemsInRoom(db *sqlx.DB, roomUUID string) ([]interfaces.Item, error) {
 	query := `
 		SELECT i.uuid, i.name, i.description, i.equipment_slots
 		FROM item_locations il
@@ -66,8 +66,12 @@ func GetItemsInRoom(db *sqlx.DB, roomUUID string) ([]Item, error) {
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating over rows: %v", err)
 	}
+	itemInterfaces := make([]interfaces.Item, len(items))
+	for idx := range items {
+		itemInterfaces[idx] = &items[idx]
+	}
 
-	return items, nil
+	return itemInterfaces, nil
 }
 
 func (item *Item) SetLocation(db *sqlx.DB, playerUUID string, roomUUID string) error {

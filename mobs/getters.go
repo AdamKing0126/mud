@@ -1,5 +1,7 @@
 package mobs
 
+import "mud/interfaces"
+
 func (mob *Mob) GetAreaUUID() string {
 	return mob.AreaUUID
 }
@@ -10,7 +12,6 @@ func (mob *Mob) GetRoomUUID() string {
 
 func (mob *Mob) GetAlignment() string {
 	return mob.Alignment
-
 }
 
 func (mob *Mob) GetArmorClass() int32 {
@@ -139,4 +140,28 @@ func (mob *Mob) GetWisdom() int32 {
 
 func (mob *Mob) GetWisdomSave() int32 {
 	return mob.WisdomSave
+}
+
+func (mob *Mob) GetActions() []interfaces.MobAction {
+	return mob.Actions
+}
+
+func (mobAction *Action) GetAttackBonus() int32 {
+	return mobAction.AttackBonus
+}
+
+func (mobAction *Action) GetDamageBonus() int32 {
+	return mobAction.DamageBonus
+}
+
+func (mobAction *Action) GetName() string {
+	return mobAction.Name
+}
+
+func (mobAction *Action) GetDescription() string {
+	return mobAction.Description
+}
+
+func (mobAction *Action) GetDamageDice() string {
+	return mobAction.DamageDice
 }

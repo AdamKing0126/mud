@@ -99,12 +99,7 @@ func setMobs(db *sqlx.DB, roomInArea interfaces.Room) {
 	if err != nil {
 		fmt.Printf("error retrieving mobs: %v", err)
 	}
-
-	mobInterfaces := make([]interfaces.Mob, len(mobsInRoom))
-	for i, mob := range mobsInRoom {
-		mobInterfaces[i] = &mob
-	}
-	roomInArea.SetMobs(mobInterfaces)
+	roomInArea.SetMobs(mobsInRoom)
 }
 
 func setPlayers(db *sqlx.DB, roomInArea interfaces.Room) {
@@ -113,11 +108,7 @@ func setPlayers(db *sqlx.DB, roomInArea interfaces.Room) {
 	if err != nil {
 		fmt.Printf("error retrieving players: %v", err)
 	}
-	playerInterfaces := make([]interfaces.Player, len(playersInRoom))
-	for i, player := range playersInRoom {
-		playerInterfaces[i] = &player
-	}
-	roomInArea.SetPlayers(playerInterfaces)
+	roomInArea.SetPlayers(playersInRoom)
 }
 
 func setItems(db *sqlx.DB, roomInArea interfaces.Room) {
@@ -126,10 +117,5 @@ func setItems(db *sqlx.DB, roomInArea interfaces.Room) {
 	if err != nil {
 		fmt.Printf("error retrieving items: %v", err)
 	}
-
-	itemInterfaces := make([]interfaces.Item, len(itemsInRoom))
-	for i, item := range itemsInRoom {
-		itemInterfaces[i] = &item
-	}
-	roomInArea.SetItems(itemInterfaces)
+	roomInArea.SetItems(itemsInRoom)
 }

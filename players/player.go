@@ -21,12 +21,12 @@ type Player struct {
 	Room            interfaces.Room
 	AreaUUID        string
 	Area            interfaces.Area
-	Health          int
-	HealthMax       int
-	Mana            int
-	ManaMax         int
-	Movement        int
-	MovementMax     int
+	Health          int32
+	HealthMax       int32
+	Mana            int32
+	ManaMax         int32
+	Movement        int32
+	MovementMax     int32
 	Conn            net.Conn
 	Commands        []string
 	ColorProfile    ColorProfile
@@ -66,17 +66,17 @@ func (player *Player) Regen(db *sqlx.DB) error {
 	manaRegen := calculateManaRegen(player)
 	movementRegen := calculateMovementRegen(player)
 
-	player.Health = int(float64(player.Health) * healthRegen)
+	player.Health = int32(float64(player.Health) * healthRegen)
 	if player.Health > player.HealthMax {
 		player.Health = player.HealthMax
 	}
 
-	player.Mana = int(float64(player.Mana) * manaRegen)
+	player.Mana = int32(float64(player.Mana) * manaRegen)
 	if player.Mana > player.ManaMax {
 		player.Mana = player.ManaMax
 	}
 
-	player.Movement = int(float64(player.Movement) * movementRegen)
+	player.Movement = int32(float64(player.Movement) * movementRegen)
 	if player.Movement > player.MovementMax {
 		player.Movement = player.MovementMax
 	}

@@ -9,13 +9,13 @@ func (player *Player) GetAbilities() interfaces.Abilities {
 	return &player.PlayerAbilities
 }
 
-func (player *Player) GetArmorClass() int {
+func (player *Player) GetArmorClass() int32 {
 	// 10 + armor_bonus + shield_bonus + dexterity_modifier + other_modifiers
-	base := 10
-	armorBonus := 0
-	shieldBonus := 0
+	base := int32(10)
+	armorBonus := int32(0)
+	shieldBonus := int32(0)
 	dexModifier := player.PlayerAbilities.GetDexterityModifier()
-	otherModifiers := 0
+	otherModifiers := int32(0)
 	return base + armorBonus + shieldBonus + dexModifier + otherModifiers
 }
 
@@ -47,11 +47,11 @@ func (player *Player) GetHashedPassword() string {
 	return player.Password
 }
 
-func (player *Player) GetHealth() int {
+func (player *Player) GetHealth() int32 {
 	return player.Health
 }
 
-func (player *Player) GetHealthMax() int {
+func (player *Player) GetHealthMax() int32 {
 	return player.HealthMax
 }
 
@@ -73,19 +73,19 @@ func (player *Player) GetLoggedIn() bool {
 	return player.LoggedIn
 }
 
-func (player *Player) GetMana() int {
+func (player *Player) GetMana() int32 {
 	return player.Mana
 }
 
-func (player *Player) GetManaMax() int {
+func (player *Player) GetManaMax() int32 {
 	return player.ManaMax
 }
 
-func (player *Player) GetMovement() int {
+func (player *Player) GetMovement() int32 {
 	return player.Movement
 }
 
-func (player *Player) GetMovementMax() int {
+func (player *Player) GetMovementMax() int32 {
 	return player.MovementMax
 }
 
@@ -101,10 +101,10 @@ func (player *Player) GetRoom() interfaces.Room {
 	return player.Room
 }
 
-func (player *Player) GetSizeModifier() int {
+func (player *Player) GetSizeModifier() int32 {
 	// Need to update this.  Probably need to move this out, so it can be used by players and monsters
 
-	sizeTable := map[string]int{
+	sizeTable := map[string]int32{
 		"colossal":   -8,
 		"gargantuan": -4,
 		"huge":       -2,

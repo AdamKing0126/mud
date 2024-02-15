@@ -2,5 +2,5 @@ package interfaces
 
 type Combatant interface {
 	GetAbilities() Abilities
-	GetArmorClass() int
+	GetArmorClass() int32
 }

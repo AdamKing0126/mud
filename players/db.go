@@ -160,7 +160,7 @@ func getColorProfileFromDB(db *sqlx.DB, colorProfileUUID string) (*ColorProfile,
 	return &colorProfile, nil
 }
 
-func GetPlayersInRoom(db *sqlx.DB, roomUUID string) ([]Player, error) {
+func GetPlayersInRoom(db *sqlx.DB, roomUUID string) ([]interfaces.Player, error) {
 	// Would it be better to rely on the `connections` structure attached to the server
 	// or is it better to query the db for this info?
 	query := `
@@ -188,5 +188,10 @@ func GetPlayersInRoom(db *sqlx.DB, roomUUID string) ([]Player, error) {
 		return nil, fmt.Errorf("error iterating over rows: %v", err)
 	}
 
-	return players, nil
+	playerInterfaces := make([]interfaces.Player, len(players))
+	for idx := range players {
+		playerInterfaces[idx] = &players[idx]
+	}
+
+	return playerInterfaces, nil
 }

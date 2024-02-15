@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func DiceRoll(dice string) int {
+func DiceRoll(dice string) int32 {
 	rand.Seed(time.Now().UnixNano())
 
 	// Split the dice string into its components
@@ -29,5 +29,5 @@ func DiceRoll(dice string) int {
 	for i := 0; i < numberOfDice; i++ {
 		total += rand.Intn(numberOfSides) + 1
 	}
-	return total + bonus
+	return int32(total + bonus)
 }

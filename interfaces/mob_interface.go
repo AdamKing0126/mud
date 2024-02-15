@@ -36,5 +36,16 @@ type Mob interface {
 	GetType() string
 	GetWisdom() int32
 	GetWisdomSave() int32
-	RollHitDice() int
+	RollHitDice() int32
+	RollInitiative() int32
+	GetActions() []MobAction
+	ExecuteAction(Opponent)
+}
+
+type MobAction interface {
+	GetName() string
+	GetDescription() string
+	GetAttackBonus() int32
+	GetDamageDice() string
+	GetDamageBonus() int32
 }
