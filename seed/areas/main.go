@@ -56,53 +56,6 @@ func SeedAreasAndRooms(dbPath string, monstersImportDbPath string) error {
 	}
 	defer monstersDB.Close()
 
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS areas (
-		  uuid VARCHAR(36) PRIMARY KEY,
-		  name TEXT,
-		  description TEXT
-		);
-
-		CREATE TABLE IF NOT EXISTS rooms (
-		  uuid VARCHAR(36) PRIMARY KEY,
-		  area_uuid VARCHAR(36),
-		  name TEXT,
-		  description TEXT,
-		  exit_north VARCHAR(36),
-		  exit_south VARCHAR(36),
-		  exit_east VARCHAR(36),
-		  exit_west VARCHAR(36),
-		  exit_up VARCHAR(36),
-		  exit_down VARCHAR(36)
-		);
-
-		CREATE TABLE IF NOT EXISTS item_templates (
-			uuid VARCHAR(36) PRIMARY KEY,
-			name TEXT,
-			description TEXT,
-			equipment_slots TEXT
-		);
-
-		CREATE TABLE IF NOT EXISTS items (
-			uuid VARCHAR(36) PRIMARY KEY,
-			name TEXT,
-			description TEXT, 
-			equipment_slots TEXT
-		);
-
-		CREATE TABLE IF NOT EXISTS item_locations (
-			item_uuid VARCHAR(36),
-			room_uuid VARCHAR(36) NULL,
-			player_uuid VARCHAR(36) NULL,
-			PRIMARY KEY (item_uuid),
-			FOREIGN KEY (room_uuid) REFERENCES rooms(uuid),
-			FOREIGN KEY (player_uuid) REFERENCES players(uuid)
-		);
-	`)
-	if err != nil {
-		log.Fatalf("Failed to create Areas/Rooms:  %v", err)
-	}
-
 	areaSeeds := []string{"areas/seeds/arena.yml", "areas/seeds/street.yml", "areas/seeds/glade.yml"}
 
 	for _, areaSeed := range areaSeeds {

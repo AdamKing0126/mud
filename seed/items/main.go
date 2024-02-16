@@ -29,37 +29,7 @@ func SeedItems() {
 		}
 		fmt.Println("Database opened successfully")
 	}
-
 	defer db.Close()
-
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS item_templates (
-			uuid VARCHAR(36) PRIMARY KEY,
-			name TEXT,
-			description TEXT,
-			equipment_slots TEXT
-		);
-
-		CREATE TABLE IF NOT EXISTS items (
-			uuid VARCHAR(36) PRIMARY KEY,
-			name TEXT,
-			description TEXT, 
-			equipment_slots TEXT
-		);
-
-		CREATE TABLE IF NOT EXISTS item_locations (
-			item_uuid VARCHAR(36),
-			room_uuid VARCHAR(36) NULL,
-			player_uuid VARCHAR(36) NULL,
-			PRIMARY KEY (item_uuid),
-			FOREIGN KEY (room_uuid) REFERENCES rooms(uuid),
-			FOREIGN KEY (player_uuid) REFERENCES players(uuid)
-		);
-	`)
-
-	if err != nil {
-		log.Fatalf("Failed to create Items:  %v", err)
-	}
 
 	itemTemplateSeeds := []string{"areas/seeds/arena_items.yml"}
 	for _, itemTemplateSeed := range itemTemplateSeeds {

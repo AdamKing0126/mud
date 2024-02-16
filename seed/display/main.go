@@ -25,23 +25,6 @@ func SeedColorProfiles() {
 
 	defer db.Close()
 
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS color_profiles (
-			uuid VARCHAR(36) PRIMARY KEY,
-			name TEXT,
-			primary_color TEXT,
-			secondary_color TEXT,
-			warning_color TEXT,
-			danger_color TEXT,
-			title_color TEXT,
-			description_color TEXT
-		);
-	`)
-
-	if err != nil {
-		log.Fatalf("Failed to create Color Profiles:  %v", err)
-	}
-
 	var colorProfiles = map[string]map[string]string{
 		"Light Mode": {
 			"uuid":              "2c7dfd5b-d160-42e0-accb-b77d9686dbea", // this is a hack.  same as in login-logout.go

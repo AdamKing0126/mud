@@ -2,7 +2,7 @@
 
 help:
 	@echo "drop_db - Remove the database"
-	@echo "create_mobs_table - do this first"
+	@echo "create_tables - do this first"
 	@echo "seed_db - Seed the database"
 	@echo "build - Build the project"
 	@echo "run_server - Run the server"
@@ -13,15 +13,14 @@ drop_db:
 
 test ?= false
 
-create_mobs_table:
+create_tables:
 ifeq ($(test), true)
-	go run ./seed/mobs/main.go -test=true
+	go run ./seed/create_tables/main.go -test=true
 else
-	go run ./seed/mobs/main.go
+	go run ./seed/create_tables/main.go
 endif
 
 seed_db:
-	go run ./seed/mobs/main.go
 	go run ./seed/items/main.go
 	go run ./seed/areas/main.go
 	go run ./seed/display/main.go	

@@ -57,8 +57,8 @@ type Mob struct {
 	Type                  string  `db:"type" mapstructure:"type"`
 	Wisdom                int32   `db:"wisdom" mapstructure:"wisdom"`
 	WisdomSave            int32   `db:"wisdom_save" mapstructure:"wisdom_save"`
+	RNG                   RNG     `db:"-"`
 	Actions               []interfaces.MobAction
-	RNG                   RNG
 }
 
 type RNG interface {
