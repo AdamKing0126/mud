@@ -24,40 +24,73 @@ func (o *MockOpponent) DecreaseHP(amount int32) {
 	// Implement this method based on your Opponent interface
 }
 
-type MockAction struct{}
+type MockAction struct {
+	Name        string
+	Description string
+	AttackBonus int32
+	DamageDice  string
+	DamageBonus int32
+}
 
 func (a *MockAction) GetName() string {
-	return "Mock Action"
+	return a.Name
 }
 
 func (a *MockAction) GetDescription() string {
-	return "This is a mock action"
+	return a.Description
 }
 
 func (a *MockAction) GetAttackBonus() int32 {
-	return 5
+	return a.AttackBonus
 }
 
 func (a *MockAction) GetDamageDice() string {
-	return "1d6"
+	return a.DamageDice
 }
 
 func (a *MockAction) GetDamageBonus() int32 {
-	return 2
+	return a.DamageBonus
+}
+
+func (a *MockAction) SetDescription(desc string) {
+	a.Description = desc
+}
+
+type MockRNG struct {
+	IntnValue int
+}
+
+func (r *MockRNG) Intn(n int) int {
+	return r.IntnValue
 }
 
 func TestExecuteAction(t *testing.T) {
 	mob := &mobs.Mob{
-		Name:    "Monster",
-		Actions: []interfaces.MobAction{&MockAction{}},
-		// Set other fields as necessary...
+		Name: "Monster",
+		Actions: []interfaces.MobAction{
+			&MockAction{Name: "Action1", Description: "The description for action 1", DamageDice: "1d6", AttackBonus: 5, DamageBonus: 5},
+			&MockAction{Name: "Action2", Description: "The description for action 2", DamageDice: "1d8", AttackBonus: 3, DamageBonus: 6},
+		},
+		RNG: &MockRNG{IntnValue: 0},
 	}
 
 	opponent := &MockOpponent{}
 
 	mob.ExecuteAction(opponent)
+}
 
-	// Add assertions here to verify the behavior of ExecuteAction.
-	// For example, you might want to check that the opponent's HP decreased,
-	// or that the correct action was chosen, etc.
+func TestExecuteActionMultiAttack(t *testing.T) {
+	mob := &mobs.Mob{
+		Name: "Monster",
+		Actions: []interfaces.MobAction{
+			&MockAction{Name: "Action1", Description: "The description for action 1", DamageDice: "1d6", AttackBonus: 5, DamageBonus: 5},
+			&MockAction{Name: "Action2", Description: "The description for action 2", DamageDice: "1d8", AttackBonus: 3, DamageBonus: 6},
+			&MockAction{Name: "Multiattack", Description: "The Monster makes one Action1 and two Action2 attacks", DamageDice: "", AttackBonus: 0, DamageBonus: 0},
+		},
+		RNG: &MockRNG{IntnValue: 0},
+	}
+
+	opponent := &MockOpponent{}
+
+	mob.ExecuteAction(opponent)
 }

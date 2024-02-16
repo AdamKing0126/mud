@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"mud/areas"
 	"mud/commands"
 	"mud/display"
@@ -12,6 +13,7 @@ import (
 	"mud/world_state"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
@@ -154,6 +156,7 @@ func logoutAllPlayers(db *sqlx.DB) {
 }
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
 	db, err := openDatabase()
 	if err != nil {
 		fmt.Println(err)

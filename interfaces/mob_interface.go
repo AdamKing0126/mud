@@ -48,4 +48,5 @@ type MobAction interface {
 	GetAttackBonus() int32
 	GetDamageDice() string
 	GetDamageBonus() int32
+	SetDescription(string)
 }
