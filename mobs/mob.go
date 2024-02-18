@@ -111,37 +111,56 @@ type Opponent struct {
 	ArmorClass int32
 }
 
-func getAttacks(multiAttackDescription string, regularAttacks []interfaces.MobAction) []interfaces.MobAction {
-	re := regexp.MustCompile(`(\d+)\s+([a-z]\w*)`)
-	matches := re.FindAllStringSubmatch(multiAttackDescription, -1)
-
-	actionCounts := make(map[string]int32)
-	for _, match := range matches {
-		count, err := strconv.Atoi(match[1])
-		if err != nil {
-			log.Fatalf("error converting string to int: %v", err)
-		}
-		action := match[2]
-		actionCounts[action] = int32(count)
-	}
-
-	result := []interfaces.MobAction{}
-	for _, attack := range regularAttacks {
-		count, ok := actionCounts[strings.ToLower(attack.GetName())]
-		if ok {
-			for i := int32(0); i < count; i++ {
-				result = append(result, attack)
-			}
-		}
-	}
-	return result
-}
-
 func (mob *Mob) ExecuteRegularAttack(opponent interfaces.Opponent, attack interfaces.MobAction) {
 	if mob.AttackRoll(opponent, attack) {
-		attackDamage := dice.DiceRoll(attack.GetDamageDice())
-		fmt.Printf("%s attacks! %s does %d damage\n", mob.GetName(), attack.GetName(), attackDamage)
+		// Regular expression to match damage types:
+		// re := regexp.MustCompile(`(\w+) damage`)
+		// re := regexp.MustCompile(`\(\d+d\d+\+\d+\) (\w+)`)
+		re := regexp.MustCompile(`\(\d+d\d+(\s*\+\s*\d+)?\) (\w+)`)
+
+		// Find all damage types in the desc field:
+		matches := re.FindAllStringSubmatch(attack.GetDescription(), -1)
+
+		// Split the damage_dice field to get the dice for each damage type:
+		damageDice := strings.Split(attack.GetDamageDice(), "+")
+
+		// Create a slice to hold the resulting damage instructions:
+		result := make([][]string, len(matches))
+
+		// Iterate over the matches and dice and add them to the result slice:
+		if len(matches) == 1 {
+			result[0] = []string{matches[0][len(matches[0])-1], strconv.Itoa(int(dice.DiceRoll(attack.GetDamageDice())))}
+		} else {
+			for i, match := range matches {
+				result[i] = []string{match[len(match)-1], strconv.Itoa(int(dice.DiceRoll(damageDice[i])))}
+			}
+		}
+		// attackDamage := dice.DiceRoll(attack.GetDamageDice())
+		// fmt.Printf("%s attacks! %s does %d damage\n", mob.GetName(), attack.GetName(), attackDamage)
 		// need to decrease the opponent's health.
+		if len(result) == 1 {
+			fmt.Printf("%s's %s does %s %s damage\n", mob.GetName(), attack.GetName(), result[0][1], result[0][0])
+		} else if len(result) == 2 {
+			var damageResults []string
+			for idx := range result {
+				damageResults = append(damageResults, fmt.Sprintf("%s %s damage", result[idx][1], result[idx][0]))
+			}
+			fmt.Printf("%s's %s does %s\n", mob.GetName(), attack.GetName(), strings.Join(damageResults, " and "))
+		} else if len(result) > 2 {
+			var damageResults []string
+			for idx := range result {
+				damageResults = append(damageResults, fmt.Sprintf("%s %s damage", result[idx][1], result[idx][0]))
+			}
+			last := damageResults[len(damageResults)-1]
+			damageResults = damageResults[:len(damageResults)-1]
+
+			fmt.Printf("%s's %s does %s\n", mob.GetName(), attack.GetName(), strings.Join(damageResults, ", ")+", and "+last)
+
+		} else {
+			fmt.Println("whoops!")
+		}
+		// TODO Adam need to decrement Opponent hitpoints
+		fmt.Printf("yo!")
 	}
 }
 
@@ -151,21 +170,9 @@ func (mob *Mob) ExecuteAction(opponent interfaces.Opponent) {
 	actions := mob.GetActions()
 	regularAttacks := getRegularAttacks(actions)
 	multiAttack := getMultiAttack(actions)
-	successfulMultiAttack := false
 
-	if multiAttack != nil {
-		if mob.AttackRoll(opponent, multiAttack) { // if the mob lands a multiattack
-			successfulMultiAttack = true
-
-		}
-	}
-
-	if successfulMultiAttack {
-		// execute the multiAttacks
-		// Need to split apart the attack to determine what attacks they should execute.
-		// Let's keep it simple and work off of this pattern:
-		// The werewolf makes two bite attacks and one claw attack
-		attacks := getAttacks(multiAttack.GetDescription(), regularAttacks)
+	if multiAttack != nil && mob.AttackRoll(opponent, multiAttack) {
+		attacks := getAttacksForMultiAttack(multiAttack.GetDescription(), regularAttacks)
 		for idx := range attacks {
 			mob.ExecuteRegularAttack(opponent, attacks[idx])
 		}
@@ -208,4 +215,30 @@ func getRegularAttacks(mobActions []interfaces.MobAction) []interfaces.MobAction
 		}
 	}
 	return regularAttacks
+}
+
+func getAttacksForMultiAttack(multiAttackDescription string, regularAttacks []interfaces.MobAction) []interfaces.MobAction {
+	re := regexp.MustCompile(`(\d+)\s+([a-z]\w*)`)
+	matches := re.FindAllStringSubmatch(multiAttackDescription, -1)
+
+	actionCounts := make(map[string]int32)
+	for _, match := range matches {
+		count, err := strconv.Atoi(match[1])
+		if err != nil {
+			log.Fatalf("error converting string to int: %v", err)
+		}
+		action := match[2]
+		actionCounts[action] = int32(count)
+	}
+
+	result := []interfaces.MobAction{}
+	for _, attack := range regularAttacks {
+		count, ok := actionCounts[strings.ToLower(attack.GetName())]
+		if ok {
+			for i := int32(0); i < count; i++ {
+				result = append(result, attack)
+			}
+		}
+	}
+	return result
 }

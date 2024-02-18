@@ -165,3 +165,7 @@ func (mobAction *Action) GetDescription() string {
 func (mobAction *Action) GetDamageDice() string {
 	return mobAction.DamageDice
 }
+
+// func (mobAction *Action) GetDamageTypeAndDice() [][]string {
+
+// }
