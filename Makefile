@@ -7,6 +7,7 @@ help:
 	@echo "build - Build the project"
 	@echo "run_server - Run the server"
 	@echo "examine_actions - debugging stuff"
+	@echo "import_races"
 
 drop_db:
 	rm -f ./sql_database/mud.db
@@ -32,6 +33,9 @@ build:
 
 run_server:
 	go run ./main.go	
+
+import_races:
+	go run ./open5e_importer/races/main.go
 
 examine_actions:
 	go run ./open5e_importer/examine_actions/examine_actions.go
