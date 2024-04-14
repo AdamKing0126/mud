@@ -8,6 +8,8 @@ help:
 	@echo "run_server - Run the server"
 	@echo "examine_actions - debugging stuff"
 	@echo "import_races"
+	@echo "import_classes"
+	@echo "import_monsters"
 
 drop_db:
 	rm -f ./sql_database/mud.db
@@ -27,6 +29,7 @@ seed_db:
 	go run ./seed/areas/main.go
 	go run ./seed/display/main.go	
 	go run ./seed/players/main.go
+	go run ./seed/classes/main.go
 
 build:
 	go build -o ./bin/mud ./main.go
@@ -36,6 +39,12 @@ run_server:
 
 import_races:
 	go run ./open5e_importer/races/main.go
+
+import_classes:
+	go run ./open5e_importer/classes/main.go
+
+import_monsters:
+	go run ./open5e_importer/monsters/main.go
 
 examine_actions:
 	go run ./open5e_importer/examine_actions/examine_actions.go

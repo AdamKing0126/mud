@@ -3,8 +3,8 @@ package mobs
 import (
 	"fmt"
 	"log"
-	"mud/dice"
 	"mud/interfaces"
+	"mud/utilities"
 	"regexp"
 	"strconv"
 	"strings"
@@ -68,18 +68,18 @@ type RNG interface {
 func (mob *Mob) RollHitDice() int32 {
 	// TODO: add other modifiers from feats, spells,
 	// and other effects.
-	return dice.DiceRoll(mob.HitDice)
+	return utilities.DiceRoll(mob.HitDice)
 }
 
 func (mob *Mob) RollInitiative() int32 {
 	// TODO: add other modifiers from feats, spells,
 	// and other effects.
-	return dice.DiceRoll("1d20") + int32(mob.DexteritySave)
+	return utilities.DiceRoll("1d20") + int32(mob.DexteritySave)
 }
 
 func (mob *Mob) AttackRoll(opponent interfaces.Opponent, attack interfaces.MobAction) bool {
 	// TODO: add/figure out attack bonus ranged vs melee etc
-	diceRoll := dice.DiceRoll("1d20")
+	diceRoll := utilities.DiceRoll("1d20")
 	if strings.ToLower(attack.GetName()) == "multiattack" {
 		if diceRoll >= opponent.GetArmorClass() {
 			fmt.Printf("MultiAttack! \"%s\"\nDice Roll: %d, Target AC: %d - SUCCESS\n", attack.GetDescription(), diceRoll, opponent.GetArmorClass())
@@ -129,10 +129,10 @@ func (mob *Mob) ExecuteRegularAttack(opponent interfaces.Opponent, attack interf
 
 		// Iterate over the matches and dice and add them to the result slice:
 		if len(matches) == 1 {
-			result[0] = []string{matches[0][len(matches[0])-1], strconv.Itoa(int(dice.DiceRoll(attack.GetDamageDice())))}
+			result[0] = []string{matches[0][len(matches[0])-1], strconv.Itoa(int(utilities.DiceRoll(attack.GetDamageDice())))}
 		} else {
 			for i, match := range matches {
-				result[i] = []string{match[len(match)-1], strconv.Itoa(int(dice.DiceRoll(damageDice[i])))}
+				result[i] = []string{match[len(match)-1], strconv.Itoa(int(utilities.DiceRoll(damageDice[i])))}
 			}
 		}
 		// attackDamage := dice.DiceRoll(attack.GetDamageDice())

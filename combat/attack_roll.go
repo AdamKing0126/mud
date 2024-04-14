@@ -1,15 +1,15 @@
 package combat
 
 import (
-	"mud/dice"
 	"mud/interfaces"
+	"mud/utilities"
 )
 
 func AttackRoll(combatant interfaces.Combatant, opponent interfaces.Combatant) bool {
 	abilities := combatant.GetAbilities()
 	attackModifier := abilities.GetAttackModifier("ranged")
 
-	d20Roll := dice.DiceRoll("1d20")
+	d20Roll := utilities.DiceRoll("1d20")
 	if d20Roll == 1 {
 		return false
 	} else if d20Roll == 20 {

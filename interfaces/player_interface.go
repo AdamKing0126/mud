@@ -45,4 +45,5 @@ type Player interface {
 	SetLocation(db *sqlx.DB, roomUUID string) error
 	SetInventory([]Item)
 	SetRoom(Room)
+	RollInitiative() int32
 }

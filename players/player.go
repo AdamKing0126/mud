@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
+	"mud/utilities"
 	"net"
 	"reflect"
 
@@ -208,4 +209,10 @@ func (player *Player) DisplayEquipment() {
 	printEquipmentElement(player, "Legs", equipment.GetLegs)
 	printEquipmentElement(player, "Feet", equipment.GetFeet)
 	display.PrintWithColor(player, "\n========================\n\n", "primary")
+}
+
+func (player *Player) RollInitiative() int32 {
+	// todo, there's more than this to rolling initiative but atm I can't
+	// be bothered to look it up.
+	return utilities.DiceRoll("1d20")
 }

@@ -205,6 +205,48 @@ func CreateMobsTable(db *sqlx.DB) {
 	fmt.Println("Created mobs table")
 }
 
+func CreateRacesTable(db *sqlx.DB) {
+	_, err := db.Exec(`
+	CREATE TABLE IF NOT EXISTS races (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT,
+		slug TEXT,
+		size TEXT,
+		description TEXT,
+		asi TEXT,
+		subrace_of TEXT);
+	`)
+	if err != nil {
+		log.Fatalf("Failed to create SQLite table: %v", err)
+	}
+	fmt.Println("Created Races table")
+}
+
+func CreateClassesTable(db *sqlx.DB) {
+	_, err := db.Exec(`
+	CREATE TABLE IF NOT EXISTS classes (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		description TEXT,
+		hit_dice TEXT,
+		hp_at_first_level INTEGER,
+		hp_modifier TEXT,
+		name TEXT,
+		saving_throw_charisma BOOL
+		saving_throw_constitution BOOL,
+		saving_throw_dexterity BOOL,
+		saving_throw_intelligence BOOL,
+		saving_throw_strength BOOL,
+		saving_throw_wisdom BOOL,
+		slug TEXT,
+		archetype_slug TEXT,
+		archetype_desc TEXT);
+	`)
+	if err != nil {
+		log.Fatalf("Failed to create SQLite table: %v", err)
+	}
+	fmt.Println("Created Classes table")
+}
+
 var isTest bool
 
 func init() {
@@ -237,4 +279,6 @@ func main() {
 	CreateAreasAndRoomsTable(db)
 	CreateColorProfilesTable(db)
 	CreatePlayersTables(db)
+	CreateRacesTable(db)
+	CreateClassesTable(db)
 }
