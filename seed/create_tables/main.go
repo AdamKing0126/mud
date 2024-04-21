@@ -224,14 +224,13 @@ func CreateRacesTable(db *sqlx.DB) {
 
 func CreateClassesTable(db *sqlx.DB) {
 	_, err := db.Exec(`
-	CREATE TABLE IF NOT EXISTS classes (
+	CREATE TABLE IF NOT EXISTS character_classes (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		description TEXT,
 		hit_dice TEXT,
 		hp_at_first_level INTEGER,
 		hp_modifier TEXT,
 		name TEXT,
-		saving_throw_charisma BOOL
+		saving_throw_charisma BOOL,
 		saving_throw_constitution BOOL,
 		saving_throw_dexterity BOOL,
 		saving_throw_intelligence BOOL,
@@ -239,7 +238,8 @@ func CreateClassesTable(db *sqlx.DB) {
 		saving_throw_wisdom BOOL,
 		slug TEXT,
 		archetype_slug TEXT,
-		archetype_desc TEXT);
+		archetype_name TEXT,
+		archetype_description TEXT);
 	`)
 	if err != nil {
 		log.Fatalf("Failed to create SQLite table: %v", err)
