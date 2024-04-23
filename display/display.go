@@ -34,3 +34,8 @@ func PrintWithColor(player Player, text string, colorUse string) {
 	playerConn := player.GetConn()
 	fmt.Fprintf(playerConn, "%s", Colorize(text, color))
 }
+
+func Newline(player Player) {
+	playerConn := player.GetConn()
+	fmt.Fprintf(playerConn, "\n")
+}

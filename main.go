@@ -41,6 +41,9 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 		fmt.Fprintf(conn, "Error: %v\n", err)
 		return
 	}
+	if player == nil {
+		return
+	}
 
 	defer func() {
 		err := player.Logout(db)

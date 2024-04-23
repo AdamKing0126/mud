@@ -151,7 +151,6 @@ func SeedClasses(dbPath string, classesImportDbPath string) error {
 			if err != nil {
 				log.Fatalf("Failed to insert SQLite row: %v", err)
 			}
-			fmt.Println(archetypeDescription)
 		}
 	}
 
