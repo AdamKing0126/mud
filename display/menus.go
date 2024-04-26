@@ -110,6 +110,7 @@ func splitString(inputString string, maxWidth int, left string, right string, de
 }
 
 func PrintMenu(player Player, contents MenuContents) {
+	Newline(player)
 	topLeftDbl := string('╔')
 	topLeftSingle := string('┌')
 	topLeft := topLeftDbl

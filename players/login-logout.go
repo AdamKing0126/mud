@@ -34,52 +34,88 @@ func HashPassword(password string) string {
 	return string(hashedPassword)
 }
 
-func getCharacterClasses(db *sqlx.DB) (map[string]string, []string, error) {
-	// get a list of characterClass elements.
-	characterClasses, err := character_classes.GetCharacterClassList(db)
-	if err != nil {
-		log.Fatalf("Failed to retrieve character classes: %v", err)
-	}
-
-	characterClassNamesAndSlugs := make(map[string]string)
-	for _, cc := range characterClasses {
-		characterClassNamesAndSlugs[cc.Name] = cc.Slug
-	}
-	characterClassNames := make([]string, 0, len(characterClassNamesAndSlugs))
-	for name := range characterClassNamesAndSlugs {
-		characterClassNames = append(characterClassNames, name)
-	}
-	sort.Strings(characterClassNames)
-
-	return characterClassNamesAndSlugs, characterClassNames, nil
-}
-
-func getCharacterClassSlug(characterClassIndex int, characterClassNames []string, characterClassNamesAndSlugs map[string]string) string {
-	characterClassName := characterClassNames[characterClassIndex-1]
-	return characterClassNamesAndSlugs[characterClassName]
-}
-
-func getArchetypeDescription(archetypeIndex int, archetypeNames []string, archetypes []ArchetypeNameAndDescription) (string, error) {
-	archetypeName := archetypeNames[archetypeIndex-1]
-	for idx := range archetypes {
-		if archetypes[idx].Name == archetypeName {
-			return archetypes[idx].Description, nil
-		}
-	}
-	return "", errors.New("archetype not found")
-}
-
 type ArchetypeNameAndDescription struct {
 	Slug        string `db:"archetype_slug"`
 	Description string `db:"archetype_description"`
 	Name        string `db:"archetype_name"`
 }
 
-func getArchetypesForCharacterClass(db *sqlx.DB, characterClassSlug string) ([]ArchetypeNameAndDescription, error) {
-	archetypes := []ArchetypeNameAndDescription{}
-	query := "SELECT archetype_slug, archetype_description, archetype_name FROM character_classes WHERE slug = ?;"
-	err := db.Select(&archetypes, query, characterClassSlug)
-	return archetypes, err
+func getCharacterClassNamesFromCharacterClassObjects(c character_classes.CharacterClasses) []string {
+	characterClassNamesSet := make(map[string]bool)
+	for _, characterClass := range c {
+		characterClassNamesSet[characterClass.Name] = true
+	}
+	characterClassNames := make([]string, 0, len(characterClassNamesSet))
+	for k := range characterClassNamesSet {
+		characterClassNames = append(characterClassNames, k)
+	}
+	sort.Strings(characterClassNames)
+	return characterClassNames
+}
+
+func selectCharacterClassAndArchetype(conn net.Conn, db *sqlx.DB, player *Player) *character_classes.CharacterClass {
+	characterClasses, err := character_classes.GetCharacterClassList(db, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+	characterClassNames := getCharacterClassNamesFromCharacterClassObjects(characterClasses)
+
+	for {
+		menuTitle := "Choose a Character Class"
+		delimiter := "number"
+		lineStyle := "double"
+
+		menuContents := display.MenuContents{
+			Title:     &menuTitle,
+			Delimiter: &delimiter,
+			LineStyle: &lineStyle,
+			MaxWidth:  65,
+			Elements:  characterClassNames,
+		}
+		display.PrintMenu(player, menuContents)
+
+		display.PrintWithColor(player, fmt.Sprintf("Make a selection (1-%d, anything else to quit): ", len(characterClassNames)), "primary")
+		choice := getPlayerInput(conn)
+
+		characterClassChoice, err := strconv.Atoi(choice)
+		if err != nil || characterClassChoice > len(characterClassNames) || characterClassChoice < 1 {
+			return nil
+		}
+		chosenCharacterClass := characterClasses.GetCharacterClassByName(characterClassNames[characterClassChoice-1])
+
+		for {
+			archetypes := characterClasses.ArchetypesFor(chosenCharacterClass.Slug)
+			archetypeNames := characterClasses.ArchetypeNamesFor(chosenCharacterClass.Slug)
+
+			menuContents.Elements = archetypeNames
+			menuTitle = fmt.Sprintf("Select a %s Subclass", chosenCharacterClass.Name)
+			display.PrintMenu(player, menuContents)
+			display.PrintWithColor(player, fmt.Sprintf("Make an archetype selection to learn more (1-%d, anything else to quit): ", len(archetypeNames)), "primary")
+
+			choice = getPlayerInput(conn)
+			archetypeChoice, err := strconv.Atoi(choice)
+			if err != nil || archetypeChoice > len(archetypes) || archetypeChoice < 1 {
+				break
+			}
+			archetypeName := archetypeNames[archetypeChoice-1]
+			chosenCharacterClass = characterClasses.GetCharacterClassByArchetypeName(archetypeName)
+
+			menuTitle = archetypeName
+			menuContents.Delimiter = nil
+			menuContents.Elements = []string{chosenCharacterClass.ArchetypeDescription}
+			display.PrintMenu(player, menuContents)
+
+			display.PrintWithColor(player, fmt.Sprintf("Would you like to select a Character Class of %s-%s? (Y/N): ", chosenCharacterClass.Name, chosenCharacterClass.ArchetypeName), "primary")
+			choice = getPlayerInput(conn)
+			choice = strings.ToLower(choice)
+			fmt.Println(choice)
+			if choice == "y" {
+				return chosenCharacterClass
+			}
+			delimiter := "number"
+			menuContents.Delimiter = &delimiter
+		}
+	}
 }
 
 func createPlayer(conn net.Conn, db *sqlx.DB, playerName string) (*Player, error) {
@@ -116,69 +152,13 @@ func createPlayer(conn net.Conn, db *sqlx.DB, playerName string) (*Player, error
 		log.Fatal(err)
 	}
 
-	characterClassNamesAndSlugs, characterClassNames, err := getCharacterClasses(db)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	menuTitle := "Choose a Character Class"
-	delimiter := "number"
-	lineStyle := "double"
-
-	menuContents := display.MenuContents{
-		Title:     &menuTitle,
-		Delimiter: &delimiter,
-		LineStyle: &lineStyle,
-		MaxWidth:  65,
-		Elements:  characterClassNames,
-	}
-	display.Newline(player)
-	display.PrintMenu(player, menuContents)
-
-	display.PrintWithColor(player, fmt.Sprintf("Make a selection (1-%d, anything else to quit): ", len(characterClassNames)), "primary")
-	choice := getPlayerInput(conn)
-
-	characterClassChoice, err := strconv.Atoi(choice)
-	if err != nil || characterClassChoice > len(characterClassNames) || characterClassChoice < 1 {
-		player.Logout(db)
-		return nil, nil
-	}
-	characterClassSlug := getCharacterClassSlug(characterClassChoice, characterClassNames, characterClassNamesAndSlugs)
-	archetypes, err := getArchetypesForCharacterClass(db, characterClassSlug)
-	if err != nil {
-		log.Fatalf("Failed to query for archetypes: %v", err)
-	}
-	var archetypeNames []string
-	for idx := range archetypes {
-		archetypeNames = append(archetypeNames, archetypes[idx].Name)
-	}
-	sort.Strings(archetypeNames)
-
-	menuContents.Elements = archetypeNames
-	menuTitle = fmt.Sprintf("Select a %s Subclass", characterClassNames[characterClassChoice-1])
-	display.Newline(player)
-	display.PrintMenu(player, menuContents)
-	display.PrintWithColor(player, fmt.Sprintf("Make a selection to learn more(1-%d, anything else to quit): ", len(archetypeNames)), "primary")
-
-	choice = getPlayerInput(conn)
-	archetypeChoice, err := strconv.Atoi(choice)
-	if err != nil || archetypeChoice > len(archetypeNames) || archetypeChoice < 1 {
+	chosenCharacterClass := selectCharacterClassAndArchetype(conn, db, player)
+	if chosenCharacterClass == nil {
 		player.Logout(db)
 		return nil, nil
 	}
 
-	menuTitle = archetypeNames[archetypeChoice-1]
-	menuElements, err := getArchetypeDescription(archetypeChoice, archetypeNames, archetypes)
-	if err != nil {
-		log.Fatalf("Failed to retrieve archetype: %v", err)
-	}
-	menuContents.Delimiter = nil
-	menuContents.Elements = []string{menuElements}
-	display.PrintMenu(player, menuContents)
-
-	// "Select <archetype name> ? Y/N"
-	// if not "y", re-print the list of archetypes
-	fmt.Println(len(archetypes))
+	// TODO: everything below this line is probably junk.  Need to build player character based off choices made above.
 
 	_, err = tx.Exec("INSERT INTO players (uuid, name, area, room, health, health_max, movement, movement_max, mana, mana_max, color_profile, password, logged_in) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		player.UUID, player.Name, player.AreaUUID, player.RoomUUID, player.Health, player.HealthMax, player.Movement, player.MovementMax, player.Mana, player.ManaMax, player.ColorProfile.GetUUID(), player.Password, true)
