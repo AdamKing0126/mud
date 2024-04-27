@@ -34,12 +34,6 @@ func HashPassword(password string) string {
 	return string(hashedPassword)
 }
 
-type ArchetypeNameAndDescription struct {
-	Slug        string `db:"archetype_slug"`
-	Description string `db:"archetype_description"`
-	Name        string `db:"archetype_name"`
-}
-
 func getCharacterClassNamesFromCharacterClassObjects(c character_classes.CharacterClasses) []string {
 	characterClassNamesSet := make(map[string]bool)
 	for _, characterClass := range c {
@@ -118,6 +112,10 @@ func selectCharacterClassAndArchetype(conn net.Conn, db *sqlx.DB, player *Player
 	}
 }
 
+// func selectRace(conn net.Conn, db *sqlx.DB, player *Player) *character_classes.CharacterRace {
+
+// }
+
 func createPlayer(conn net.Conn, db *sqlx.DB, playerName string) (*Player, error) {
 	player := &Player{}
 	player.Name = playerName
@@ -137,31 +135,36 @@ func createPlayer(conn net.Conn, db *sqlx.DB, playerName string) (*Player, error
 		return nil, err
 	}
 
-	player.ColorProfile = *colorProfile
-	player.Health = 100
-	player.HealthMax = 100
-	player.Movement = 100
-	player.MovementMax = 100
-	player.Mana = 100
-	player.ManaMax = 100
-	player.UUID = uuid.New().String()
-	player.Conn = conn
-
-	tx, err := db.Begin()
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	chosenCharacterClass := selectCharacterClassAndArchetype(conn, db, player)
 	if chosenCharacterClass == nil {
 		player.Logout(db)
 		return nil, nil
 	}
 
+	// chosenRace := selectRace(conn, db, player)
+	// if chosenRace == nil {
+	// 	player.Logout(db)
+	// 	return nil, nil
+	// }
+
+	player.ColorProfile = *colorProfile
+	player.HP = int32(chosenCharacterClass.HPAtFirstLevel)
+	player.HPMax = int32(chosenCharacterClass.HPAtFirstLevel)
+	player.Movement = 100
+	player.MovementMax = 100
+	player.UUID = uuid.New().String()
+	player.Conn = conn
+	player.CharacterClass = *chosenCharacterClass
+
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// TODO: everything below this line is probably junk.  Need to build player character based off choices made above.
 
-	_, err = tx.Exec("INSERT INTO players (uuid, name, area, room, health, health_max, movement, movement_max, mana, mana_max, color_profile, password, logged_in) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		player.UUID, player.Name, player.AreaUUID, player.RoomUUID, player.Health, player.HealthMax, player.Movement, player.MovementMax, player.Mana, player.ManaMax, player.ColorProfile.GetUUID(), player.Password, true)
+	_, err = tx.Exec("INSERT INTO players (uuid, character_class, name, area, room, hp, hhp_max, movement, movement_max, mana_max, color_profile, password, logged_in) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		player.UUID, player.CharacterClass.ArchetypeSlug, player.Name, player.AreaUUID, player.RoomUUID, player.HP, player.HPMax, player.Movement, player.MovementMax, player.ColorProfile.GetUUID(), player.Password, true)
 	if err != nil {
 		tx.Rollback()
 		log.Fatalf("Failed to insert player: %v", err)

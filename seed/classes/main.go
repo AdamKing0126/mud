@@ -12,39 +12,38 @@ import (
 )
 
 type ClassArchetypeImport struct {
-	Description string `json:"desc"`
+	Description        string `json:"desc"`
 	DocumentLicenseUrl string `json:"document__license_url"`
-	DocumentSlug string `json:"document__slug"`
-	DocumentTitle string `json:"document__title"`
-	DocumentUrl string `json:"document__url"`
-	Name string `json:"name"`
-	Slug string `json:"slug"`
+	DocumentSlug       string `json:"document__slug"`
+	DocumentTitle      string `json:"document__title"`
+	DocumentUrl        string `json:"document__url"`
+	Name               string `json:"name"`
+	Slug               string `json:"slug"`
 }
 
 type ClassImport struct {
-	Name                      string        `json:"name" db:"name"`
-	Slug                      string        `json:"slug" db:"slug"`
-	Description               string        `json:"desc" db:"description"`
-	HitDice                   string        `json:"hit_dice" db:"hit_dice"`
-	HpAtFirstLevel            string        `json:"hp_at_1st_level" db:"hp_at_first_level"`
-	HpAtHigherLevels          string        `json:"hp_at_higher_levels" db:"hp_at_higher_levels"`
-	ProficienciesArmor        string        `json:"prof_armor" db:"proficiencies_armor"`
-	ProficienciesWeapons      string        `json:"prof_weapons" db:"proficiencies_weapons"`
-	ProficienciesTools        string        `json:"prof_tools" db:"proficiencies_tools"`
-	ProficienciesSavingThrows string        `json:"prof_saving_throws" db:"proficiencies_saving_throws"`
-	ProficienciesSkills       string        `json:"prof_skills" db:"proficiencies_skills"`
-	Equipment                 string        `json:"equipment" db:"equipment"`
-	Table                     string        `json:"table" db:"class_table"`
-	SpellcastingAbility       string        `json:"spellcasting_ability" db:"spellcasting_ability"`
-	SubtypesName              string        `json:"subtypes_name" db:"subtypes_name"`
-	ArchetypesData		  	string	`db:"archetypes"`
-	Archetypes []ClassArchetypeImport 		`json:"archetypes"`
-	DocumentSlug              string        `json:"document__slug" db:"document_slug"`
-	DocumentTitle             string        `json:"document__title" db:"document_title"`
-	DocumentLicenseUrl        string        `json:"document__license_url" db:"document_license_url"`
-	DocumentUrl               string        `json:"document__url" db:"document_url"`
+	Name                      string                 `json:"name" db:"name"`
+	Slug                      string                 `json:"slug" db:"slug"`
+	Description               string                 `json:"desc" db:"description"`
+	HitDice                   string                 `json:"hit_dice" db:"hit_dice"`
+	HpAtFirstLevel            string                 `json:"hp_at_1st_level" db:"hp_at_first_level"`
+	HpAtHigherLevels          string                 `json:"hp_at_higher_levels" db:"hp_at_higher_levels"`
+	ProficienciesArmor        string                 `json:"prof_armor" db:"proficiencies_armor"`
+	ProficienciesWeapons      string                 `json:"prof_weapons" db:"proficiencies_weapons"`
+	ProficienciesTools        string                 `json:"prof_tools" db:"proficiencies_tools"`
+	ProficienciesSavingThrows string                 `json:"prof_saving_throws" db:"proficiencies_saving_throws"`
+	ProficienciesSkills       string                 `json:"prof_skills" db:"proficiencies_skills"`
+	Equipment                 string                 `json:"equipment" db:"equipment"`
+	Table                     string                 `json:"table" db:"class_table"`
+	SpellcastingAbility       string                 `json:"spellcasting_ability" db:"spellcasting_ability"`
+	SubtypesName              string                 `json:"subtypes_name" db:"subtypes_name"`
+	ArchetypesData            string                 `db:"archetypes"`
+	Archetypes                []ClassArchetypeImport `json:"archetypes"`
+	DocumentSlug              string                 `json:"document__slug" db:"document_slug"`
+	DocumentTitle             string                 `json:"document__title" db:"document_title"`
+	DocumentLicenseUrl        string                 `json:"document__license_url" db:"document_license_url"`
+	DocumentUrl               string                 `json:"document__url" db:"document_url"`
 }
-
 
 func getHpAtFirstLevel(value interface{}) int {
 	hpAtFirstLevelStr, ok := value.(string)
@@ -101,7 +100,7 @@ func SeedClasses(dbPath string, classesImportDbPath string) error {
 		}
 
 		ci.Archetypes = archetypes
-		
+
 		savingThrowValues := strings.Split(ci.ProficienciesSavingThrows, ", ")
 		savingThrowCharisma := false
 		savingThrowConstitution := false

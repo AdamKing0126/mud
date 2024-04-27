@@ -13,15 +13,14 @@ func CreatePlayersTables(db *sqlx.DB) {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS players (
 			uuid VARCHAR(36) PRIMARY KEY,
+			character_class TEXT,
 			name TEXT,
 			room VARCHAR(36),
 			area VARCHAR(36),
-			health INTEGER,
+			hp INTEGER,
 			movement INTEGER,
-			mana INTEGER,
-			health_max INTEGER,
+			hp_max INTEGER,
 			movement_max INTEGER,
-			mana_max INTEGER,
 			color_profile VARCHAR(36),
 			logged_in BOOLEAN DEFAULT FALSE,
 			password VARCHAR(60)

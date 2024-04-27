@@ -2,6 +2,7 @@ package players
 
 import (
 	"fmt"
+	"mud/character_classes"
 	"mud/display"
 	"mud/interfaces"
 	"mud/utilities"
@@ -22,10 +23,8 @@ type Player struct {
 	Room            interfaces.Room
 	AreaUUID        string
 	Area            interfaces.Area
-	Health          int32
-	HealthMax       int32
-	Mana            int32
-	ManaMax         int32
+	HP              int32
+	HPMax           int32
 	Movement        int32
 	MovementMax     int32
 	Conn            net.Conn
@@ -36,6 +35,7 @@ type Player struct {
 	PlayerAbilities PlayerAbilities
 	Equipment       PlayerEquipment
 	Inventory       []interfaces.Item
+	CharacterClass  character_classes.CharacterClass
 }
 
 func (player *Player) AddItem(db *sqlx.DB, item interfaces.Item) error {
@@ -63,18 +63,12 @@ func (player *Player) RemoveItem(item interfaces.Item) error {
 }
 
 func (player *Player) Regen(db *sqlx.DB) error {
-	healthRegen := calculateHealthRegen(player)
-	manaRegen := calculateManaRegen(player)
+	healthRegen := calculateHPRegen(player)
 	movementRegen := calculateMovementRegen(player)
 
-	player.Health = int32(float64(player.Health) * healthRegen)
-	if player.Health > player.HealthMax {
-		player.Health = player.HealthMax
-	}
-
-	player.Mana = int32(float64(player.Mana) * manaRegen)
-	if player.Mana > player.ManaMax {
-		player.Mana = player.ManaMax
+	player.HP = int32(float64(player.HP) * healthRegen)
+	if player.HP > player.HPMax {
+		player.HP = player.HPMax
 	}
 
 	player.Movement = int32(float64(player.Movement) * movementRegen)
@@ -82,7 +76,7 @@ func (player *Player) Regen(db *sqlx.DB) error {
 		player.Movement = player.MovementMax
 	}
 
-	_, err := db.Exec("UPDATE players SET health = ?, mana = ?, movement = ? WHERE uuid = ?", player.Health, player.Mana, player.Movement, player.UUID)
+	_, err := db.Exec("UPDATE players SET hp = ?, movement = ? WHERE uuid = ?", player.HP, player.Movement, player.UUID)
 	if err != nil {
 		return err
 	}
