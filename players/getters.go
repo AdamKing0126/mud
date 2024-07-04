@@ -48,11 +48,11 @@ func (player *Player) GetHashedPassword() string {
 }
 
 func (player *Player) GetHealth() int32 {
-	return player.Health
+	return player.HP
 }
 
 func (player *Player) GetHealthMax() int32 {
-	return player.HealthMax
+	return player.HPMax
 }
 
 func (player *Player) GetInventory() []interfaces.Item {
@@ -71,14 +71,6 @@ func (player *Player) GetItemFromInventory(itemName string) interfaces.Item {
 
 func (player *Player) GetLoggedIn() bool {
 	return player.LoggedIn
-}
-
-func (player *Player) GetMana() int32 {
-	return player.Mana
-}
-
-func (player *Player) GetManaMax() int32 {
-	return player.ManaMax
 }
 
 func (player *Player) GetMovement() int32 {

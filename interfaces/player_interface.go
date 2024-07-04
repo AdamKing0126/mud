@@ -27,8 +27,6 @@ type Player interface {
 	GetInventory() []Item
 	GetItemFromInventory(string) Item
 	GetLoggedIn() bool
-	GetMana() int32
-	GetManaMax() int32
 	GetMovement() int32
 	GetMovementMax() int32
 	GetName() string

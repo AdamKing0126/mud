@@ -71,7 +71,7 @@ func (a *Area) Run(db *sqlx.DB, ch chan interfaces.Action, connections map[strin
 					if err := player.Regen(db); err != nil {
 						fmt.Printf("Error: %v\n", err)
 					}
-					display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mana: %d Mvt: %d> ", player.GetHealth(), player.GetMana(), player.GetMovement()), "primary")
+					display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mvt: %d> ", player.GetHealth(), player.GetMovement()), "primary")
 				}
 			}
 

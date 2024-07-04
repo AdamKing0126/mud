@@ -13,19 +13,26 @@ type SubraceImport struct {
 	Name        string `json:"name"`
 	Slug        string `json:"slug"`
 	Description string `json:"description"`
-	ASI         string `json:"asi"`
+	ASI         []Asi  `json:"asi"`
+}
+
+type Asi struct {
+	Attributes []string `json:"attributes"`
+	Value      int      `json:"value"`
 }
 
 type RaceImport struct {
-	Name         string `db:"name"`
-	Slug         string `db:"slug"`
-	ASI          string `db:"asi"`
-	Description  string `db:"description"`
-	SubracesData string `db:"subraces"`
-	Subraces     []SubraceImport
+	Name        string `db:"name"`
+	Slug        string `db:"slug"`
+	Size        string `db:"size_raw"`
+	ASIData     string `db:"asi"`
+	ASI         []Asi  `json:"asi"`
+	Description string `db:"description"`
+	SubraceData string `db:"subraces"`
+	Subraces    []SubraceImport
 }
 
-func SeedRaces(dbPath string, racesImportDbPath string) error {
+func SeedGroups(dbPath string, racesImportDbPath string) error {
 	db, err := sqlx.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Fatalf("Failed to open Sqlite database: %v", err)
@@ -50,7 +57,7 @@ func SeedRaces(dbPath string, racesImportDbPath string) error {
 	}
 	defer racesDB.Close()
 
-	query := `SELECT name, slug, subraces, description, asi from race_imports;`
+	query := `SELECT name, slug, size_raw, subraces, description, asi from race_imports;`
 	rows, err := racesDB.Queryx(query)
 	if err != nil {
 		log.Fatalf("Failed to query row: %v", err)
@@ -61,13 +68,44 @@ func SeedRaces(dbPath string, racesImportDbPath string) error {
 		if err != nil {
 			log.Fatalf("Failed to scan row: %v", err)
 		}
-		var subraces []SubraceImport
-		err = json.Unmarshal([]byte(ri.SubracesData), &subraces)
+		var asi []Asi
+		err = json.Unmarshal([]byte(ri.ASIData), &asi)
 		if err != nil {
+			fmt.Println(err)
+			log.Fatalf("Failed to unmarshal JSON: %v", err)
+		}
+		ri.ASI = asi
+		var subraces []SubraceImport
+		err = json.Unmarshal([]byte(ri.SubraceData), &subraces)
+		if err != nil {
+			fmt.Println(err)
 			log.Fatalf("Failed to unmarshal JSON: %v", err)
 		}
 		ri.Subraces = subraces
+		// need to write each record into the game db now.
 
+		queryString := `INSERT INTO races
+		(name, slug, size, description, asi, subrace_name, subrace_slug, subrace_description)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`
+		if len(subraces) == 0 {
+			_, err = db.Exec(queryString, ri.Name, ri.Slug, ri.ASIData, "", "", "")
+			if err != nil {
+				log.Fatalf("Failed to insert into races table: %v", err)
+			}
+		} else {
+			for _, subrace := range subraces {
+				asi, err := json.Marshal(subrace.ASI)
+				if err != nil {
+					log.Fatalf("Failed to marshal ASI into json: %v", err)
+				}
+
+				_, err = db.Exec(queryString, ri.Name, ri.Slug, asi, subrace.Name, subrace.Slug, subrace.Description)
+				if err != nil {
+					log.Fatalf("Failed to insert into races table: %v", err)
+				}
+			}
+		}
 	}
 	return nil
 }

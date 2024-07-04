@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"math/rand"
 	"mud/areas"
 	"mud/commands"
 	"mud/display"
@@ -13,7 +12,6 @@ import (
 	"mud/world_state"
 	"net"
 	"sync"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
@@ -72,7 +70,7 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 	router.HandleCommand(db, player, bytes.NewBufferString("look").Bytes(), ch, updateChannel)
 
 	for {
-		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mana: %d Mvt: %d> ", player.GetHealth(), player.GetMana(), player.GetMovement()), "primary")
+		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mvt: %d> ", player.GetHealth(), player.GetMovement()), "primary")
 		buf := make([]byte, 1024)
 		n, err := conn.Read(buf)
 		if err != nil {
@@ -94,7 +92,7 @@ func notifyPlayersInRoomThatNewPlayerHasJoined(player interfaces.Player, connect
 
 	for _, p := range playersInRoom {
 		fmt.Fprintf(p.GetConn(), "\n%s has joined the game.\n", player.GetName())
-		display.PrintWithColor(p, fmt.Sprintf("\nHP: %d Mana: %d Mvt: %d> ", player.GetHealth(), player.GetMana(), player.GetMovement()), "primary")
+		display.PrintWithColor(p, fmt.Sprintf("\nHP: %d Mvt: %d> ", player.GetHealth(), player.GetMovement()), "primary")
 	}
 }
 
@@ -159,7 +157,6 @@ func logoutAllPlayers(db *sqlx.DB) {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
 	db, err := openDatabase()
 	if err != nil {
 		fmt.Println(err)

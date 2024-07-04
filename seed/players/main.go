@@ -92,7 +92,7 @@ func SeedPlayers() {
 		// Insert players into the database
 		for _, p := range players {
 			playerUUID := uuid.New().String()
-			_, err := db.Exec("INSERT INTO players (uuid, name, area, room, health, health_max, movement, movement_max, mana, mana_max, color_profile, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			_, err := db.Exec("INSERT INTO players (uuid, name, area, room, hp, hp_max, movement, movement_max, color_profile, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 				playerUUID, p.Name, p.AreaUUID, p.RoomUUID, p.HP, p.HPMax, p.Movement, p.MovementMax, p.ColorProfile.GetUUID(), p.Password)
 			if err != nil {
 				log.Fatalf("Failed to insert player: %v", err)

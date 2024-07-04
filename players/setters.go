@@ -30,7 +30,7 @@ func (player *Player) SetConn(conn net.Conn) {
 }
 
 func (player *Player) SetHealth(health int32) {
-	player.Health = health
+	player.HP = health
 }
 
 func (player *Player) SetInventory(inventory []interfaces.Item) {
@@ -75,10 +75,6 @@ func (player *Player) SetLocation(db *sqlx.DB, roomUUID string) error {
 
 	stmt.Close()
 	return nil
-}
-
-func (player *Player) SetMana(mana int32) {
-	player.Mana = mana
 }
 
 func (player *Player) SetMovement(movement int32) {

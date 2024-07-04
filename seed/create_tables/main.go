@@ -213,7 +213,9 @@ func CreateRacesTable(db *sqlx.DB) {
 		size TEXT,
 		description TEXT,
 		asi TEXT,
-		subrace_of TEXT);
+		subrace_name TEXT,
+		subrace_slug TEXT,
+		subrace_description TEXT);
 	`)
 	if err != nil {
 		log.Fatalf("Failed to create SQLite table: %v", err)

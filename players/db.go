@@ -20,8 +20,8 @@ func setPlayerLoggedInStatusInDB(db *sqlx.DB, playerUUID string, loggedIn bool) 
 func GetPlayerByName(db *sqlx.DB, name string) (*Player, error) {
 	var player Player
 	var playerAbilities PlayerAbilities
-	err := db.QueryRow("SELECT p.uuid, p.name, p.room, p.area, p.health, p.movement, p.mana, p.logged_in, pa.intelligence, pa.dexterity, pa.charisma, pa.constitution, pa.wisdom, pa.strength FROM players p JOIN player_attributes pa ON p.uuid = pa.player_uuid WHERE LOWER(p.name) = LOWER(?)", name).
-		Scan(&player.UUID, &player.Name, &player.RoomUUID, &player.AreaUUID, &player.Health, &player.Movement, &player.Mana, &player.LoggedIn, &playerAbilities.Intelligence, &playerAbilities.Dexterity, &playerAbilities.Charisma, &playerAbilities.Constitution, &playerAbilities.Wisdom, &playerAbilities.Strength)
+	err := db.QueryRow("SELECT p.uuid, p.name, p.room, p.area, p.hp, p.movement, p.logged_in, pa.intelligence, pa.dexterity, pa.charisma, pa.constitution, pa.wisdom, pa.strength FROM players p JOIN player_attributes pa ON p.uuid = pa.player_uuid WHERE LOWER(p.name) = LOWER(?)", name).
+		Scan(&player.UUID, &player.Name, &player.RoomUUID, &player.AreaUUID, &player.HP, &player.Movement, &player.LoggedIn, &playerAbilities.Intelligence, &playerAbilities.Dexterity, &playerAbilities.Charisma, &playerAbilities.Constitution, &playerAbilities.Wisdom, &playerAbilities.Strength)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +31,8 @@ func GetPlayerByName(db *sqlx.DB, name string) (*Player, error) {
 func GetPlayerFromDB(db *sqlx.DB, playerName string) (*Player, error) {
 	var player Player
 	var colorProfileUUID string
-	err := db.QueryRow("SELECT uuid, name, room, area, health, health_max, movement, movement_max, mana, mana_max, logged_in, password, color_profile FROM players WHERE LOWER(name) = LOWER(?)", playerName).
-		Scan(&player.UUID, &player.Name, &player.RoomUUID, &player.AreaUUID, &player.Health, &player.HealthMax, &player.Movement, &player.MovementMax, &player.Mana, &player.ManaMax, &player.LoggedIn, &player.Password, &colorProfileUUID)
+	err := db.QueryRow("SELECT uuid, name, room, area, hp, hp_max, movement, movement_max, logged_in, password, color_profile FROM players WHERE LOWER(name) = LOWER(?)", playerName).
+		Scan(&player.UUID, &player.Name, &player.RoomUUID, &player.AreaUUID, &player.HP, &player.HPMax, &player.Movement, &player.MovementMax, &player.LoggedIn, &player.Password, &colorProfileUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -134,10 +134,6 @@ func (player *Player) GetEquipmentFromDB(db *sqlx.DB) error {
 		default:
 			pe.Feet = items.NewEquippedItem(item, "Feet")
 		}
-	}
-
-	if err != nil {
-		return err
 	}
 
 	player.Equipment = pe
