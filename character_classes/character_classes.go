@@ -2,6 +2,7 @@ package character_classes
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -88,4 +89,33 @@ func GetCharacterClassList(db *sqlx.DB, archetype_slug string) (CharacterClasses
 	characterClasses := []CharacterClass{}
 	err := db.Select(&characterClasses, query, args...)
 	return characterClasses, err
+}
+
+func (c *CharacterClass) GetSavingThrowStatement() string {
+	savingThrows := []string{}
+	if c.SavingThrowCharisma {
+		savingThrows = append(savingThrows, "Charisma")
+	}
+	if c.SavingThrowConstitution {
+		savingThrows = append(savingThrows, "Constitution")
+	}
+	if c.SavingThrowDexterity {
+		savingThrows = append(savingThrows, "Dexterity")
+	}
+	if c.SavingThrowIntelligence {
+		savingThrows = append(savingThrows, "Intelligence")
+	}
+	if c.SavingThrowStrength {
+		savingThrows = append(savingThrows, "Strength")
+	}
+	if c.SavingThrowWisdom {
+		savingThrows = append(savingThrows, "Wisdom")
+	}
+
+	if len(savingThrows) == 1 {
+		return "Your saving throw is " + savingThrows[0]
+	} else {
+		return "Your saving throws are: " + strings.Join(savingThrows, ", ")
+	}
+
 }

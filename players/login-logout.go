@@ -113,6 +113,7 @@ func selectCharacterClassAndArchetype(conn net.Conn, db *sqlx.DB, player *Player
 			menuContents.Elements = []string{chosenCharacterClass.ArchetypeDescription}
 			display.PrintMenu(player, menuContents)
 
+			display.PrintWithColor(player, fmt.Sprintf("%s\n", chosenCharacterClass.GetSavingThrowStatement()), "primary")
 			display.PrintWithColor(player, fmt.Sprintf("Would you like to select a Character Class of %s-%s? (Y/N): ", chosenCharacterClass.Name, chosenCharacterClass.ArchetypeName), "primary")
 			choice = getPlayerInput(conn)
 			choice = strings.ToLower(choice)
