@@ -6,6 +6,7 @@ help:
 	@echo "seed_db - Seed the database"
 	@echo "build - Build the project"
 	@echo "run_server - Run the server"
+	@echo "debug_server - Run the server in dlv"
 	@echo "examine_actions - debugging stuff"
 	@echo "import_races"
 	@echo "import_classes"
@@ -30,12 +31,16 @@ seed_db:
 	go run ./seed/display/main.go	
 	go run ./seed/players/main.go
 	go run ./seed/classes/main.go
+	go run ./seed/races/main.go
 
 build:
 	go build -o ./bin/mud ./main.go
 
 run_server:
 	go run ./main.go	
+
+debug_server:
+	dlv debug -l 127.0.0.1:38697 --headless ./main.go
 
 import_races:
 	go run ./open5e_importer/races/main.go

@@ -27,6 +27,17 @@ func (player *Player) GetArea() interfaces.Area {
 	return player.Area
 }
 
+func (player *Player) GetCharacterClass() string {
+	return player.CharacterClass.Name + " - " + player.CharacterClass.ArchetypeName
+}
+
+func (player *Player) GetRace() string {
+	if player.Race.SubRaceName == "" {
+		return player.Race.Name
+	}
+	return player.Race.Name + " - " + player.Race.SubRaceName
+}
+
 func (player *Player) GetColorProfile() interfaces.ColorProfile {
 	return &player.ColorProfile
 }

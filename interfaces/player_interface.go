@@ -15,6 +15,7 @@ type Player interface {
 	GetArmorClass() int32
 	GetArea() Area
 	GetAreaUUID() string
+	GetCharacterClass() string
 	GetColorProfile() ColorProfile
 	GetColorProfileFromDB(db *sqlx.DB) error
 	GetCommands() []string
@@ -30,6 +31,7 @@ type Player interface {
 	GetMovement() int32
 	GetMovementMax() int32
 	GetName() string
+	GetRace() string
 	GetRoom() Room
 	GetRoomUUID() string
 	GetUUID() string

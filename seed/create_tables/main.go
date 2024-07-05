@@ -14,6 +14,8 @@ func CreatePlayersTables(db *sqlx.DB) {
 		CREATE TABLE IF NOT EXISTS players (
 			uuid VARCHAR(36) PRIMARY KEY,
 			character_class TEXT,
+			race TEXT,
+			subrace TEXT,
 			name TEXT,
 			room VARCHAR(36),
 			area VARCHAR(36),
@@ -206,7 +208,7 @@ func CreateMobsTable(db *sqlx.DB) {
 
 func CreateRacesTable(db *sqlx.DB) {
 	_, err := db.Exec(`
-	CREATE TABLE IF NOT EXISTS races (
+	CREATE TABLE IF NOT EXISTS character_races (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		name TEXT,
 		slug TEXT,
@@ -220,7 +222,7 @@ func CreateRacesTable(db *sqlx.DB) {
 	if err != nil {
 		log.Fatalf("Failed to create SQLite table: %v", err)
 	}
-	fmt.Println("Created Races table")
+	fmt.Println("Created Character Races table")
 }
 
 func CreateClassesTable(db *sqlx.DB) {

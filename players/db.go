@@ -2,8 +2,10 @@ package players
 
 import (
 	"fmt"
+	"mud/character_classes"
 	"mud/interfaces"
 	"mud/items"
+
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -31,11 +33,33 @@ func GetPlayerByName(db *sqlx.DB, name string) (*Player, error) {
 func GetPlayerFromDB(db *sqlx.DB, playerName string) (*Player, error) {
 	var player Player
 	var colorProfileUUID string
-	err := db.QueryRow("SELECT uuid, name, room, area, hp, hp_max, movement, movement_max, logged_in, password, color_profile FROM players WHERE LOWER(name) = LOWER(?)", playerName).
-		Scan(&player.UUID, &player.Name, &player.RoomUUID, &player.AreaUUID, &player.HP, &player.HPMax, &player.Movement, &player.MovementMax, &player.LoggedIn, &player.Password, &colorProfileUUID)
+	var characterClassArchetypeSlug string
+	var characterRaceSlug, characterSubRaceSlug string
+	err := db.QueryRow("SELECT uuid, name, character_class, race, subrace, room, area, hp, hp_max, movement, movement_max, logged_in, password, color_profile FROM players WHERE LOWER(name) = LOWER(?)", playerName).
+		Scan(&player.UUID, &player.Name, &characterClassArchetypeSlug, &characterRaceSlug, &characterSubRaceSlug, &player.RoomUUID, &player.AreaUUID, &player.HP, &player.HPMax, &player.Movement, &player.MovementMax, &player.LoggedIn, &player.Password, &colorProfileUUID)
 	if err != nil {
 		return nil, err
 	}
+
+	characterClasses, err := character_classes.GetCharacterClassList(db, characterClassArchetypeSlug)
+	if err != nil {
+		return nil, err
+	}
+	if len(characterClasses) != 1 {
+		return nil, nil
+	}
+	var characterClass = characterClasses[0]
+	player.CharacterClass = characterClass
+
+	characterRaces, err := character_classes.GetCharacterRaceList(db, characterRaceSlug, characterSubRaceSlug)
+	if err != nil {
+		return nil, err
+	}
+	if len(characterRaces) != 1 {
+		return nil, nil
+	}
+	player.Race = characterRaces[0]
+
 	player.ColorProfile = ColorProfile{UUID: colorProfileUUID}
 
 	return &player, nil

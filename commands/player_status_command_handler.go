@@ -23,6 +23,8 @@ func (h *PlayerStatusCommandHandler) Execute(db *sqlx.DB, player interfaces.Play
 
 	player.SetAbilities(playerAbilities)
 
+	display.PrintWithColor(player, fmt.Sprintf("%s\n", player.GetCharacterClass()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("%s\n", player.GetRace()), "danger")
 	display.PrintWithColor(player, fmt.Sprintf("Strength: %d\n", playerAbilities.GetStrength()), "danger")
 	display.PrintWithColor(player, fmt.Sprintf("Dexterity: %d\n", playerAbilities.GetDexterity()), "danger")
 	display.PrintWithColor(player, fmt.Sprintf("Constitution: %d\n", playerAbilities.GetConstitution()), "danger")

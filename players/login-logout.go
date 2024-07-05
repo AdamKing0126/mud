@@ -47,6 +47,20 @@ func getCharacterClassNamesFromCharacterClassObjects(c character_classes.Charact
 	return characterClassNames
 }
 
+func getCharacterRaceNamesFromCharacterRaceObjects(c character_classes.CharacterRaces) []string {
+	characterRaceNamesSet := make(map[string]bool)
+	for _, characterRace := range c {
+		characterRaceNamesSet[characterRace.Name] = true
+	}
+	characterRaceNames := make([]string, 0, len(characterRaceNamesSet))
+	for k := range characterRaceNamesSet {
+		characterRaceNames = append(characterRaceNames, k)
+	}
+
+	sort.Strings(characterRaceNames)
+	return characterRaceNames
+}
+
 func selectCharacterClassAndArchetype(conn net.Conn, db *sqlx.DB, player *Player) *character_classes.CharacterClass {
 	characterClasses, err := character_classes.GetCharacterClassList(db, "")
 	if err != nil {
@@ -112,12 +126,91 @@ func selectCharacterClassAndArchetype(conn net.Conn, db *sqlx.DB, player *Player
 	}
 }
 
-// func selectRace(conn net.Conn, db *sqlx.DB, player *Player) *character_classes.CharacterRace {
+func selectRace(conn net.Conn, db *sqlx.DB, player *Player) *character_classes.CharacterRace {
+	characterRaces, err := character_classes.GetCharacterRaceList(db, "", "")
+	if err != nil {
+		log.Fatal(err)
+	}
+	characterRaceNames := getCharacterRaceNamesFromCharacterRaceObjects(characterRaces)
 
-// }
+	for {
+		menuTitle := "Choose a Character Race"
+		delimiter := "number"
+		lineStyle := "double"
+
+		menuContents := display.MenuContents{
+			Title:     &menuTitle,
+			Delimiter: &delimiter,
+			LineStyle: &lineStyle,
+			MaxWidth:  65,
+			Elements:  characterRaceNames,
+		}
+
+		display.PrintMenu(player, menuContents)
+
+		display.PrintWithColor(player, fmt.Sprintf("Make a selection (1-%d, anything else to quit): ", len(characterRaceNames)), "primary")
+		choice := getPlayerInput(conn)
+
+		characterRaceChoice, err := strconv.Atoi(choice)
+		if err != nil || characterRaceChoice > len(characterRaceNames) || characterRaceChoice < 1 {
+			return nil
+		}
+
+		chosenCharacterRace := characterRaces.GetCharacterRaceByName(characterRaceNames[characterRaceChoice-1])
+
+		for {
+			subRaces := characterRaces.SubRacesFor(chosenCharacterRace.Slug)
+
+			if len(subRaces) > 1 {
+				subRaceNames := characterRaces.SubRaceNamesFor(chosenCharacterRace.Slug)
+
+				menuContents.Elements = subRaceNames
+				menuTitle = fmt.Sprintf("Select a %s Subrace", chosenCharacterRace.Name)
+				display.PrintMenu(player, menuContents)
+				display.PrintWithColor(player, fmt.Sprintf("Make a subrace selection to learn more (1-%d, anything else to quit): ", len(subRaceNames)), "primary")
+
+				choice = getPlayerInput(conn)
+				subraceChoice, err := strconv.Atoi(choice)
+				if err != nil || subraceChoice > len(subRaces) || subraceChoice < 1 {
+					break
+				}
+
+				subRaceName := subRaceNames[subraceChoice-1]
+				chosenCharacterRace = subRaces.GetCharacterRaceBySubRaceName(subRaceName)
+
+				menuTitle = subRaceName
+				menuContents.Delimiter = nil
+				menuContents.Elements = []string{chosenCharacterRace.SubRaceDescription}
+				display.PrintMenu(player, menuContents)
+
+				display.PrintWithColor(player, fmt.Sprintf("Would you like to select a Character Race of %s-%s? (Y/N): ", chosenCharacterRace.Name, chosenCharacterRace.SubRaceName), "primary")
+				choice = getPlayerInput(conn)
+				choice = strings.ToLower(choice)
+				fmt.Println(choice)
+				if choice == "y" {
+					return chosenCharacterRace
+				}
+				delimiter := "number"
+				menuContents.Delimiter = &delimiter
+			} else {
+				display.PrintWithColor(player, fmt.Sprintf("Would you like to select a Character Race of %s? (Y/N): ", chosenCharacterRace.Name), "primary")
+				choice = getPlayerInput(conn)
+				choice = strings.ToLower(choice)
+				fmt.Println(choice)
+				if choice == "y" {
+					return chosenCharacterRace
+				}
+				delimiter := "number"
+				menuContents.Delimiter = &delimiter
+				break
+			}
+		}
+	}
+
+}
 
 func createPlayer(conn net.Conn, db *sqlx.DB, playerName string) (*Player, error) {
-	player := &Player{}
+	player := NewPlayer(conn)
 	player.Name = playerName
 
 	fmt.Fprintf(conn, "Please enter a password you'd like to use: ")
@@ -141,11 +234,11 @@ func createPlayer(conn net.Conn, db *sqlx.DB, playerName string) (*Player, error
 		return nil, nil
 	}
 
-	// chosenRace := selectRace(conn, db, player)
-	// if chosenRace == nil {
-	// 	player.Logout(db)
-	// 	return nil, nil
-	// }
+	chosenRace := selectRace(conn, db, player)
+	if chosenRace == nil {
+		player.Logout(db)
+		return nil, nil
+	}
 
 	player.ColorProfile = *colorProfile
 	player.HP = int32(chosenCharacterClass.HPAtFirstLevel)
@@ -155,20 +248,21 @@ func createPlayer(conn net.Conn, db *sqlx.DB, playerName string) (*Player, error
 	player.UUID = uuid.New().String()
 	player.Conn = conn
 	player.CharacterClass = *chosenCharacterClass
+	player.Race = *chosenRace
 
 	tx, err := db.Begin()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// TODO: everything below this line is probably junk.  Need to build player character based off choices made above.
-
-	_, err = tx.Exec("INSERT INTO players (uuid, character_class, name, area, room, hp, hhp_max, movement, movement_max, mana_max, color_profile, password, logged_in) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		player.UUID, player.CharacterClass.ArchetypeSlug, player.Name, player.AreaUUID, player.RoomUUID, player.HP, player.HPMax, player.Movement, player.MovementMax, player.ColorProfile.GetUUID(), player.Password, true)
+	_, err = tx.Exec("INSERT INTO players (uuid, character_class, race, subrace, name, area, room, hp, hp_max, movement, movement_max, color_profile, password, logged_in) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		player.UUID, player.CharacterClass.ArchetypeSlug, player.Race.Slug, player.Race.SubRaceSlug, player.Name, player.AreaUUID, player.RoomUUID, player.HP, player.HPMax, player.Movement, player.MovementMax, player.ColorProfile.GetUUID(), player.Password, true)
 	if err != nil {
 		tx.Rollback()
 		log.Fatalf("Failed to insert player: %v", err)
 	}
+
+	// TODO: everything below this line is probably junk.  Need to build player character based off choices made above.
 
 	_, err = tx.Exec("INSERT INTO player_abilities (uuid, player_uuid, strength, dexterity, constitution, intelligence, wisdom, charisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		uuid.New(), player.UUID, 10, 10, 10, 10, 10, 10)

@@ -36,6 +36,7 @@ type Player struct {
 	Equipment       PlayerEquipment
 	Inventory       []interfaces.Item
 	CharacterClass  character_classes.CharacterClass
+	Race            character_classes.CharacterRace
 }
 
 func (player *Player) AddItem(db *sqlx.DB, item interfaces.Item) error {

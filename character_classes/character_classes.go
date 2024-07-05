@@ -73,14 +73,14 @@ func (c CharacterClasses) GetCharacterClassByArchetypeSlug(archetypeSlug string)
 	return nil
 }
 
-func GetCharacterClassList(db *sqlx.DB, slug string) (CharacterClasses, error) {
+func GetCharacterClassList(db *sqlx.DB, archetype_slug string) (CharacterClasses, error) {
 	const baseQuery = `SELECT name, hit_dice, hp_at_first_level, hp_modifier, saving_throw_charisma, saving_throw_constitution, saving_throw_dexterity, saving_throw_intelligence, saving_throw_strength, saving_throw_wisdom, slug, archetype_slug, archetype_name, archetype_description FROM character_classes`
 	var query string
 	args := []interface{}{}
 
-	if slug != "" {
-		query = baseQuery + " WHERE slug = ? ORDER BY slug, archetype_slug;"
-		args = append(args, slug)
+	if archetype_slug != "" {
+		query = baseQuery + " WHERE archetype_slug = ?;"
+		args = append(args, archetype_slug)
 	} else {
 		query = baseQuery + " ORDER BY slug, archetype_slug;"
 	}
