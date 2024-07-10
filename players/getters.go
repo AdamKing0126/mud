@@ -5,11 +5,11 @@ import (
 	"net"
 )
 
-func (player *Player) GetAbilities() interfaces.Abilities {
+func (player Player) GetAbilities() interfaces.Abilities {
 	return &player.PlayerAbilities
 }
 
-func (player *Player) GetArmorClass() int32 {
+func (player Player) GetArmorClass() int32 {
 	// 10 + armor_bonus + shield_bonus + dexterity_modifier + other_modifiers
 	base := int32(10)
 	armorBonus := int32(0)
@@ -19,92 +19,92 @@ func (player *Player) GetArmorClass() int32 {
 	return base + armorBonus + shieldBonus + dexModifier + otherModifiers
 }
 
-func (player *Player) GetAreaUUID() string {
+func (player Player) GetAreaUUID() string {
 	return player.AreaUUID
 }
 
-func (player *Player) GetArea() interfaces.Area {
-	return player.Area
-}
+// func (player Player) GetArea() areas.Area {
+// 	return player.Area
+// }
 
-func (player *Player) GetCharacterClass() string {
+func (player Player) GetCharacterClass() string {
 	return player.CharacterClass.Name + " - " + player.CharacterClass.ArchetypeName
 }
 
-func (player *Player) GetRace() string {
+func (player Player) GetRace() string {
 	if player.Race.SubRaceName == "" {
 		return player.Race.Name
 	}
 	return player.Race.Name + " - " + player.Race.SubRaceName
 }
 
-func (player *Player) GetColorProfile() interfaces.ColorProfile {
+func (player Player) GetColorProfile() interfaces.ColorProfile {
 	return &player.ColorProfile
 }
 
-func (player *Player) GetCommands() []string {
+func (player Player) GetCommands() []string {
 	return player.Commands
 }
 
-func (player *Player) GetConn() net.Conn {
+func (player Player) GetConn() net.Conn {
 	return player.Conn
 }
 
-func (player *Player) GetEquipment() interfaces.PlayerEquipment {
-	return &player.Equipment
+func (player Player) GetEquipment() PlayerEquipment {
+	return player.Equipment
 }
 
-func (player *Player) GetHashedPassword() string {
+func (player Player) GetHashedPassword() string {
 	return player.Password
 }
 
-func (player *Player) GetHealth() int32 {
+func (player Player) GetHealth() int32 {
 	return player.HP
 }
 
-func (player *Player) GetHealthMax() int32 {
+func (player Player) GetHealthMax() int32 {
 	return player.HPMax
 }
 
-func (player *Player) GetInventory() []interfaces.Item {
+func (player Player) GetInventory() []interfaces.Item {
 	return player.Inventory
 }
 
-func (player *Player) GetItemFromInventory(itemName string) interfaces.Item {
+func (player Player) GetItemFromInventory(itemName string) *interfaces.Item {
 	inventory := player.GetInventory()
 	for idx := range inventory {
 		if inventory[idx].GetName() == itemName {
-			return inventory[idx]
+			return &inventory[idx]
 		}
 	}
 	return nil
 }
 
-func (player *Player) GetLoggedIn() bool {
+func (player Player) GetLoggedIn() bool {
 	return player.LoggedIn
 }
 
-func (player *Player) GetMovement() int32 {
+func (player Player) GetMovement() int32 {
 	return player.Movement
 }
 
-func (player *Player) GetMovementMax() int32 {
+func (player Player) GetMovementMax() int32 {
 	return player.MovementMax
 }
 
-func (player *Player) GetName() string {
+func (player Player) GetName() string {
 	return player.Name
 }
 
-func (player *Player) GetRoomUUID() string {
+func (player Player) GetRoomUUID() string {
 	return player.RoomUUID
 }
 
-func (player *Player) GetRoom() interfaces.Room {
-	return player.Room
-}
+// func (player Player) GetRoom() areas.Room {
+// 	return player.Room
+// }
 
-func (player *Player) GetSizeModifier() int32 {
+func (player Player) GetSizeModifier() int32 {
 	// Need to update this.  Probably need to move this out, so it can be used by players and monsters
 
 	sizeTable := map[string]int32{
@@ -120,6 +120,6 @@ func (player *Player) GetSizeModifier() int32 {
 	return sizeTable["medium"]
 }
 
-func (player *Player) GetUUID() string {
+func (player Player) GetUUID() string {
 	return player.UUID
 }

@@ -13,10 +13,10 @@ type Player interface {
 	Equip(db *sqlx.DB, item Item) bool
 	GetAbilities() Abilities
 	GetArmorClass() int32
-	GetArea() Area
 	GetAreaUUID() string
 	GetCharacterClass() string
 	GetColorProfile() ColorProfile
+	GetColorProfileColor(string) string
 	GetColorProfileFromDB(db *sqlx.DB) error
 	GetCommands() []string
 	GetConn() net.Conn
@@ -32,7 +32,6 @@ type Player interface {
 	GetMovementMax() int32
 	GetName() string
 	GetRace() string
-	GetRoom() Room
 	GetRoomUUID() string
 	GetUUID() string
 	Logout(db *sqlx.DB) error
@@ -44,6 +43,5 @@ type Player interface {
 	SetHealth(int32)
 	SetLocation(db *sqlx.DB, roomUUID string) error
 	SetInventory([]Item)
-	SetRoom(Room)
 	RollInitiative() int32
 }

@@ -3,7 +3,6 @@ package players
 import (
 	"fmt"
 	"mud/character_classes"
-	"mud/interfaces"
 	"mud/items"
 
 	"strings"
@@ -83,7 +82,7 @@ func (player *Player) GetInventoryFromDB(db *sqlx.DB) error {
 	if err != nil {
 		fmt.Printf("error querying: %v", err)
 	}
-	var inventory []interfaces.Item
+	var inventory []items.Item
 	for rows.Next() {
 		var uuid, name, description, slots string
 		err := rows.Scan(&uuid, &name, &description, &slots)
@@ -92,7 +91,7 @@ func (player *Player) GetInventoryFromDB(db *sqlx.DB) error {
 			fmt.Println("uh oh")
 		}
 		item := items.NewItem(uuid, name, description, equipmentSlots)
-		inventory = append(inventory, item)
+		inventory = append(inventory, *item)
 	}
 
 	player.Inventory = inventory
@@ -140,23 +139,23 @@ func (player *Player) GetEquipmentFromDB(db *sqlx.DB) error {
 
 		switch uuid {
 		case head:
-			pe.Head = items.NewEquippedItem(item, "Head")
+			pe.Head = NewEquippedItem(*item, "Head")
 		case neck:
-			pe.Neck = items.NewEquippedItem(item, "Neck")
+			pe.Neck = NewEquippedItem(*item, "Neck")
 		case chest:
-			pe.Chest = items.NewEquippedItem(item, "Chest")
+			pe.Chest = NewEquippedItem(*item, "Chest")
 		case arms:
-			pe.Arms = items.NewEquippedItem(item, "Arms")
+			pe.Arms = NewEquippedItem(*item, "Arms")
 		case hands:
-			pe.Hands = items.NewEquippedItem(item, "Hands")
+			pe.Hands = NewEquippedItem(*item, "Hands")
 		case dominantHand:
-			pe.DominantHand = items.NewEquippedItem(item, "DominantHand")
+			pe.DominantHand = NewEquippedItem(*item, "DominantHand")
 		case offHand:
-			pe.OffHand = items.NewEquippedItem(item, "OffHand")
+			pe.OffHand = NewEquippedItem(*item, "OffHand")
 		case legs:
-			pe.Legs = items.NewEquippedItem(item, "Legs")
+			pe.Legs = NewEquippedItem(*item, "Legs")
 		default:
-			pe.Feet = items.NewEquippedItem(item, "Feet")
+			pe.Feet = NewEquippedItem(*item, "Feet")
 		}
 	}
 
@@ -180,9 +179,10 @@ func getColorProfileFromDB(db *sqlx.DB, colorProfileUUID string) (*ColorProfile,
 	return &colorProfile, nil
 }
 
-func GetPlayersInRoom(db *sqlx.DB, roomUUID string) ([]interfaces.Player, error) {
+func GetPlayersInRoom(db *sqlx.DB, roomUUID string) ([]Player, error) {
 	// Would it be better to rely on the `connections` structure attached to the server
 	// or is it better to query the db for this info?
+	var players []Player
 	query := `
 		SELECT uuid, name 
 		FROM players 
@@ -190,11 +190,10 @@ func GetPlayersInRoom(db *sqlx.DB, roomUUID string) ([]interfaces.Player, error)
 	`
 	rows, err := db.Query(query, roomUUID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %v", err)
+		return players, fmt.Errorf("failed to execute query: %v", err)
 	}
 	defer rows.Close()
 
-	var players []Player
 	for rows.Next() {
 		var player Player
 		err := rows.Scan(&player.UUID, &player.Name)
@@ -208,10 +207,5 @@ func GetPlayersInRoom(db *sqlx.DB, roomUUID string) ([]interfaces.Player, error)
 		return nil, fmt.Errorf("error iterating over rows: %v", err)
 	}
 
-	playerInterfaces := make([]interfaces.Player, len(players))
-	for idx := range players {
-		playerInterfaces[idx] = &players[idx]
-	}
-
-	return playerInterfaces, nil
+	return players, nil
 }

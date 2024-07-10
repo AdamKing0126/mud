@@ -2,8 +2,9 @@ package commands
 
 import (
 	"fmt"
+	"mud/areas"
 	"mud/display"
-	"mud/interfaces"
+	"mud/players"
 	"mud/world_state"
 	"strings"
 
@@ -18,8 +19,9 @@ func (h *LookCommandHandler) SetWorldState(world_state *world_state.WorldState) 
 	h.WorldState = world_state
 }
 
-func (h *LookCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
-	currentRoom := player.GetRoom()
+func (h *LookCommandHandler) Execute(db *sqlx.DB, player players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+	currentRoomUUID := player.GetRoomUUID()
+	currentRoom := h.WorldState.GetRoom(currentRoomUUID, false)
 
 	if len(arguments) == 0 {
 		display.PrintWithColor(player, fmt.Sprintf("%s\n", currentRoom.GetName()), "primary")
@@ -55,13 +57,13 @@ func (h *LookCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, comm
 		exitsHandler.Execute(db, player, "exits", arguments, currentChannel, updateChannel)
 	} else if len(arguments) == 1 {
 		exits := currentRoom.GetExits()
-		exitMap := map[string]interfaces.Room{
-			"North": exits.GetNorth(),
-			"South": exits.GetSouth(),
-			"West":  exits.GetWest(),
-			"East":  exits.GetEast(),
-			"Up":    exits.GetUp(),
-			"Down":  exits.GetDown(),
+		exitMap := map[string]areas.Room{
+			"North": *exits.GetNorth(),
+			"South": *exits.GetSouth(),
+			"West":  *exits.GetWest(),
+			"East":  *exits.GetEast(),
+			"Up":    *exits.GetUp(),
+			"Down":  *exits.GetDown(),
 		}
 
 		lookDirection := arguments[0]

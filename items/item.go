@@ -58,13 +58,6 @@ func NewItem(uuid, name, description string, equipmentSlots []string) *Item {
 	}
 }
 
-func NewEquippedItem(item *Item, equippedSlot string) *EquippedItem {
-	return &EquippedItem{
-		Item:         item,
-		EquippedSlot: equippedSlot,
-	}
-}
-
 type Item struct {
 	UUID           string
 	Name           string
@@ -80,22 +73,23 @@ func (item *Item) GetName() string {
 	return item.Name
 }
 
-func (item *Item) GetDescription() string {
+func (item Item) GetDescription() string {
 	return item.Description
 }
 
-func (item *Item) GetEquipmentSlots() []string {
+func (item Item) GetEquipmentSlots() []string {
 	return item.EquipmentSlots
 }
 
-type EquippedItem struct {
-	*Item
-	EquippedSlot string
-}
+// TODO: Don't need this?
+// type EquippedItem struct {
+// 	*Item
+// 	EquippedSlot string
+// }
 
-func (ei EquippedItem) GetEquippedSlot() string {
-	return ei.EquippedSlot
-}
+// func (ei EquippedItem) GetEquippedSlot() string {
+// 	return ei.EquippedSlot
+// }
 
 type ItemLocation struct {
 	ItemUUID   uuid.UUID

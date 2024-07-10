@@ -27,7 +27,7 @@ func GetRoomFromDB(roomUUID string, db *sqlx.DB) (*Room, error) {
 	}
 
 	var northExitUUID, southExitUUID, eastExitUUID, westExitUUID, upExitUUID, downExitUUID string
-	room := &Room{Exits: &ExitInfo{}}
+	room := &Room{Exits: ExitInfo{}}
 	err = room_rows.Scan(
 		&room.UUID, &room.AreaUUID, &room.Name, &room.Description,
 		&northExitUUID, &southExitUUID, &eastExitUUID, &westExitUUID,

@@ -3,13 +3,12 @@ package items
 import (
 	"encoding/json"
 	"fmt"
-	"mud/interfaces"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
 )
 
-func GetItemsInRoom(db *sqlx.DB, roomUUID string) ([]interfaces.Item, error) {
+func GetItemsInRoom(db *sqlx.DB, roomUUID string) ([]Item, error) {
 	query := `
 		SELECT i.uuid, i.name, i.description, i.equipment_slots
 		FROM item_locations il
@@ -66,12 +65,7 @@ func GetItemsInRoom(db *sqlx.DB, roomUUID string) ([]interfaces.Item, error) {
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating over rows: %v", err)
 	}
-	itemInterfaces := make([]interfaces.Item, len(items))
-	for idx := range items {
-		itemInterfaces[idx] = &items[idx]
-	}
-
-	return itemInterfaces, nil
+	return items, nil
 }
 
 func (item *Item) SetLocation(db *sqlx.DB, playerUUID string, roomUUID string) error {
@@ -88,7 +82,7 @@ func (item *Item) SetLocation(db *sqlx.DB, playerUUID string, roomUUID string) e
 	return nil
 }
 
-func GetItemsForPlayer(db *sqlx.DB, playerUUID string) ([]interfaces.Item, error) {
+func GetItemsForPlayer(db *sqlx.DB, playerUUID string) ([]Item, error) {
 	query := `
 		SELECT i.uuid, i.name, i.description, i.equipment_slots
 		FROM item_locations il
@@ -146,15 +140,10 @@ func GetItemsForPlayer(db *sqlx.DB, playerUUID string) ([]interfaces.Item, error
 		return nil, fmt.Errorf("error iterating over rows: %v", err)
 	}
 
-	var itemInterfaces []interfaces.Item
-	for _, item := range items {
-		itemInterfaces = append(itemInterfaces, &item)
-	}
-
-	return itemInterfaces, nil
+	return items, nil
 }
 
-func GetItemByNameForPlayer(db *sqlx.DB, itemName string, playerUUID string) (interfaces.Item, error) {
+func GetItemByNameForPlayer(db *sqlx.DB, itemName string, playerUUID string) (*Item, error) {
 	items, err := GetItemsForPlayer(db, playerUUID)
 	if err != nil {
 		return nil, err
@@ -162,7 +151,7 @@ func GetItemByNameForPlayer(db *sqlx.DB, itemName string, playerUUID string) (in
 
 	for _, item := range items {
 		if item.GetName() == itemName {
-			return item, nil
+			return &item, nil
 		}
 	}
 

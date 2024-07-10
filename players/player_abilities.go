@@ -11,39 +11,39 @@ type PlayerAbilities struct {
 	Constitution int32
 }
 
-func (playerAbilities *PlayerAbilities) GetUUID() string {
+func (playerAbilities PlayerAbilities) GetUUID() string {
 	return playerAbilities.UUID
 }
 
-func (playerAbilities *PlayerAbilities) GetPlayerUUID() string {
+func (playerAbilities PlayerAbilities) GetPlayerUUID() string {
 	return playerAbilities.PlayerUUID
 }
 
-func (playerAbilities *PlayerAbilities) GetStrength() int32 {
+func (playerAbilities PlayerAbilities) GetStrength() int32 {
 	return playerAbilities.Strength
 }
 
-func (playerAbilities *PlayerAbilities) GetIntelligence() int32 {
+func (playerAbilities PlayerAbilities) GetIntelligence() int32 {
 	return playerAbilities.Intelligence
 }
 
-func (playerAbilities *PlayerAbilities) GetCharisma() int32 {
+func (playerAbilities PlayerAbilities) GetCharisma() int32 {
 	return playerAbilities.Charisma
 }
 
-func (playerAbilities *PlayerAbilities) GetWisdom() int32 {
+func (playerAbilities PlayerAbilities) GetWisdom() int32 {
 	return playerAbilities.Wisdom
 }
 
-func (playerAbilities *PlayerAbilities) GetDexterity() int32 {
+func (playerAbilities PlayerAbilities) GetDexterity() int32 {
 	return playerAbilities.Dexterity
 }
 
-func (playerAbilities *PlayerAbilities) GetConstitution() int32 {
+func (playerAbilities PlayerAbilities) GetConstitution() int32 {
 	return playerAbilities.Constitution
 }
 
-func (playerAbilities *PlayerAbilities) GetAttackModifier(weaponType string) int32 {
+func (playerAbilities PlayerAbilities) GetAttackModifier(weaponType string) int32 {
 	if weaponType == "ranged" {
 		return playerAbilities.GetDexterityModifier()
 	} else if weaponType == "melee" {
@@ -52,7 +52,7 @@ func (playerAbilities *PlayerAbilities) GetAttackModifier(weaponType string) int
 	return 0
 }
 
-func (playerAbilities *PlayerAbilities) GetStrengthModifier() int32 {
+func (playerAbilities PlayerAbilities) GetStrengthModifier() int32 {
 	strengthBonusTable := map[int32]int32{
 		0:  -6,
 		1:  -5,
@@ -92,7 +92,7 @@ func (playerAbilities *PlayerAbilities) GetStrengthModifier() int32 {
 	return strengthBonusTable[playerAbilities.GetStrength()]
 }
 
-func (playerAbilities *PlayerAbilities) GetDexterityModifier() int32 {
+func (playerAbilities PlayerAbilities) GetDexterityModifier() int32 {
 	dexterityBonusTable := map[int32]int32{
 		0:  -6,
 		1:  -5,

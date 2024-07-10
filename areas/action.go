@@ -28,31 +28,41 @@ func (a *Action) GetArguments() []string {
 }
 
 type ActionHandler interface {
-	Execute(db *sqlx.DB, player interfaces.Player, action *Action, updateChannel func(string))
+	Execute(db *sqlx.DB, player interfaces.Player, action Action, updateChannel func(string))
 }
 
-type FooActionHandler struct{}
+// TODO WTF is this?
+// type FooActionHandler struct{}
 
-func (h *FooActionHandler) Execute(db *sqlx.DB, player interfaces.Player, action *Action, updateChannel func(string)) {
-	display.PrintWithColor(player, "FooActionHandler.Execute()\n", "danger")
+// func (h *FooActionHandler) Execute(db *sqlx.DB, player players.Player, action *Action, updateChannel func(string)) {
+// 	display.PrintWithColor(player, "FooActionHandler.Execute()\n", "danger")
+// }
+
+// var ActionHandlers = map[string]ActionHandler{
+// 	"foo": &FooActionHandler{},
+// }
+
+var ActionHandlers = map[string]ActionHandler{}
+
+type PlayerActions struct {
+	Player  interfaces.Player
+	Actions []Action
 }
 
-var ActionHandlers = map[string]ActionHandler{
-	"foo": &FooActionHandler{},
-}
-
-func (a *Area) Run(db *sqlx.DB, ch chan interfaces.Action, connections map[string]interfaces.Player) {
+func (a *Area) Run(db *sqlx.DB, ch chan Action, connections map[string]interfaces.Player) {
 	ticker := time.NewTicker(time.Second)
 	tickerCounter := 0
 	defer ticker.Stop()
 
-	playerActions := make(map[interfaces.Player][]interfaces.Action)
+	playerActionsMap := make(map[string]PlayerActions)
 
 	for {
 		select {
 		case action := <-ch:
 			player := action.GetPlayer()
-			playerActions[player] = append(playerActions[player], action)
+			pa := playerActionsMap[player.GetUUID()]
+			pa.Actions = append(pa.Actions, action)
+			playerActionsMap[player.GetUUID()] = pa
 		case <-ticker.C:
 			tickerCounter++
 			if tickerCounter%15 == 0 {
@@ -76,25 +86,18 @@ func (a *Area) Run(db *sqlx.DB, ch chan interfaces.Action, connections map[strin
 			}
 
 			// Process one action for each player
-			for player, actions := range playerActions {
-				if len(actions) > 0 {
-					action := actions[0]
-					playerActions[player] = actions[1:]
+			for _, playerActions := range playerActionsMap {
+				if len(playerActions.Actions) > 0 {
+					action := playerActions.Actions[0]
+					playerActions.Actions = playerActions.Actions[1:]
 
-					actionConcrete, ok := action.(*Action)
+					handler, ok := ActionHandlers[action.GetCommand()]
 					if !ok {
-						fmt.Println("Unknown action type: ", action)
+						fmt.Println("Unknown action command: ", action.GetCommand())
 						continue
 
 					}
-
-					handler, ok := ActionHandlers[actionConcrete.GetCommand()]
-					if !ok {
-						fmt.Println("Unknown action command: ", actionConcrete.GetCommand())
-						continue
-
-					}
-					handler.Execute(db, player, actionConcrete, func(message string) {
+					handler.Execute(db, playerActions.Player, action, func(message string) {
 						fmt.Println("Running command: ", action.GetCommand())
 					})
 				} else {

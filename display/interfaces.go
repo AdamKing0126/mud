@@ -1,12 +1,12 @@
 package display
 
 import (
-	"mud/interfaces"
 	"net"
 )
 
 type Player interface {
-	GetColorProfile() interfaces.ColorProfile
+	GetColorProfile() ColorProfile
+	GetColorProfileColor(string) string
 	GetConn() net.Conn
 }
 

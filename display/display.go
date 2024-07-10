@@ -2,6 +2,7 @@ package display
 
 import (
 	"fmt"
+	"net"
 )
 
 const (
@@ -28,9 +29,13 @@ func Colorize(text string, color string) string {
 	return color + text + Reset
 }
 
-func PrintWithColor(player Player, text string, colorUse string) {
-	colorProfile := player.GetColorProfile()
-	color := colorProfile.GetColor(colorUse)
+type colorProfileAndConnectionGetter interface {
+	GetColorProfileColor(string) string
+	GetConn() net.Conn
+}
+
+func PrintWithColor(player colorProfileAndConnectionGetter, text string, colorUse string) {
+	color := player.GetColorProfileColor(colorUse)
 	playerConn := player.GetConn()
 	fmt.Fprintf(playerConn, "%s", Colorize(text, color))
 }

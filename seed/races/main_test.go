@@ -28,8 +28,8 @@ func TestSeedRaces(t *testing.T) {
 
 	raceImportDbPath := "./sql_database/race_imports.db"
 
-	err = SeedGroups(dbPath, raceImportDbPath)
+	err = SeedRaces(dbPath, raceImportDbPath)
 	if err != nil {
-		t.Errorf("SeedClasses() returned error: %v", err)
+		t.Errorf("SeedRaces() returned error: %v", err)
 	}
 }

@@ -2,9 +2,10 @@ package commands
 
 import (
 	"fmt"
+	"mud/areas"
 	"mud/display"
-	"mud/interfaces"
 	"mud/notifications"
+	"mud/players"
 	"mud/world_state"
 
 	"github.com/jmoiron/sqlx"
@@ -15,7 +16,7 @@ type LogoutCommandHandler struct {
 	WorldState *world_state.WorldState
 }
 
-func (h *LogoutCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, _ string, _ []string, _ chan interfaces.Action, _ func(string)) {
+func (h *LogoutCommandHandler) Execute(db *sqlx.DB, player players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
 	display.PrintWithColor(player, "Goodbye!\n", "reset")
 	if err := player.Logout(db); err != nil {
 		fmt.Printf("Error logging out player: %v\n", err)

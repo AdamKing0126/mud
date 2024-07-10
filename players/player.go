@@ -5,6 +5,7 @@ import (
 	"mud/character_classes"
 	"mud/display"
 	"mud/interfaces"
+	"mud/items"
 	"mud/utilities"
 	"net"
 	"reflect"
@@ -20,9 +21,7 @@ type Player struct {
 	UUID            string
 	Name            string
 	RoomUUID        string
-	Room            interfaces.Room
 	AreaUUID        string
-	Area            interfaces.Area
 	HP              int32
 	HPMax           int32
 	Movement        int32
@@ -39,7 +38,11 @@ type Player struct {
 	Race            character_classes.CharacterRace
 }
 
-func (player *Player) AddItem(db *sqlx.DB, item interfaces.Item) error {
+func (player Player) GetColorProfileColor(colorUse string) string {
+	return player.ColorProfile.GetColor(colorUse)
+}
+
+func (player Player) AddItem(db *sqlx.DB, item interfaces.Item) error {
 	err := item.SetLocation(db, player.UUID, "")
 	if err != nil {
 		return err
@@ -48,10 +51,10 @@ func (player *Player) AddItem(db *sqlx.DB, item interfaces.Item) error {
 	return nil
 }
 
-func (player *Player) RemoveItem(item interfaces.Item) error {
+func (player Player) RemoveItem(item items.Item) error {
 	itemIndex := -1
 	for idx := range player.GetInventory() {
-		if player.Inventory[idx] == item {
+		if player.Inventory[idx].GetUUID() == item.UUID {
 			itemIndex = idx
 			break
 		}
@@ -63,7 +66,7 @@ func (player *Player) RemoveItem(item interfaces.Item) error {
 	return nil
 }
 
-func (player *Player) Regen(db *sqlx.DB) error {
+func (player Player) Regen(db *sqlx.DB) error {
 	healthRegen := calculateHPRegen(player)
 	movementRegen := calculateMovementRegen(player)
 
@@ -84,10 +87,10 @@ func (player *Player) Regen(db *sqlx.DB) error {
 	return nil
 }
 
-func (player *Player) Remove(db *sqlx.DB, itemName string) {
+func (player Player) Remove(db *sqlx.DB, itemName string) {
 	if player.Equipment.DominantHand.GetName() == itemName {
 		equippedItem := player.Equipment.DominantHand
-		player.AddItem(db, equippedItem)
+		player.AddItem(db, equippedItem.Item)
 
 		player.Equipment.DominantHand = nil
 		queryString := fmt.Sprintf("UPDATE player_equipments SET DominantHand = '' WHERE player_uuid = '%s'", player.GetUUID())
@@ -100,7 +103,7 @@ func (player *Player) Remove(db *sqlx.DB, itemName string) {
 	}
 }
 
-func (player *Player) Equip(db *sqlx.DB, item interfaces.Item) bool {
+func (player Player) Equip(db *sqlx.DB, item interfaces.Item) bool {
 	// get the location where the thing goes
 	val := reflect.ValueOf(&player.Equipment).Elem()
 	itemEquipSlots := []string{}
@@ -168,11 +171,11 @@ func (player *Player) Equip(db *sqlx.DB, item interfaces.Item) bool {
 				return false
 			}
 			if columns[idx] == "DominantHand" {
-				equippedItem := &PlayerEquippedItem{
+				equippedItem := EquippedItem{
 					Item:         item,
 					EquippedSlot: columns[idx],
 				}
-				player.Equipment.DominantHand = equippedItem
+				player.Equipment.DominantHand = &equippedItem
 			}
 			return true
 		}
@@ -180,7 +183,7 @@ func (player *Player) Equip(db *sqlx.DB, item interfaces.Item) bool {
 	return true
 }
 
-func printEquipmentElement(player interfaces.Player, partName string, getterFunc func() interfaces.EquippedItem) {
+func printEquipmentElement(player Player, partName string, getterFunc func() *EquippedItem) {
 	part := getterFunc()
 	partText := "nothing"
 	if part != nil {
@@ -189,11 +192,11 @@ func printEquipmentElement(player interfaces.Player, partName string, getterFunc
 	display.PrintWithColor(player, fmt.Sprintf("\n%s: %s", partName, partText), "primary")
 }
 
-func (player *Player) DisplayEquipment() {
+func (player Player) DisplayEquipment() {
 	display.PrintWithColor(player, "\n========================", "primary")
 	display.PrintWithColor(player, "\nYour current equipment:\n", "primary")
 
-	equipment := player.GetEquipment()
+	equipment := player.Equipment
 	printEquipmentElement(player, "Head", equipment.GetHead)
 	printEquipmentElement(player, "Neck", equipment.GetNeck)
 	printEquipmentElement(player, "Chest", equipment.GetChest)

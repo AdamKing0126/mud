@@ -2,23 +2,24 @@ package world_state
 
 import (
 	"fmt"
-	"mud/interfaces"
+	"mud/areas"
+	"mud/players"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type WorldState struct {
-	Areas         map[string]interfaces.Area
+	Areas         map[string]areas.Area
 	RoomToAreaMap map[string]string
 	DB            *sqlx.DB
 }
 
-func NewWorldState(areas map[string]interfaces.Area, roomToAreaMap map[string]string, db *sqlx.DB) *WorldState {
+func NewWorldState(areas map[string]areas.Area, roomToAreaMap map[string]string, db *sqlx.DB) *WorldState {
 	return &WorldState{Areas: areas, RoomToAreaMap: roomToAreaMap, DB: db}
 }
 
-func (worldState *WorldState) RemovePlayerFromRoom(roomUUID string, player interfaces.Player) error {
+func (worldState *WorldState) RemovePlayerFromRoom(roomUUID string, player players.Player) error {
 	areaUUID := worldState.RoomToAreaMap[roomUUID]
 	area := worldState.Areas[areaUUID]
 	room, err := area.GetRoomByUUID(roomUUID)
@@ -34,7 +35,7 @@ func (worldState *WorldState) RemovePlayerFromRoom(roomUUID string, player inter
 	return nil
 }
 
-func (worldState *WorldState) AddPlayerToRoom(roomUUID string, player interfaces.Player) error {
+func (worldState *WorldState) AddPlayerToRoom(roomUUID string, player players.Player) error {
 	areaUUID := worldState.RoomToAreaMap[roomUUID]
 	area := worldState.Areas[areaUUID]
 	room, err := area.GetRoomByUUID(roomUUID)
@@ -42,12 +43,12 @@ func (worldState *WorldState) AddPlayerToRoom(roomUUID string, player interfaces
 		return err
 	}
 	room.AddPlayer(player)
-	player.SetRoom(room)
+	player.SetRoomUUID(roomUUID)
 
 	return nil
 }
 
-func (worldState *WorldState) GetRoom(roomUUID string, followExits bool) interfaces.Room {
+func (worldState *WorldState) GetRoom(roomUUID string, followExits bool) areas.Room {
 	areaUUID := worldState.RoomToAreaMap[roomUUID]
 
 	queryString := `
@@ -80,6 +81,6 @@ func (worldState *WorldState) GetRoom(roomUUID string, followExits bool) interfa
 	return retrieveRoomFromDB(worldState.DB, area, roomUUID, followExits)
 }
 
-func (worldState *WorldState) GetArea(areaUUID string) interfaces.Area {
+func (worldState *WorldState) GetArea(areaUUID string) areas.Area {
 	return worldState.Areas[areaUUID]
 }

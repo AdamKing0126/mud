@@ -3,20 +3,20 @@ package notifications
 import (
 	"fmt"
 	"mud/display"
-	"mud/interfaces"
+	"mud/players"
 )
 
 type Notifier struct {
-	Players map[string]interfaces.Player
+	Players map[string]players.Player
 }
 
-func NewNotifier(connections map[string]interfaces.Player) *Notifier {
+func NewNotifier(connections map[string]players.Player) *Notifier {
 	return &Notifier{Players: connections}
 }
 
 func (n *Notifier) NotifyRoom(roomID string, playerUUID string, message string) {
 	fmt.Println("Notifying room", roomID, "with message", message)
-	var playersInRoom []interfaces.Player
+	var playersInRoom []players.Player
 	for _, player := range n.Players {
 		if player.GetRoomUUID() == roomID && player.GetUUID() != playerUUID {
 			playersInRoom = append(playersInRoom, player)
