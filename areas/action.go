@@ -4,18 +4,19 @@ import (
 	"fmt"
 	"mud/display"
 	"mud/interfaces"
+	"mud/players"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 )
 
 type Action struct {
-	Player    interfaces.Player
+	Player    players.Player
 	Command   string
 	Arguments []string
 }
 
-func (a *Action) GetPlayer() interfaces.Player {
+func (a *Action) GetPlayer() players.Player {
 	return a.Player
 }
 
@@ -49,7 +50,7 @@ type PlayerActions struct {
 	Actions []Action
 }
 
-func (a *Area) Run(db *sqlx.DB, ch chan Action, connections map[string]interfaces.Player) {
+func (a *Area) Run(db *sqlx.DB, ch chan Action, connections map[string]players.Player) {
 	ticker := time.NewTicker(time.Second)
 	tickerCounter := 0
 	defer ticker.Stop()
@@ -66,8 +67,8 @@ func (a *Area) Run(db *sqlx.DB, ch chan Action, connections map[string]interface
 		case <-ticker.C:
 			tickerCounter++
 			if tickerCounter%15 == 0 {
-				var playersInArea []interfaces.Player
-				playersInArea = make([]interfaces.Player, 0, len(connections))
+				var playersInArea []players.Player
+				playersInArea = make([]players.Player, 0, len(connections))
 				for _, player := range connections {
 					areaUUID := a.GetUUID()
 					playerArea := player.GetAreaUUID()

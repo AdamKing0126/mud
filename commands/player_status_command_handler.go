@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 	"mud/areas"
-	"mud/combat"
 	"mud/display"
 	"mud/players"
 
@@ -21,7 +20,7 @@ func (h *PlayerStatusCommandHandler) Execute(db *sqlx.DB, player players.Player,
 		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 	}
 
-	player.SetAbilities(playerAbilities)
+	player.SetAbilities(*playerAbilities)
 
 	display.PrintWithColor(player, fmt.Sprintf("%s\n", player.GetCharacterClass()), "danger")
 	display.PrintWithColor(player, fmt.Sprintf("%s\n", player.GetRace()), "danger")
@@ -32,8 +31,8 @@ func (h *PlayerStatusCommandHandler) Execute(db *sqlx.DB, player players.Player,
 	display.PrintWithColor(player, fmt.Sprintf("Wisdom: %d\n", playerAbilities.GetWisdom()), "danger")
 	display.PrintWithColor(player, fmt.Sprintf("Charisma: %d\n", playerAbilities.GetCharisma()), "danger")
 
-	// for debugging purposes only - remove later
-	display.PrintWithColor(player, "\n\n***********DEBUG***************\n", "danger")
-	display.PrintWithColor(player, fmt.Sprintf("Attack Roll Hits: %t\n", combat.AttackRoll(player, player)), "danger")
-	display.PrintWithColor(player, "*******************************\n", "danger")
+	// TODO for debugging purposes only - remove later
+	// display.PrintWithColor(player, "\n\n***********DEBUG***************\n", "danger")
+	// display.PrintWithColor(player, fmt.Sprintf("Attack Roll Hits: %t\n", combat.AttackRoll(player, player)), "danger")
+	// display.PrintWithColor(player, "*******************************\n", "danger")
 }

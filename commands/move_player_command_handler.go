@@ -39,7 +39,8 @@ func movePlayerToDirection(worldState *world_state.WorldState, db *sqlx.DB, play
 func (h *MovePlayerCommandHandler) Execute(db *sqlx.DB, player players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	areaUUID := player.GetAreaUUID()
 
-	currentRoom := player.GetRoom()
+	currentRoomUUID := player.GetRoomUUID()
+	currentRoom := h.WorldState.GetRoom(currentRoomUUID, true)
 	exits := currentRoom.GetExits()
 
 	switch h.Direction {
