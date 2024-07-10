@@ -6,17 +6,23 @@ import (
 	"mud/display"
 	"mud/notifications"
 	"mud/players"
+	"mud/world_state"
 
 	"github.com/jmoiron/sqlx"
 )
 
 type DropCommandHandler struct {
-	Notifier *notifications.Notifier
+	Notifier   *notifications.Notifier
+	WorldState *world_state.WorldState
+}
+
+func (h *DropCommandHandler) SetWorldState(world_state *world_state.WorldState) {
+	h.WorldState = world_state
 }
 
 func (h *DropCommandHandler) Execute(db *sqlx.DB, player players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	roomUUID := player.GetRoomUUID()
-	room := player.GetRoom()
+	room := h.WorldState.GetRoom(roomUUID, false)
 
 	playerItems := player.GetInventory()
 	if len(playerItems) > 0 {

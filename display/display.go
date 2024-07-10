@@ -2,6 +2,7 @@ package display
 
 import (
 	"fmt"
+	"mud/interfaces"
 	"net"
 )
 
@@ -40,7 +41,7 @@ func PrintWithColor(player colorProfileAndConnectionGetter, text string, colorUs
 	fmt.Fprintf(playerConn, "%s", Colorize(text, color))
 }
 
-func Newline(player Player) {
+func Newline(player interfaces.ProfilePlayer) {
 	playerConn := player.GetConn()
 	fmt.Fprintf(playerConn, "\n")
 }

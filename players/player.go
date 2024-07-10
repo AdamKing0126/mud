@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"mud/character_classes"
 	"mud/display"
-	"mud/interfaces"
 	"mud/items"
 	"mud/utilities"
 	"net"
@@ -33,7 +32,7 @@ type Player struct {
 	Password        string
 	PlayerAbilities PlayerAbilities
 	Equipment       PlayerEquipment
-	Inventory       []interfaces.Item
+	Inventory       []items.Item
 	CharacterClass  character_classes.CharacterClass
 	Race            character_classes.CharacterRace
 }
@@ -42,7 +41,7 @@ func (player Player) GetColorProfileColor(colorUse string) string {
 	return player.ColorProfile.GetColor(colorUse)
 }
 
-func (player Player) AddItem(db *sqlx.DB, item interfaces.Item) error {
+func (player Player) AddItem(db *sqlx.DB, item items.Item) error {
 	err := item.SetLocation(db, player.UUID, "")
 	if err != nil {
 		return err
@@ -103,7 +102,7 @@ func (player Player) Remove(db *sqlx.DB, itemName string) {
 	}
 }
 
-func (player Player) Equip(db *sqlx.DB, item interfaces.Item) bool {
+func (player Player) Equip(db *sqlx.DB, item items.Item) bool {
 	// get the location where the thing goes
 	val := reflect.ValueOf(&player.Equipment).Elem()
 	itemEquipSlots := []string{}

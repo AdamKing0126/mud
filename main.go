@@ -6,7 +6,6 @@ import (
 	"mud/areas"
 	"mud/commands"
 	"mud/display"
-	"mud/interfaces"
 	"mud/notifications"
 	"mud/players"
 	"mud/world_state"
@@ -18,20 +17,20 @@ import (
 )
 
 type CommandRouterInterface interface {
-	HandleCommand(db *sqlx.DB, player interfaces.Player, command []byte, currentChannel chan interfaces.Action, updateChannel func(string))
+	HandleCommand(db *sqlx.DB, player players.Player, command []byte, currentChannel chan areas.Action, updateChannel func(string))
 }
 
 type Server struct {
-	connections map[string]interfaces.Player
+	connections map[string]players.Player
 }
 
 func NewServer() *Server {
 	return &Server{
-		connections: make(map[string]interfaces.Player),
+		connections: make(map[string]players.Player),
 	}
 }
 
-func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sqlx.DB, areaChannels map[string]chan interfaces.Action, roomToAreaMap map[string]string, worldState *world_state.WorldState) {
+func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sqlx.DB, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *world_state.WorldState) {
 	defer conn.Close()
 
 	player, err := players.LoginPlayer(conn, db)
@@ -50,16 +49,13 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 		}
 	}()
 
-	s.connections[player.GetUUID()] = player
+	s.connections[player.GetUUID()] = *player
 	defer delete(s.connections, player.GetUUID())
 
 	currentRoom := worldState.GetRoom(player.GetRoomUUID(), false)
-	currentRoom.AddPlayer(player)
+	currentRoom.AddPlayer(*player)
 
-	player.Room = currentRoom
-	player.Area = worldState.Areas[player.GetAreaUUID()]
-
-	notifyPlayersInRoomThatNewPlayerHasJoined(player, s.connections)
+	notifyPlayersInRoomThatNewPlayerHasJoined(*player, s.connections)
 
 	ch := areaChannels[player.GetAreaUUID()]
 
@@ -67,7 +63,7 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 		ch = areaChannels[newArea]
 	}
 
-	router.HandleCommand(db, player, bytes.NewBufferString("look").Bytes(), ch, updateChannel)
+	router.HandleCommand(db, *player, bytes.NewBufferString("look").Bytes(), ch, updateChannel)
 
 	for {
 		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mvt: %d> ", player.GetHealth(), player.GetMovement()), "primary")
@@ -78,12 +74,12 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 			break
 		}
 
-		router.HandleCommand(db, player, buf[:n], ch, updateChannel)
+		router.HandleCommand(db, *player, buf[:n], ch, updateChannel)
 	}
 }
 
-func notifyPlayersInRoomThatNewPlayerHasJoined(player interfaces.Player, connections map[string]interfaces.Player) {
-	var playersInRoom []interfaces.Player
+func notifyPlayersInRoomThatNewPlayerHasJoined(player players.Player, connections map[string]players.Player) {
+	var playersInRoom []players.Player
 	for _, p := range connections {
 		if p.GetRoomUUID() == player.GetRoomUUID() && p.GetUUID() != player.GetUUID() {
 			playersInRoom = append(playersInRoom, p)
@@ -112,11 +108,11 @@ func openDatabase() (*sqlx.DB, error) {
 }
 
 // TODO should this function be moved into the world_state package?
-func loadAreas(db *sqlx.DB, server *Server) (map[string]interfaces.Area, map[string]string, map[string]chan interfaces.Action, error) {
+func loadAreas(db *sqlx.DB, server *Server) (map[string]areas.Area, map[string]string, map[string]chan areas.Action, error) {
 	areaInstances := make(map[string]*areas.Area)
-	areaInstancesInterface := make(map[string]interfaces.Area)
+	areaInstancesInterface := make(map[string]areas.Area)
 	roomToAreaMap := make(map[string]string)
-	areaChannels := make(map[string]chan interfaces.Action)
+	areaChannels := make(map[string]chan areas.Action)
 
 	queryString := `
 		SELECT r.uuid, a.uuid, a.name, a.description 
@@ -136,8 +132,8 @@ func loadAreas(db *sqlx.DB, server *Server) (map[string]interfaces.Area, map[str
 		_, ok := areaInstances[areaUUID]
 		if !ok {
 			areaInstances[areaUUID] = areas.NewArea(areaUUID, name, description)
-			areaInstancesInterface[areaUUID] = areaInstances[areaUUID]
-			areaChannels[areaUUID] = make(chan interfaces.Action)
+			areaInstancesInterface[areaUUID] = *areaInstances[areaUUID]
+			areaChannels[areaUUID] = make(chan areas.Action)
 			go areaInstances[areaUUID].Run(db, areaChannels[areaUUID], server.connections)
 		}
 		roomToAreaMap[roomUUID] = areaUUID

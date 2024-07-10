@@ -21,7 +21,8 @@ func (h *ExitsCommandHandler) SetWorldState(world_state *world_state.WorldState)
 }
 
 func (h *ExitsCommandHandler) Execute(_ *sqlx.DB, player players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
-	currentRoom := player.GetRoom()
+	roomUUID := player.GetRoomUUID()
+	currentRoom := h.WorldState.GetRoom(roomUUID, true)
 	exits := currentRoom.GetExits()
 	exitMap := map[string]*areas.Room{
 		"North": exits.GetNorth(),

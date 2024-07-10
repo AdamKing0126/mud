@@ -2,6 +2,7 @@ package display
 
 import (
 	"fmt"
+	"mud/interfaces"
 	"strings"
 )
 
@@ -109,7 +110,7 @@ func splitString(inputString string, maxWidth int, left string, right string, de
 	return lines
 }
 
-func PrintMenu(player Player, contents MenuContents) {
+func PrintMenu(player interfaces.ProfilePlayer, contents MenuContents) {
 	Newline(player)
 	topLeftDbl := string('╔')
 	topLeftSingle := string('┌')
@@ -171,9 +172,9 @@ func PrintMenu(player Player, contents MenuContents) {
 		msg := fmt.Sprintf("%s%s %s %s%s\n", topLeft, horizontal, *contents.Title, titleLinePadding, topRight)
 		PrintWithColor(player, msg, "primary")
 	} else {
-		PrintWithColor(player, fmt.Sprintf("%s", topLeft), "primary")
+		PrintWithColor(player, topLeft, "primary")
 		for range width {
-			PrintWithColor(player, fmt.Sprintf("%s", horizontal), "primary")
+			PrintWithColor(player, horizontal, "primary")
 		}
 		PrintWithColor(player, fmt.Sprintf("%s\n", topRight), "primary")
 	}

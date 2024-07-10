@@ -57,13 +57,13 @@ func (h *LookCommandHandler) Execute(db *sqlx.DB, player players.Player, command
 		exitsHandler.Execute(db, player, "exits", arguments, currentChannel, updateChannel)
 	} else if len(arguments) == 1 {
 		exits := currentRoom.GetExits()
-		exitMap := map[string]areas.Room{
-			"North": *exits.GetNorth(),
-			"South": *exits.GetSouth(),
-			"West":  *exits.GetWest(),
-			"East":  *exits.GetEast(),
-			"Up":    *exits.GetUp(),
-			"Down":  *exits.GetDown(),
+		exitMap := map[string]*areas.Room{
+			"North": exits.GetNorth(),
+			"South": exits.GetSouth(),
+			"West":  exits.GetWest(),
+			"East":  exits.GetEast(),
+			"Up":    exits.GetUp(),
+			"Down":  exits.GetDown(),
 		}
 
 		lookDirection := arguments[0]

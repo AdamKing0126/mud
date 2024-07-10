@@ -1,7 +1,7 @@
 package players
 
 import (
-	"mud/interfaces"
+	"mud/items"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -25,12 +25,12 @@ type PlayerEquipment struct {
 }
 
 type EquippedItem struct {
-	interfaces.Item
+	items.Item
 	EquippedSlot string
 }
 
-func NewEquippedItem(item interfaces.Item, equippedSlot string) EquippedItem {
-	return EquippedItem{
+func NewEquippedItem(item items.Item, equippedSlot string) *EquippedItem {
+	return &EquippedItem{
 		Item:         item,
 		EquippedSlot: equippedSlot,
 	}

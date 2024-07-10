@@ -2,7 +2,7 @@ package players
 
 import (
 	"fmt"
-	"mud/interfaces"
+	"mud/items"
 	"net"
 
 	"github.com/jmoiron/sqlx"
@@ -28,7 +28,7 @@ func (player Player) SetHealth(health int32) {
 	player.HP = health
 }
 
-func (player Player) SetInventory(inventory []interfaces.Item) {
+func (player Player) SetInventory(inventory []items.Item) {
 	player.Inventory = inventory
 }
 

@@ -38,7 +38,7 @@ func (h *GiveCommandHandler) Execute(db *sqlx.DB, player players.Player, command
 	}
 
 	player.RemoveItem(*item)
-	recipient.AddItem(db, item)
+	recipient.AddItem(db, *item)
 
 	display.PrintWithColor(player, fmt.Sprintf("You give %s to %s\n", item.GetName(), recipient.GetName()), "reset")
 	h.Notifier.NotifyPlayer(recipient.GetUUID(), fmt.Sprintf("\n%s gives you %s\n", player.GetName(), item.GetName()))

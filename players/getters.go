@@ -2,6 +2,7 @@ package players
 
 import (
 	"mud/interfaces"
+	"mud/items"
 	"net"
 )
 
@@ -66,11 +67,11 @@ func (player Player) GetHealthMax() int32 {
 	return player.HPMax
 }
 
-func (player Player) GetInventory() []interfaces.Item {
+func (player Player) GetInventory() []items.Item {
 	return player.Inventory
 }
 
-func (player Player) GetItemFromInventory(itemName string) *interfaces.Item {
+func (player Player) GetItemFromInventory(itemName string) *items.Item {
 	inventory := player.GetInventory()
 	for idx := range inventory {
 		if inventory[idx].GetName() == itemName {

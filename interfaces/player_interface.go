@@ -45,3 +45,9 @@ type Player interface {
 	SetInventory([]Item)
 	RollInitiative() int32
 }
+
+type ProfilePlayer interface {
+	// GetColorProfile() ColorProfile
+	GetColorProfileColor(string) string
+	GetConn() net.Conn
+}
