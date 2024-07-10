@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"mud/areas"
 	"mud/display"
-	"mud/interfaces"
 	"mud/notifications"
 	"mud/players"
 	"mud/world_state"
@@ -15,7 +14,7 @@ import (
 )
 
 type CommandRouterInterface interface {
-	HandleCommand(db *sqlx.DB, player players.Player, command []byte, currentChannel chan interfaces.Action, updateChannel func(string))
+	HandleCommand(db *sqlx.DB, player players.Player, command []byte, currentChannel chan areas.Action, updateChannel func(string))
 }
 
 type CommandRouter struct {

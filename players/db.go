@@ -68,7 +68,7 @@ func (player *Player) GetColorProfileFromDB(db *sqlx.DB) error {
 	var colorProfile = ColorProfile{}
 	query := `SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color 
 	FROM color_profiles WHERE uuid = ?;`
-	err := db.QueryRow(query, player.GetColorProfile().GetUUID()).Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
+	err := db.QueryRow(query, player.ColorProfile.UUID).Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
 	if err != nil {
 		return err
 	}

@@ -3,7 +3,6 @@ package areas
 import (
 	"fmt"
 	"mud/display"
-	"mud/interfaces"
 	"mud/players"
 	"time"
 
@@ -29,7 +28,7 @@ func (a *Action) GetArguments() []string {
 }
 
 type ActionHandler interface {
-	Execute(db *sqlx.DB, player interfaces.Player, action Action, updateChannel func(string))
+	Execute(db *sqlx.DB, player players.Player, action Action, updateChannel func(string))
 }
 
 // TODO WTF is this?
@@ -46,7 +45,7 @@ type ActionHandler interface {
 var ActionHandlers = map[string]ActionHandler{}
 
 type PlayerActions struct {
-	Player  interfaces.Player
+	Player  players.Player
 	Actions []Action
 }
 

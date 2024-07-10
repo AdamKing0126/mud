@@ -1,14 +1,9 @@
 package players
 
 import (
-	"mud/interfaces"
 	"mud/items"
 	"net"
 )
-
-func (player Player) GetAbilities() interfaces.Abilities {
-	return &player.PlayerAbilities
-}
 
 func (player Player) GetArmorClass() int32 {
 	// 10 + armor_bonus + shield_bonus + dexterity_modifier + other_modifiers
@@ -37,10 +32,6 @@ func (player Player) GetRace() string {
 		return player.Race.Name
 	}
 	return player.Race.Name + " - " + player.Race.SubRaceName
-}
-
-func (player Player) GetColorProfile() interfaces.ColorProfile {
-	return &player.ColorProfile
 }
 
 func (player Player) GetCommands() []string {
