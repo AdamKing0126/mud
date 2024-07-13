@@ -11,16 +11,16 @@ import (
 
 type PlayerStatusCommandHandler struct{}
 
-func (h *PlayerStatusCommandHandler) Execute(db *sqlx.DB, player players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+func (h *PlayerStatusCommandHandler) Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	playerAbilities := &players.PlayerAbilities{}
 
 	query := "SELECT * FROM player_abilities WHERE player_uuid = ?"
-	err := db.QueryRow(query, player.GetUUID()).Scan(&playerAbilities.UUID, &playerAbilities.PlayerUUID, &playerAbilities.Strength, &playerAbilities.Intelligence, &playerAbilities.Wisdom, &playerAbilities.Constitution, &playerAbilities.Charisma, &playerAbilities.Dexterity)
+	err := db.QueryRow(query, player.UUID).Scan(&playerAbilities.UUID, &playerAbilities.PlayerUUID, &playerAbilities.Strength, &playerAbilities.Intelligence, &playerAbilities.Wisdom, &playerAbilities.Constitution, &playerAbilities.Charisma, &playerAbilities.Dexterity)
 	if err != nil {
 		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 	}
 
-	player.SetAbilities(*playerAbilities)
+	player.PlayerAbilities = *playerAbilities
 
 	display.PrintWithColor(player, fmt.Sprintf("%s\n", player.GetCharacterClass()), "danger")
 	display.PrintWithColor(player, fmt.Sprintf("%s\n", player.GetRace()), "danger")

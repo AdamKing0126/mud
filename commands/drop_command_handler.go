@@ -20,11 +20,11 @@ func (h *DropCommandHandler) SetWorldState(world_state *world_state.WorldState) 
 	h.WorldState = world_state
 }
 
-func (h *DropCommandHandler) Execute(db *sqlx.DB, player players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
-	roomUUID := player.GetRoomUUID()
+func (h *DropCommandHandler) Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+	roomUUID := player.RoomUUID
 	room := h.WorldState.GetRoom(roomUUID, false)
 
-	playerItems := player.GetInventory()
+	playerItems := player.Inventory
 	if len(playerItems) > 0 {
 		for _, item := range playerItems {
 			if item.GetName() == arguments[0] {
@@ -38,7 +38,7 @@ func (h *DropCommandHandler) Execute(db *sqlx.DB, player players.Player, command
 					display.PrintWithColor(player, fmt.Sprintf("Failed to update item location: %v\n", err), "danger")
 				}
 				display.PrintWithColor(player, fmt.Sprintf("You drop the %s.\n", item.GetName()), "reset")
-				h.Notifier.NotifyRoom(player.GetRoomUUID(), player.GetUUID(), fmt.Sprintf("\n%s dropped %s.\n", player.GetName(), item.GetName()))
+				h.Notifier.NotifyRoom(player.RoomUUID, player.UUID, fmt.Sprintf("\n%s dropped %s.\n", player.Name, item.Name))
 				break
 			}
 		}

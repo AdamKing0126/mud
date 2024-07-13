@@ -45,11 +45,11 @@ type ActionHandler interface {
 var ActionHandlers = map[string]ActionHandler{}
 
 type PlayerActions struct {
-	Player  players.Player
+	Player  *players.Player
 	Actions []Action
 }
 
-func (a *Area) Run(db *sqlx.DB, ch chan Action, connections map[string]players.Player) {
+func (a *Area) Run(db *sqlx.DB, ch chan Action, connections map[string]*players.Player) {
 	ticker := time.NewTicker(time.Second)
 	tickerCounter := 0
 	defer ticker.Stop()
@@ -60,17 +60,17 @@ func (a *Area) Run(db *sqlx.DB, ch chan Action, connections map[string]players.P
 		select {
 		case action := <-ch:
 			player := action.GetPlayer()
-			pa := playerActionsMap[player.GetUUID()]
+			pa := playerActionsMap[player.UUID]
 			pa.Actions = append(pa.Actions, action)
-			playerActionsMap[player.GetUUID()] = pa
+			playerActionsMap[player.UUID] = pa
 		case <-ticker.C:
 			tickerCounter++
 			if tickerCounter%15 == 0 {
-				var playersInArea []players.Player
-				playersInArea = make([]players.Player, 0, len(connections))
+				var playersInArea []*players.Player
+				playersInArea = make([]*players.Player, 0, len(connections))
 				for _, player := range connections {
-					areaUUID := a.GetUUID()
-					playerArea := player.GetAreaUUID()
+					areaUUID := a.UUID
+					playerArea := player.AreaUUID
 					if playerArea == areaUUID {
 						playersInArea = append(playersInArea, player)
 					}
@@ -81,7 +81,7 @@ func (a *Area) Run(db *sqlx.DB, ch chan Action, connections map[string]players.P
 					if err := player.Regen(db); err != nil {
 						fmt.Printf("Error: %v\n", err)
 					}
-					display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mvt: %d> ", player.GetHealth(), player.GetMovement()), "primary")
+					display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mvt: %d> ", player.HP, player.Movement), "primary")
 				}
 			}
 
@@ -97,7 +97,7 @@ func (a *Area) Run(db *sqlx.DB, ch chan Action, connections map[string]players.P
 						continue
 
 					}
-					handler.Execute(db, playerActions.Player, action, func(message string) {
+					handler.Execute(db, *playerActions.Player, action, func(message string) {
 						fmt.Println("Running command: ", action.GetCommand())
 					})
 				} else {

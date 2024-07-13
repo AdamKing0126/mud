@@ -10,16 +10,16 @@ import (
 )
 
 type WorldState struct {
-	Areas         map[string]areas.Area
+	Areas         map[string]*areas.Area
 	RoomToAreaMap map[string]string
 	DB            *sqlx.DB
 }
 
-func NewWorldState(areas map[string]areas.Area, roomToAreaMap map[string]string, db *sqlx.DB) *WorldState {
+func NewWorldState(areas map[string]*areas.Area, roomToAreaMap map[string]string, db *sqlx.DB) *WorldState {
 	return &WorldState{Areas: areas, RoomToAreaMap: roomToAreaMap, DB: db}
 }
 
-func (worldState *WorldState) RemovePlayerFromRoom(roomUUID string, player players.Player) error {
+func (worldState *WorldState) RemovePlayerFromRoom(roomUUID string, player *players.Player) error {
 	areaUUID := worldState.RoomToAreaMap[roomUUID]
 	area := worldState.Areas[areaUUID]
 	room, err := area.GetRoomByUUID(roomUUID)
@@ -35,7 +35,7 @@ func (worldState *WorldState) RemovePlayerFromRoom(roomUUID string, player playe
 	return nil
 }
 
-func (worldState *WorldState) AddPlayerToRoom(roomUUID string, player players.Player) error {
+func (worldState *WorldState) AddPlayerToRoom(roomUUID string, player *players.Player) error {
 	areaUUID := worldState.RoomToAreaMap[roomUUID]
 	area := worldState.Areas[areaUUID]
 	room, err := area.GetRoomByUUID(roomUUID)
@@ -43,12 +43,12 @@ func (worldState *WorldState) AddPlayerToRoom(roomUUID string, player players.Pl
 		return err
 	}
 	room.AddPlayer(player)
-	player.SetRoomUUID(roomUUID)
+	player.RoomUUID = roomUUID
 
 	return nil
 }
 
-func (worldState *WorldState) GetRoom(roomUUID string, followExits bool) areas.Room {
+func (worldState *WorldState) GetRoom(roomUUID string, followExits bool) *areas.Room {
 	areaUUID := worldState.RoomToAreaMap[roomUUID]
 
 	queryString := `
@@ -70,17 +70,16 @@ func (worldState *WorldState) GetRoom(roomUUID string, followExits bool) areas.R
 	}
 
 	area := worldState.Areas[areaUUID]
-	rooms := area.GetRooms()
-	if len(rooms) == numberOfRoomsInArea {
-		for idx := range rooms {
-			if rooms[idx].GetUUID() == roomUUID {
-				return rooms[idx]
+	if len(area.Rooms) == numberOfRoomsInArea {
+		for idx := range area.Rooms {
+			if area.Rooms[idx].UUID == roomUUID {
+				return area.Rooms[idx]
 			}
 		}
 	}
 	return retrieveRoomFromDB(worldState.DB, area, roomUUID, followExits)
 }
 
-func (worldState *WorldState) GetArea(areaUUID string) areas.Area {
+func (worldState *WorldState) GetArea(areaUUID string) *areas.Area {
 	return worldState.Areas[areaUUID]
 }

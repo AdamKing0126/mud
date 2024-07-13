@@ -14,10 +14,10 @@ type Room struct {
 	AreaUUID    string
 	Name        string
 	Description string
-	Area        AreaInfo
-	Exits       ExitInfo
-	Items       []items.Item
-	Players     []players.Player
+	Area        *AreaInfo
+	Exits       *ExitInfo
+	Items       []*items.Item
+	Players     []*players.Player
 	Mobs        []interfaces.Mob
 }
 
@@ -25,40 +25,24 @@ func (room Room) GetUUID() string {
 	return room.UUID
 }
 
-func (room Room) GetPlayers() []players.Player {
-	return room.Players
-}
-
 func (room Room) GetMobs() []interfaces.Mob {
 	return room.Mobs
 }
 
 func (room Room) GetPlayerByName(playerName string) *players.Player {
-	playersInRoom := room.GetPlayers()
+	playersInRoom := room.Players
 	for idx := range playersInRoom {
-		if playersInRoom[idx].GetName() == playerName {
-			return &playersInRoom[idx]
+		if playersInRoom[idx].Name == playerName {
+			return playersInRoom[idx]
 		}
 	}
 	return nil
 }
 
-func (room Room) GetDescription() string {
-	return room.Description
-}
-
-func (room Room) GetName() string {
-	return room.Name
-}
-
-func (room Room) GetItems() []items.Item {
-	return room.Items
-}
-
-func (room Room) AddPlayer(player players.Player) {
+func (room Room) AddPlayer(player *players.Player) {
 	playerIdx := -1
 	for idx := range room.Players {
-		if room.Players[idx].GetUUID() == player.GetUUID() {
+		if room.Players[idx].UUID == player.UUID {
 			playerIdx = idx
 		}
 	}
@@ -67,14 +51,14 @@ func (room Room) AddPlayer(player players.Player) {
 	} else {
 		// in case the Players in the room is already loaded from the DB, update with the current player.
 		// TODO does this whole logic here need to be reworked so this case doesn't happen?
-		room.Players = append(room.Players[:playerIdx], append([]players.Player{player}, room.Players[playerIdx+1:]...)...)
+		room.Players = append(room.Players[:playerIdx], append([]*players.Player{player}, room.Players[playerIdx+1:]...)...)
 	}
 }
 
-func (room Room) RemovePlayer(player players.Player) error {
-	playersInRoom := room.GetPlayers()
+func (room Room) RemovePlayer(player *players.Player) error {
+	playersInRoom := room.Players
 	for idx, playerInRoom := range playersInRoom {
-		if playerInRoom.GetUUID() == player.GetUUID() {
+		if playerInRoom.UUID == player.UUID {
 			room.Players = append(room.Players[:idx], room.Players[idx+1:]...)
 			return nil
 		}
@@ -82,37 +66,21 @@ func (room Room) RemovePlayer(player players.Player) error {
 	return fmt.Errorf("player not found")
 }
 
-func (room Room) GetExits() ExitInfo {
-	return room.Exits
-}
-
-func (room *Room) SetExits(exits ExitInfo) {
-	room.Exits = exits
-}
-
-func (room *Room) SetPlayers(players []players.Player) {
-	room.Players = players
-}
-
 func (room *Room) SetMobs(mobs []interfaces.Mob) {
 	room.Mobs = mobs
-}
-
-func (room *Room) SetItems(items []items.Item) {
-	room.Items = items
 }
 
 func NewAreaInfo(uuid string, name string, description string) *AreaInfo {
 	return &AreaInfo{UUID: uuid, Name: name, Description: description}
 }
 
-func NewRoomWithAreaInfo(uuid string, area_uuid string, name string, description string, area_name string, area_description string, exit_north string, exit_south string, exit_east string, exit_west string, exit_up string, exit_down string) Room {
+func NewRoomWithAreaInfo(uuid string, area_uuid string, name string, description string, area_name string, area_description string, exit_north string, exit_south string, exit_east string, exit_west string, exit_up string, exit_down string) *Room {
 	areaInfo := NewAreaInfo(area_uuid, area_name, area_description)
 	exitInfo := NewExitInfo(exit_north, exit_south, exit_west, exit_east, exit_up, exit_down)
-	return Room{UUID: uuid, AreaUUID: area_uuid, Name: name, Description: description, Area: *areaInfo, Exits: *exitInfo}
+	return &Room{UUID: uuid, AreaUUID: area_uuid, Name: name, Description: description, Area: areaInfo, Exits: exitInfo}
 }
 
-func (room *Room) AddItem(db *sqlx.DB, item items.Item) error {
+func (room *Room) AddItem(db *sqlx.DB, item *items.Item) error {
 	room.Items = append(room.Items, item)
 	err := item.SetLocation(db, "", room.UUID)
 	if err != nil {
@@ -121,8 +89,8 @@ func (room *Room) AddItem(db *sqlx.DB, item items.Item) error {
 	return nil
 }
 
-func (room *Room) RemoveItem(item items.Item) error {
-	items := room.GetItems()
+func (room *Room) RemoveItem(item *items.Item) error {
+	items := room.Items
 	for itemIndex := range items {
 		if items[itemIndex].UUID == item.UUID {
 			room.Items = append(room.Items[:itemIndex], room.Items[itemIndex+1:]...)

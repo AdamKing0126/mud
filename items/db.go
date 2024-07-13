@@ -8,7 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func GetItemsInRoom(db *sqlx.DB, roomUUID string) ([]Item, error) {
+func GetItemsInRoom(db *sqlx.DB, roomUUID string) ([]*Item, error) {
 	query := `
 		SELECT i.uuid, i.name, i.description, i.equipment_slots
 		FROM item_locations il
@@ -21,7 +21,7 @@ func GetItemsInRoom(db *sqlx.DB, roomUUID string) ([]Item, error) {
 	}
 	defer rows.Close()
 
-	var items []Item
+	var items []*Item
 	for rows.Next() {
 		var item Item
 		var equipmentSlotsJSON string
@@ -59,7 +59,7 @@ func GetItemsInRoom(db *sqlx.DB, roomUUID string) ([]Item, error) {
 			}
 		}
 
-		items = append(items, item)
+		items = append(items, &item)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -82,7 +82,7 @@ func (item *Item) SetLocation(db *sqlx.DB, playerUUID string, roomUUID string) e
 	return nil
 }
 
-func GetItemsForPlayer(db *sqlx.DB, playerUUID string) ([]Item, error) {
+func GetItemsForPlayer(db *sqlx.DB, playerUUID string) ([]*Item, error) {
 	query := `
 		SELECT i.uuid, i.name, i.description, i.equipment_slots
 		FROM item_locations il
@@ -101,7 +101,7 @@ func GetItemsForPlayer(db *sqlx.DB, playerUUID string) ([]Item, error) {
 		return nil, fmt.Errorf("failed to execute query: %v", err)
 	}
 
-	var items []Item
+	var items []*Item
 	for rows.Next() {
 		var item Item
 		var equipmentSlots string
@@ -133,7 +133,7 @@ func GetItemsForPlayer(db *sqlx.DB, playerUUID string) ([]Item, error) {
 			}
 		}
 
-		items = append(items, item)
+		items = append(items, &item)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -151,7 +151,7 @@ func GetItemByNameForPlayer(db *sqlx.DB, itemName string, playerUUID string) (*I
 
 	for _, item := range items {
 		if item.GetName() == itemName {
-			return &item, nil
+			return item, nil
 		}
 	}
 

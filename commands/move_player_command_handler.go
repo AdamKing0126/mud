@@ -17,49 +17,49 @@ type MovePlayerCommandHandler struct {
 	WorldState *world_state.WorldState
 }
 
-func movePlayerToDirection(worldState *world_state.WorldState, db *sqlx.DB, player players.Player, room *areas.Room, direction string, notifier *notifications.Notifier, world_state *world_state.WorldState, currentChannel chan areas.Action, updateChannel func(string)) {
-	if room == nil || room.GetUUID() == "" {
+func movePlayerToDirection(worldState *world_state.WorldState, db *sqlx.DB, player *players.Player, room *areas.Room, direction string, notifier *notifications.Notifier, world_state *world_state.WorldState, currentChannel chan areas.Action, updateChannel func(string)) {
+	if room == nil || room.UUID == "" {
 		display.PrintWithColor(player, "You cannot go that way.", "reset")
 	} else {
 		display.PrintWithColor(player, "=======================\n\n", "secondary")
-		notifier.NotifyRoom(player.GetRoomUUID(), player.GetUUID(), fmt.Sprintf("\n%s goes %s.\n", player.GetName(), direction))
+		notifier.NotifyRoom(player.RoomUUID, player.UUID, fmt.Sprintf("\n%s goes %s.\n", player.Name, direction))
 
-		worldState.RemovePlayerFromRoom(player.GetRoomUUID(), player)
-		worldState.AddPlayerToRoom(room.GetUUID(), player)
+		worldState.RemovePlayerFromRoom(player.RoomUUID, player)
+		worldState.AddPlayerToRoom(room.UUID, player)
 
-		notifier.NotifyRoom(room.GetUUID(), player.GetUUID(), fmt.Sprintf("\n%s has arrived.\n", player.GetName()))
+		notifier.NotifyRoom(room.UUID, player.UUID, fmt.Sprintf("\n%s has arrived.\n", player.Name))
 
-		player.SetLocation(db, room.GetUUID())
+		player.SetLocation(db, room.UUID)
 		var lookArgs []string
 		lookHandler := &LookCommandHandler{WorldState: world_state}
 		lookHandler.Execute(db, player, "look", lookArgs, currentChannel, updateChannel)
 	}
 }
 
-func (h *MovePlayerCommandHandler) Execute(db *sqlx.DB, player players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
-	areaUUID := player.GetAreaUUID()
+func (h *MovePlayerCommandHandler) Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+	areaUUID := player.AreaUUID
 
-	currentRoomUUID := player.GetRoomUUID()
+	currentRoomUUID := player.RoomUUID
 	currentRoom := h.WorldState.GetRoom(currentRoomUUID, true)
-	exits := currentRoom.GetExits()
+	exits := currentRoom.Exits
 
 	switch h.Direction {
 	case "north":
-		movePlayerToDirection(h.WorldState, db, player, exits.GetNorth(), h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
+		movePlayerToDirection(h.WorldState, db, player, exits.North, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
 	case "south":
-		movePlayerToDirection(h.WorldState, db, player, exits.GetSouth(), h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
+		movePlayerToDirection(h.WorldState, db, player, exits.South, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
 	case "west":
-		movePlayerToDirection(h.WorldState, db, player, exits.GetWest(), h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
+		movePlayerToDirection(h.WorldState, db, player, exits.West, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
 	case "east":
-		movePlayerToDirection(h.WorldState, db, player, exits.GetEast(), h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
+		movePlayerToDirection(h.WorldState, db, player, exits.East, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
 	case "up":
-		movePlayerToDirection(h.WorldState, db, player, exits.GetUp(), h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
+		movePlayerToDirection(h.WorldState, db, player, exits.Up, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
 	default:
-		movePlayerToDirection(h.WorldState, db, player, exits.GetDown(), h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
+		movePlayerToDirection(h.WorldState, db, player, exits.Down, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
 	}
 
-	if areaUUID != player.GetAreaUUID() {
-		updateChannel(player.GetAreaUUID())
+	if areaUUID != player.AreaUUID {
+		updateChannel(player.AreaUUID)
 	}
 }
 

@@ -2,7 +2,6 @@ package display
 
 import (
 	"fmt"
-	"mud/interfaces"
 	"strings"
 )
 
@@ -110,7 +109,7 @@ func splitString(inputString string, maxWidth int, left string, right string, de
 	return lines
 }
 
-func PrintMenu(player interfaces.ProfilePlayer, contents MenuContents) {
+func PrintMenu(player ProfilePlayer, contents MenuContents) {
 	Newline(player)
 	topLeftDbl := string('╔')
 	topLeftSingle := string('┌')

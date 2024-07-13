@@ -25,11 +25,11 @@ type PlayerEquipment struct {
 }
 
 type EquippedItem struct {
-	items.Item
+	*items.Item
 	EquippedSlot string
 }
 
-func NewEquippedItem(item items.Item, equippedSlot string) *EquippedItem {
+func NewEquippedItem(item *items.Item, equippedSlot string) *EquippedItem {
 	return &EquippedItem{
 		Item:         item,
 		EquippedSlot: equippedSlot,

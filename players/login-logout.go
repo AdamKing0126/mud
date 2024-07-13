@@ -325,12 +325,12 @@ func LoginPlayer(conn net.Conn, db *sqlx.DB) (*Player, error) {
 
 	fmt.Fprintf(conn, "Please enter your password: ")
 	passwd := getPlayerInput(conn)
-	err = bcrypt.CompareHashAndPassword([]byte(player.GetHashedPassword()), []byte(passwd))
+	err = bcrypt.CompareHashAndPassword([]byte(player.Password), []byte(passwd))
 	if err != nil {
 		return nil, err
 	}
 
-	player.SetConn(conn)
+	player.Conn = conn
 
 	err = player.GetColorProfileFromDB(db)
 	if err != nil {
@@ -347,7 +347,7 @@ func LoginPlayer(conn net.Conn, db *sqlx.DB) (*Player, error) {
 		return nil, err
 	}
 
-	err = setPlayerLoggedInStatusInDB(db, player.GetUUID(), true)
+	err = setPlayerLoggedInStatusInDB(db, player.UUID, true)
 	if err != nil {
 		return nil, err
 	}

@@ -20,10 +20,10 @@ func (h *ExitsCommandHandler) SetWorldState(world_state *world_state.WorldState)
 	h.WorldState = world_state
 }
 
-func (h *ExitsCommandHandler) Execute(_ *sqlx.DB, player players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
-	roomUUID := player.GetRoomUUID()
+func (h *ExitsCommandHandler) Execute(_ *sqlx.DB, player *players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
+	roomUUID := player.RoomUUID
 	currentRoom := h.WorldState.GetRoom(roomUUID, true)
-	exits := currentRoom.GetExits()
+	exits := currentRoom.Exits
 	exitMap := map[string]*areas.Room{
 		"North": exits.GetNorth(),
 		"South": exits.GetSouth(),
@@ -40,7 +40,7 @@ func (h *ExitsCommandHandler) Execute(_ *sqlx.DB, player players.Player, _ strin
 		if exit != nil {
 			abbreviatedDirections = append(abbreviatedDirections, direction)
 			exitRoom := h.WorldState.GetRoom(exit.GetUUID(), false)
-			longDirections = append(longDirections, fmt.Sprintf("%s: %s", direction, exitRoom.GetName()))
+			longDirections = append(longDirections, fmt.Sprintf("%s: %s", direction, exitRoom.Name))
 		}
 	}
 	if h.ShowOnlyDirections {

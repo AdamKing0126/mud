@@ -21,14 +21,14 @@ func (h *GiveCommandHandler) SetNotifier(notifier *notifications.Notifier, world
 	h.WorldState = world_state
 }
 
-func (h *GiveCommandHandler) Execute(db *sqlx.DB, player players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+func (h *GiveCommandHandler) Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	item := player.GetItemFromInventory(arguments[0])
 	if item == nil {
 		display.PrintWithColor(player, "You don't have that item", "reset")
 		return
 	}
 
-	currentRoomUUID := player.GetRoomUUID()
+	currentRoomUUID := player.RoomUUID
 	currentRoom := h.WorldState.GetRoom(currentRoomUUID, false)
 
 	recipient := currentRoom.GetPlayerByName(arguments[1])
@@ -37,9 +37,9 @@ func (h *GiveCommandHandler) Execute(db *sqlx.DB, player players.Player, command
 		return
 	}
 
-	player.RemoveItem(*item)
-	recipient.AddItem(db, *item)
+	player.RemoveItem(item)
+	recipient.AddItem(db, item)
 
-	display.PrintWithColor(player, fmt.Sprintf("You give %s to %s\n", item.GetName(), recipient.GetName()), "reset")
-	h.Notifier.NotifyPlayer(recipient.GetUUID(), fmt.Sprintf("\n%s gives you %s\n", player.GetName(), item.GetName()))
+	display.PrintWithColor(player, fmt.Sprintf("You give %s to %s\n", item.GetName(), recipient.Name), "reset")
+	h.Notifier.NotifyPlayer(recipient.UUID, fmt.Sprintf("\n%s gives you %s\n", player.Name, item.GetName()))
 }

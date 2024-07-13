@@ -48,7 +48,7 @@ func RegisterCommands(router *CommandRouter, notifier *notifications.Notifier, w
 	}
 }
 
-func (r *CommandRouter) HandleCommand(db *sqlx.DB, player players.Player, command []byte, currentChannel chan areas.Action, updateChannel func(string)) {
+func (r *CommandRouter) HandleCommand(db *sqlx.DB, player *players.Player, command []byte, currentChannel chan areas.Action, updateChannel func(string)) {
 	// Convert the command []byte to a string and trim the extra characters off.
 	commandString := strings.ToLower(strings.TrimSpace(string(command)))
 

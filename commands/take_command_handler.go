@@ -20,10 +20,10 @@ func (h *TakeCommandHandler) SetWorldState(world_state *world_state.WorldState) 
 	h.WorldState = world_state
 }
 
-func (h *TakeCommandHandler) Execute(db *sqlx.DB, player players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
-	roomUUID := player.GetRoomUUID()
+func (h *TakeCommandHandler) Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+	roomUUID := player.RoomUUID
 	currentRoom := h.WorldState.GetRoom(roomUUID, false)
-	items := currentRoom.GetItems()
+	items := currentRoom.Items
 
 	if len(items) > 0 {
 		for _, item := range items {
@@ -35,7 +35,7 @@ func (h *TakeCommandHandler) Execute(db *sqlx.DB, player players.Player, command
 				player.AddItem(db, item)
 
 				display.PrintWithColor(player, fmt.Sprintf("You take the %s.\n", item.GetName()), "reset")
-				h.Notifier.NotifyRoom(player.GetRoomUUID(), player.GetUUID(), fmt.Sprintf("\n%s takes %s.\n", player.GetName(), item.GetName()))
+				h.Notifier.NotifyRoom(player.RoomUUID, player.UUID, fmt.Sprintf("\n%s takes %s.\n", player.Name, item.Name))
 				break
 			}
 		}

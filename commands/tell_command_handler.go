@@ -15,7 +15,7 @@ type TellHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func (h *TellHandler) Execute(db *sqlx.DB, player players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+func (h *TellHandler) Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	msg := strings.Join(arguments[1:], " ")
 	retrievedPlayer, err := players.GetPlayerByName(db, arguments[0])
 	if err != nil {
@@ -23,14 +23,14 @@ func (h *TellHandler) Execute(db *sqlx.DB, player players.Player, command string
 		return
 	}
 
-	if player.GetUUID() == retrievedPlayer.GetUUID() {
+	if player.UUID == retrievedPlayer.UUID {
 		display.PrintWithColor(player, "Talking to yourself again?\n", "reset")
 		return
 	}
 
-	if retrievedPlayer.GetLoggedIn() {
+	if retrievedPlayer.LoggedIn {
 		display.PrintWithColor(player, fmt.Sprintf("You tell %s \"%s\"\n", arguments[0], msg), "reset")
-		h.Notifier.NotifyPlayer(retrievedPlayer.GetUUID(), fmt.Sprintf("\n%s tells you \"%s\"\n", player.GetName(), msg))
+		h.Notifier.NotifyPlayer(retrievedPlayer.UUID, fmt.Sprintf("\n%s tells you \"%s\"\n", player.Name, msg))
 	} else {
 		display.PrintWithColor(player, fmt.Sprintf("%s isn't here\n", arguments[0]), "reset")
 	}

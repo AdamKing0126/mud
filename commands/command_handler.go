@@ -10,7 +10,7 @@ import (
 )
 
 type CommandHandler interface {
-	Execute(db *sqlx.DB, player players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string))
+	Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string))
 }
 
 type CommandHandlerWithPriority struct {
