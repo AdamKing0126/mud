@@ -41,15 +41,3 @@ run_server:
 
 debug_server:
 	dlv debug -l 127.0.0.1:38697 --headless ./main.go
-
-import_races:
-	go run ./open5e_importer/races/main.go
-
-import_classes:
-	go run ./open5e_importer/classes/main.go
-
-import_monsters:
-	go run ./open5e_importer/monsters/main.go
-
-examine_actions:
-	go run ./open5e_importer/examine_actions/examine_actions.go
