@@ -7,14 +7,9 @@ help:
 	@echo "build - Build the project"
 	@echo "run_server - Run the server"
 	@echo "debug_server - Run the server in dlv"
-	@echo "examine_actions - debugging stuff"
-	@echo "import_races"
-	@echo "import_classes"
-	@echo "import_monsters"
 
 drop_db:
 	rm -f ./sql_database/mud.db
-
 
 test ?= false
 
@@ -38,6 +33,3 @@ build:
 
 run_server:
 	go run ./main.go	
-
-debug_server:
-	dlv debug -l 127.0.0.1:38697 --headless ./main.go
