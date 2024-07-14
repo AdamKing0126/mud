@@ -2,8 +2,8 @@ package areas
 
 import (
 	"fmt"
-	"mud/interfaces"
 	"mud/items"
+	"mud/mobs"
 	"mud/players"
 
 	"github.com/jmoiron/sqlx"
@@ -18,15 +18,7 @@ type Room struct {
 	Exits       *ExitInfo
 	Items       []*items.Item
 	Players     []*players.Player
-	Mobs        []interfaces.Mob
-}
-
-func (room Room) GetUUID() string {
-	return room.UUID
-}
-
-func (room Room) GetMobs() []interfaces.Mob {
-	return room.Mobs
+	Mobs        []*mobs.Mob
 }
 
 func (room Room) GetPlayerByName(playerName string) *players.Player {
@@ -64,10 +56,6 @@ func (room Room) RemovePlayer(player *players.Player) error {
 		}
 	}
 	return fmt.Errorf("player not found")
-}
-
-func (room *Room) SetMobs(mobs []interfaces.Mob) {
-	room.Mobs = mobs
 }
 
 func NewAreaInfo(uuid string, name string, description string) *AreaInfo {

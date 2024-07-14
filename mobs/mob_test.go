@@ -1,7 +1,6 @@
 package mobs_test
 
 import (
-	"mud/interfaces"
 	"mud/mobs"
 	"testing"
 )
@@ -67,7 +66,7 @@ func (r *MockRNG) Intn(n int) int {
 func TestExecuteAction(t *testing.T) {
 	mob := &mobs.Mob{
 		Name: "Monster",
-		Actions: []interfaces.MobAction{
+		Actions: []*mobs.Action{
 			&MockAction{Name: "Action1", Description: "The description for action 1 (1d6+1) bludgeoning damage", DamageDice: "1d6+1", AttackBonus: 5, DamageBonus: 5},
 		},
 		RNG: &MockRNG{IntnValue: 0},
@@ -81,7 +80,7 @@ func TestExecuteAction(t *testing.T) {
 func TestExecuteActionMultiAttack(t *testing.T) {
 	mob := &mobs.Mob{
 		Name: "Monster",
-		Actions: []interfaces.MobAction{
+		Actions: []*mobs.Action{
 			&MockAction{Name: "Action1", Description: "The description for action 1 includes (1d6) slashing damage", DamageDice: "1d6", AttackBonus: 5, DamageBonus: 5},
 			&MockAction{Name: "Action2", Description: "The description for action 2 includs (2d4) piercing", DamageDice: "1d8", AttackBonus: 3, DamageBonus: 6},
 			&MockAction{Name: "Multiattack", Description: "The Monster makes one Action1 and two Action2 attacks", DamageDice: "", AttackBonus: 0, DamageBonus: 0},
@@ -97,7 +96,7 @@ func TestExecuteActionMultiAttack(t *testing.T) {
 func TestExecuteActionWithMultipleDamageTypes(t *testing.T) {
 	mob := &mobs.Mob{
 		Name: "Monster",
-		Actions: []interfaces.MobAction{
+		Actions: []*mobs.Action{
 			&MockAction{Name: "Action2", Description: "The description for action 2 (1d4) bludgeoning damage something (2d6) piercing.", DamageDice: "1d8+1d4", AttackBonus: 3, DamageBonus: 6},
 		},
 		RNG: &MockRNG{},

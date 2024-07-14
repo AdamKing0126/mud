@@ -3,7 +3,6 @@ package mobs
 import (
 	"fmt"
 	"log"
-	"mud/interfaces"
 	"mud/utilities"
 	"regexp"
 	"strconv"
@@ -58,7 +57,7 @@ type Mob struct {
 	Wisdom                int32   `db:"wisdom" mapstructure:"wisdom"`
 	WisdomSave            int32   `db:"wisdom_save" mapstructure:"wisdom_save"`
 	RNG                   RNG     `db:"-"`
-	Actions               []interfaces.MobAction
+	Actions               []*Action
 }
 
 type RNG interface {
@@ -77,21 +76,21 @@ func (mob *Mob) RollInitiative() int32 {
 	return utilities.DiceRoll("1d20") + int32(mob.DexteritySave)
 }
 
-func (mob *Mob) AttackRoll(opponent interfaces.Opponent, attack interfaces.MobAction) bool {
+func (mob *Mob) AttackRoll(opponent *Opponent, attack *Action) bool {
 	// TODO: add/figure out attack bonus ranged vs melee etc
 	diceRoll := utilities.DiceRoll("1d20")
-	if strings.ToLower(attack.GetName()) == "multiattack" {
-		if diceRoll >= opponent.GetArmorClass() {
-			fmt.Printf("MultiAttack! \"%s\"\nDice Roll: %d, Target AC: %d - SUCCESS\n", attack.GetDescription(), diceRoll, opponent.GetArmorClass())
+	if strings.ToLower(attack.Name) == "multiattack" {
+		if diceRoll >= opponent.ArmorClass {
+			fmt.Printf("MultiAttack! \"%s\"\nDice Roll: %d, Target AC: %d - SUCCESS\n", attack.Description, diceRoll, opponent.ArmorClass)
 			return true
 		} else {
-			fmt.Printf("MultiAttack! Dice Roll: %d, Target AC: %d - FAILED\n", diceRoll, opponent.GetArmorClass())
+			fmt.Printf("MultiAttack! Dice Roll: %d, Target AC: %d - FAILED\n", diceRoll, opponent.ArmorClass)
 			return false
 		}
 	}
-	attackBonus := attack.GetAttackBonus()
-	hit := diceRoll+attackBonus >= opponent.GetArmorClass()
-	fmt.Printf("Dice Roll: %d, Mob Attack Bonus: %d, Target AC: %d", diceRoll, attackBonus, opponent.GetArmorClass())
+	attackBonus := attack.AttackBonus
+	hit := diceRoll+attackBonus >= opponent.ArmorClass
+	fmt.Printf("Dice Roll: %d, Mob Attack Bonus: %d, Target AC: %d", diceRoll, attackBonus, opponent.ArmorClass)
 	if diceRoll == 20 {
 		fmt.Println(" - Automatic HIT!")
 		return true
@@ -111,7 +110,7 @@ type Opponent struct {
 	ArmorClass int32
 }
 
-func (mob *Mob) ExecuteRegularAttack(opponent interfaces.Opponent, attack interfaces.MobAction) {
+func (mob *Mob) ExecuteRegularAttack(opponent *Opponent, attack *Action) {
 	if mob.AttackRoll(opponent, attack) {
 		// Regular expression to match damage types:
 		// re := regexp.MustCompile(`(\w+) damage`)
@@ -119,17 +118,17 @@ func (mob *Mob) ExecuteRegularAttack(opponent interfaces.Opponent, attack interf
 		re := regexp.MustCompile(`\(\d+d\d+(\s*\+\s*\d+)?\) (\w+)`)
 
 		// Find all damage types in the desc field:
-		matches := re.FindAllStringSubmatch(attack.GetDescription(), -1)
+		matches := re.FindAllStringSubmatch(attack.Description, -1)
 
 		// Split the damage_dice field to get the dice for each damage type:
-		damageDice := strings.Split(attack.GetDamageDice(), "+")
+		damageDice := strings.Split(attack.DamageDice, "+")
 
 		// Create a slice to hold the resulting damage instructions:
 		result := make([][]string, len(matches))
 
 		// Iterate over the matches and dice and add them to the result slice:
 		if len(matches) == 1 {
-			result[0] = []string{matches[0][len(matches[0])-1], strconv.Itoa(int(utilities.DiceRoll(attack.GetDamageDice())))}
+			result[0] = []string{matches[0][len(matches[0])-1], strconv.Itoa(int(utilities.DiceRoll(attack.DamageDice)))}
 		} else {
 			for i, match := range matches {
 				result[i] = []string{match[len(match)-1], strconv.Itoa(int(utilities.DiceRoll(damageDice[i])))}
@@ -139,13 +138,13 @@ func (mob *Mob) ExecuteRegularAttack(opponent interfaces.Opponent, attack interf
 		// fmt.Printf("%s attacks! %s does %d damage\n", mob.GetName(), attack.GetName(), attackDamage)
 		// need to decrease the opponent's health.
 		if len(result) == 1 {
-			fmt.Printf("%s's %s does %s %s damage\n", mob.GetName(), attack.GetName(), result[0][1], result[0][0])
+			fmt.Printf("%s's %s does %s %s damage\n", mob.Name, attack.Name, result[0][1], result[0][0])
 		} else if len(result) == 2 {
 			var damageResults []string
 			for idx := range result {
 				damageResults = append(damageResults, fmt.Sprintf("%s %s damage", result[idx][1], result[idx][0]))
 			}
-			fmt.Printf("%s's %s does %s\n", mob.GetName(), attack.GetName(), strings.Join(damageResults, " and "))
+			fmt.Printf("%s's %s does %s\n", mob.Name, attack.Name, strings.Join(damageResults, " and "))
 		} else if len(result) > 2 {
 			var damageResults []string
 			for idx := range result {
@@ -154,7 +153,7 @@ func (mob *Mob) ExecuteRegularAttack(opponent interfaces.Opponent, attack interf
 			last := damageResults[len(damageResults)-1]
 			damageResults = damageResults[:len(damageResults)-1]
 
-			fmt.Printf("%s's %s does %s\n", mob.GetName(), attack.GetName(), strings.Join(damageResults, ", ")+", and "+last)
+			fmt.Printf("%s's %s does %s\n", mob.Name, attack.Name, strings.Join(damageResults, ", ")+", and "+last)
 
 		} else {
 			fmt.Println("whoops!")
@@ -164,15 +163,15 @@ func (mob *Mob) ExecuteRegularAttack(opponent interfaces.Opponent, attack interf
 	}
 }
 
-func (mob *Mob) ExecuteAction(opponent interfaces.Opponent) {
+func (mob *Mob) ExecuteAction(opponent *Opponent) {
 	// Mob has a bunch of actions, need to pick one
 	// "regular" actions are ones which have DamageDice - put those into a bucket
-	actions := mob.GetActions()
+	actions := mob.Actions
 	regularAttacks := getRegularAttacks(actions)
 	multiAttack := getMultiAttack(actions)
 
 	if multiAttack != nil && mob.AttackRoll(opponent, multiAttack) {
-		attacks := getAttacksForMultiAttack(multiAttack.GetDescription(), regularAttacks)
+		attacks := getAttacksForMultiAttack(multiAttack.Description, regularAttacks)
 		for idx := range attacks {
 			mob.ExecuteRegularAttack(opponent, attacks[idx])
 		}
@@ -186,10 +185,10 @@ func (mob *Mob) ExecuteAction(opponent interfaces.Opponent) {
 	}
 }
 
-func getMultiAttack(mobActions []interfaces.MobAction) interfaces.MobAction {
+func getMultiAttack(mobActions []*Action) *Action {
 	for idx := range mobActions {
-		if strings.ToLower(mobActions[idx].GetName()) == "multiattack" {
-			description := strings.ToLower(mobActions[idx].GetDescription())
+		if strings.ToLower(mobActions[idx].Name) == "multiattack" {
+			description := strings.ToLower(mobActions[idx].Description)
 			description = strings.ReplaceAll(description, "one", "1")
 			description = strings.ReplaceAll(description, "two", "2")
 			description = strings.ReplaceAll(description, "three", "3")
@@ -200,24 +199,24 @@ func getMultiAttack(mobActions []interfaces.MobAction) interfaces.MobAction {
 			description = strings.ReplaceAll(description, "eight", "8")
 			description = strings.ReplaceAll(description, "nine", "9")
 			description = strings.ReplaceAll(description, "ten", "10")
-			mobActions[idx].SetDescription(description)
+			mobActions[idx].Description = description
 			return mobActions[idx]
 		}
 	}
 	return nil
 }
 
-func getRegularAttacks(mobActions []interfaces.MobAction) []interfaces.MobAction {
-	var regularAttacks []interfaces.MobAction
+func getRegularAttacks(mobActions []*Action) []*Action {
+	var regularAttacks []*Action
 	for idx := range mobActions {
-		if mobActions[idx].GetDamageDice() != "" {
+		if mobActions[idx].DamageDice != "" {
 			regularAttacks = append(regularAttacks, mobActions[idx])
 		}
 	}
 	return regularAttacks
 }
 
-func getAttacksForMultiAttack(multiAttackDescription string, regularAttacks []interfaces.MobAction) []interfaces.MobAction {
+func getAttacksForMultiAttack(multiAttackDescription string, regularAttacks []*Action) []*Action {
 	re := regexp.MustCompile(`(\d+)\s+([a-z]\w*)`)
 	matches := re.FindAllStringSubmatch(multiAttackDescription, -1)
 
@@ -231,9 +230,9 @@ func getAttacksForMultiAttack(multiAttackDescription string, regularAttacks []in
 		actionCounts[action] = int32(count)
 	}
 
-	result := []interfaces.MobAction{}
+	result := []*Action{}
 	for _, attack := range regularAttacks {
-		count, ok := actionCounts[strings.ToLower(attack.GetName())]
+		count, ok := actionCounts[strings.ToLower(attack.Name)]
 		if ok {
 			for i := int32(0); i < count; i++ {
 				result = append(result, attack)

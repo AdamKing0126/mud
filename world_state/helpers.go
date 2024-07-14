@@ -101,7 +101,7 @@ func setMobs(db *sqlx.DB, roomInArea *areas.Room) {
 	if err != nil {
 		fmt.Printf("error retrieving mobs: %v", err)
 	}
-	roomInArea.SetMobs(mobsInRoom)
+	roomInArea.Mobs = mobsInRoom
 }
 
 func setPlayers(db *sqlx.DB, roomInArea *areas.Room) {

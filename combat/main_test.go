@@ -1,7 +1,6 @@
 package combat
 
 import (
-	"mud/interfaces"
 	"testing"
 )
 
@@ -18,24 +17,24 @@ func (c *TestCombatant) GetArmorClass() int32 {
 	return c.armorClass
 }
 
-func (c *TestCombatant) GetAbilities() interfaces.Abilities {
+func (c *TestCombatant) GetAbilities() *Abilities {
 	return nil
 }
 
 func TestRollInitiative(t *testing.T) {
 	testCases := []struct {
-		aggressors, defenders, expected []interfaces.Combatant
+		aggressors, defenders, expected []*Combatant
 	}{
 		{
-			aggressors: []interfaces.Combatant{
+			aggressors: []*Combatant{
 				&TestCombatant{initiativeToReturn: 10, armorClass: 10},
 				&TestCombatant{initiativeToReturn: 19, armorClass: 10},
 			},
-			defenders: []interfaces.Combatant{
+			defenders: []*Combatant{
 				&TestCombatant{initiativeToReturn: 5, armorClass: 10},
 				&TestCombatant{initiativeToReturn: 20, armorClass: 10},
 			},
-			expected: []interfaces.Combatant{
+			expected: []*Combatant{
 				&TestCombatant{initiativeToReturn: 20, armorClass: 10},
 				&TestCombatant{initiativeToReturn: 19, armorClass: 10},
 				&TestCombatant{initiativeToReturn: 10, armorClass: 10},

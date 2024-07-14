@@ -39,7 +39,7 @@ func (h *ExitsCommandHandler) Execute(_ *sqlx.DB, player *players.Player, _ stri
 	for direction, exit := range exitMap {
 		if exit != nil {
 			abbreviatedDirections = append(abbreviatedDirections, direction)
-			exitRoom := h.WorldState.GetRoom(exit.GetUUID(), false)
+			exitRoom := h.WorldState.GetRoom(exit.UUID, false)
 			longDirections = append(longDirections, fmt.Sprintf("%s: %s", direction, exitRoom.Name))
 		}
 	}

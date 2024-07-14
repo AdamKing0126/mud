@@ -36,9 +36,9 @@ func (h *LookCommandHandler) Execute(db *sqlx.DB, player *players.Player, comman
 			display.PrintWithColor(player, "\n", "reset")
 		}
 
-		if len(currentRoom.GetMobs()) > 0 {
-			for _, mob := range currentRoom.GetMobs() {
-				display.PrintWithColor(player, fmt.Sprintf("%s\n", mob.GetName()), "warning")
+		if len(currentRoom.Mobs) > 0 {
+			for _, mob := range currentRoom.Mobs {
+				display.PrintWithColor(player, fmt.Sprintf("%s\n", mob.Name), "warning")
 			}
 
 		}
@@ -73,7 +73,7 @@ func (h *LookCommandHandler) Execute(db *sqlx.DB, player *players.Player, comman
 			if lookDirection == direction {
 				directionMatch = true
 				if exit != nil {
-					exitRoom := h.WorldState.GetRoom(exit.GetUUID(), false)
+					exitRoom := h.WorldState.GetRoom(exit.UUID, false)
 					display.PrintWithColor(player, fmt.Sprintf("You look %s.  You see %s\n", direction, exitRoom.Name), "reset")
 				} else {
 					display.PrintWithColor(player, "You don't see anything in that direction\n", "reset")
@@ -102,9 +102,9 @@ func (h *LookCommandHandler) Execute(db *sqlx.DB, player *players.Player, comman
 				}
 			}
 
-			for _, mobInRoom := range currentRoom.GetMobs() {
-				if strings.ToLower(mobInRoom.GetName()) == target {
-					display.PrintWithColor(player, fmt.Sprintf("You see %s.\n", mobInRoom.GetName()), "danger")
+			for _, mobInRoom := range currentRoom.Mobs {
+				if strings.ToLower(mobInRoom.Name) == target {
+					display.PrintWithColor(player, fmt.Sprintf("You see %s.\n", mobInRoom.Name), "danger")
 					found = true
 					break
 				}
