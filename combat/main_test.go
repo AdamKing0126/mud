@@ -9,36 +9,36 @@ type TestCombatant struct {
 	armorClass         int32
 }
 
-func (c *TestCombatant) RollInitiative() int32 {
+func (c TestCombatant) RollInitiative() int32 {
 	return c.initiativeToReturn
 }
 
-func (c *TestCombatant) GetArmorClass() int32 {
+func (c TestCombatant) GetArmorClass() int32 {
 	return c.armorClass
 }
 
-func (c *TestCombatant) GetAbilities() *Abilities {
+func (c TestCombatant) GetAbilities() Abilities {
 	return nil
 }
 
 func TestRollInitiative(t *testing.T) {
 	testCases := []struct {
-		aggressors, defenders, expected []*Combatant
+		aggressors, defenders, expected []Combatant
 	}{
 		{
-			aggressors: []*Combatant{
-				&TestCombatant{initiativeToReturn: 10, armorClass: 10},
-				&TestCombatant{initiativeToReturn: 19, armorClass: 10},
+			aggressors: []Combatant{
+				TestCombatant{initiativeToReturn: 10, armorClass: 10},
+				TestCombatant{initiativeToReturn: 19, armorClass: 10},
 			},
-			defenders: []*Combatant{
-				&TestCombatant{initiativeToReturn: 5, armorClass: 10},
-				&TestCombatant{initiativeToReturn: 20, armorClass: 10},
+			defenders: []Combatant{
+				TestCombatant{initiativeToReturn: 5, armorClass: 10},
+				TestCombatant{initiativeToReturn: 20, armorClass: 10},
 			},
-			expected: []*Combatant{
-				&TestCombatant{initiativeToReturn: 20, armorClass: 10},
-				&TestCombatant{initiativeToReturn: 19, armorClass: 10},
-				&TestCombatant{initiativeToReturn: 10, armorClass: 10},
-				&TestCombatant{initiativeToReturn: 5, armorClass: 10},
+			expected: []Combatant{
+				TestCombatant{initiativeToReturn: 20, armorClass: 10},
+				TestCombatant{initiativeToReturn: 19, armorClass: 10},
+				TestCombatant{initiativeToReturn: 10, armorClass: 10},
+				TestCombatant{initiativeToReturn: 5, armorClass: 10},
 			},
 		},
 	}
@@ -46,7 +46,7 @@ func TestRollInitiative(t *testing.T) {
 	for _, tc := range testCases {
 		combat := NewCombat(tc.aggressors, tc.defenders)
 		combat.RollInitiative()
-		turnOrder := combat.GetTurnOrder()
+		turnOrder := combat.TurnOrder
 
 		for i := range turnOrder {
 			actual, ok := turnOrder[i].(*TestCombatant)
