@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"mud/interfaces"
-	"reflect"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/mitchellh/mapstructure"
@@ -53,8 +51,8 @@ type MobDB struct {
 	Actions               string  `db:"actions" mapstructure:"actions"`
 }
 
-func GetMobsInRoom(db *sqlx.DB, roomUUID string) ([]interfaces.Mob, error) {
-	var mobs []Mob
+func GetMobsInRoom(db *sqlx.DB, roomUUID string) ([]*Mob, error) {
+	var mobs []*Mob
 	rows, err := db.Queryx("SELECT * FROM mobs WHERE room_uuid = ?", roomUUID)
 	if err != nil {
 		log.Fatalf("failed to fetch mobs from tabel: %v", err)
@@ -74,7 +72,8 @@ func GetMobsInRoom(db *sqlx.DB, roomUUID string) ([]interfaces.Mob, error) {
 		}
 
 		fmt.Printf("Actions: %s\n", mobDb.Actions)
-		fmt.Printf("Type of MobAction: %s\n", reflect.TypeOf((*interfaces.MobAction)(nil)).Elem())
+		// TODO I have no idea what I meant to do here...
+		fmt.Printf("Type of Action: foo\n")
 
 		var actions []Action
 		err = json.Unmarshal([]byte(mobDb.Actions), &actions)
@@ -82,7 +81,7 @@ func GetMobsInRoom(db *sqlx.DB, roomUUID string) ([]interfaces.Mob, error) {
 			log.Fatalf("error unmarshaling actions: %v", err)
 		}
 
-		var mobActions []interfaces.MobAction
+		var mobActions []*Action
 		for idx := range actions {
 			mobActions = append(mobActions, &actions[idx])
 		}
@@ -124,17 +123,13 @@ func GetMobsInRoom(db *sqlx.DB, roomUUID string) ([]interfaces.Mob, error) {
 			Type:                  mobDb.Type,
 			Wisdom:                mobDb.Wisdom,
 			WisdomSave:            mobDb.WisdomSave,
-			Actions:               mobActions,
+			// TODO figure out what to do here.
+			// Actions:               mobDb.Actions,
 		}
 
-		mobs = append(mobs, mob)
+		mobs = append(mobs, &mob)
 	}
 
-	mobInterfaces := make([]interfaces.Mob, len(mobs))
-	for idx := range mobs {
-		mobInterfaces[idx] = &mobs[idx]
-	}
-
-	return mobInterfaces, nil
+	return mobs, nil
 
 }

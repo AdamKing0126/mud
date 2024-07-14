@@ -2,8 +2,8 @@ package commands
 
 import (
 	"fmt"
+	"mud/areas"
 	"mud/display"
-	"mud/interfaces"
 	"mud/notifications"
 	"mud/players"
 	"strconv"
@@ -15,7 +15,7 @@ type AdminSetHealthCommandHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func (h *AdminSetHealthCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func (h *AdminSetHealthCommandHandler) Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	target := arguments[0]
 	value := arguments[1]
 
@@ -27,7 +27,7 @@ func (h *AdminSetHealthCommandHandler) Execute(db *sqlx.DB, player interfaces.Pl
 
 	query := "UPDATE players SET health = ? WHERE UUID = ?"
 
-	_, err = db.Exec(query, value, retrievedPlayer.GetUUID())
+	_, err = db.Exec(query, value, retrievedPlayer.UUID)
 
 	if err != nil {
 		display.PrintWithColor(player, fmt.Sprintf("Error updating health: %v\n", err), "danger")
@@ -39,9 +39,11 @@ func (h *AdminSetHealthCommandHandler) Execute(db *sqlx.DB, player interfaces.Pl
 		display.PrintWithColor(player, fmt.Sprintf("Error converting value to int: %v\n", err), "danger")
 		return
 	}
-	h.Notifier.Players[retrievedPlayer.GetUUID()].SetHealth(int32(intValue))
+	playerInNotifier := h.Notifier.Players[retrievedPlayer.UUID]
+	// TODO what if the player isn't found
+	playerInNotifier.HP = int32(intValue)
 	display.PrintWithColor(player, fmt.Sprintf("You set %s's health to %d\n", target, intValue), "reset")
-	h.Notifier.NotifyPlayer(retrievedPlayer.GetUUID(), fmt.Sprintf("\n%s magically sets your health to %d\n", player.GetName(), intValue))
+	h.Notifier.NotifyPlayer(retrievedPlayer.UUID, fmt.Sprintf("\n%s magically sets your health to %d\n", player.Name, intValue))
 
 }
 

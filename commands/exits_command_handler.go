@@ -2,8 +2,9 @@ package commands
 
 import (
 	"fmt"
+	"mud/areas"
 	"mud/display"
-	"mud/interfaces"
+	"mud/players"
 	"mud/world_state"
 	"strings"
 
@@ -19,10 +20,11 @@ func (h *ExitsCommandHandler) SetWorldState(world_state *world_state.WorldState)
 	h.WorldState = world_state
 }
 
-func (h *ExitsCommandHandler) Execute(_ *sqlx.DB, player interfaces.Player, _ string, _ []string, _ chan interfaces.Action, _ func(string)) {
-	currentRoom := player.GetRoom()
-	exits := currentRoom.GetExits()
-	exitMap := map[string]interfaces.Room{
+func (h *ExitsCommandHandler) Execute(_ *sqlx.DB, player *players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
+	roomUUID := player.RoomUUID
+	currentRoom := h.WorldState.GetRoom(roomUUID, true)
+	exits := currentRoom.Exits
+	exitMap := map[string]*areas.Room{
 		"North": exits.GetNorth(),
 		"South": exits.GetSouth(),
 		"West":  exits.GetWest(),
@@ -37,8 +39,8 @@ func (h *ExitsCommandHandler) Execute(_ *sqlx.DB, player interfaces.Player, _ st
 	for direction, exit := range exitMap {
 		if exit != nil {
 			abbreviatedDirections = append(abbreviatedDirections, direction)
-			exitRoom := h.WorldState.GetRoom(exit.GetUUID(), false)
-			longDirections = append(longDirections, fmt.Sprintf("%s: %s", direction, exitRoom.GetName()))
+			exitRoom := h.WorldState.GetRoom(exit.UUID, false)
+			longDirections = append(longDirections, fmt.Sprintf("%s: %s", direction, exitRoom.Name))
 		}
 	}
 	if h.ShowOnlyDirections {

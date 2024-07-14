@@ -1,13 +1,8 @@
 package players
 
 import (
-	"mud/interfaces"
-	"net"
+	"mud/items"
 )
-
-func (player *Player) GetAbilities() interfaces.Abilities {
-	return &player.PlayerAbilities
-}
 
 func (player *Player) GetArmorClass() int32 {
 	// 10 + armor_bonus + shield_bonus + dexterity_modifier + other_modifiers
@@ -19,78 +14,25 @@ func (player *Player) GetArmorClass() int32 {
 	return base + armorBonus + shieldBonus + dexModifier + otherModifiers
 }
 
-func (player *Player) GetAreaUUID() string {
-	return player.AreaUUID
+func (player *Player) GetCharacterClass() string {
+	return player.CharacterClass.Name + " - " + player.CharacterClass.ArchetypeName
 }
 
-func (player *Player) GetArea() interfaces.Area {
-	return player.Area
+func (player *Player) GetRace() string {
+	if player.Race.SubRaceName == "" {
+		return player.Race.Name
+	}
+	return player.Race.Name + " - " + player.Race.SubRaceName
 }
 
-func (player *Player) GetColorProfile() interfaces.ColorProfile {
-	return &player.ColorProfile
-}
-
-func (player *Player) GetCommands() []string {
-	return player.Commands
-}
-
-func (player *Player) GetConn() net.Conn {
-	return player.Conn
-}
-
-func (player *Player) GetEquipment() interfaces.PlayerEquipment {
-	return &player.Equipment
-}
-
-func (player *Player) GetHashedPassword() string {
-	return player.Password
-}
-
-func (player *Player) GetHealth() int32 {
-	return player.HP
-}
-
-func (player *Player) GetHealthMax() int32 {
-	return player.HPMax
-}
-
-func (player *Player) GetInventory() []interfaces.Item {
-	return player.Inventory
-}
-
-func (player *Player) GetItemFromInventory(itemName string) interfaces.Item {
-	inventory := player.GetInventory()
+func (player Player) GetItemFromInventory(itemName string) *items.Item {
+	inventory := player.Inventory
 	for idx := range inventory {
 		if inventory[idx].GetName() == itemName {
 			return inventory[idx]
 		}
 	}
 	return nil
-}
-
-func (player *Player) GetLoggedIn() bool {
-	return player.LoggedIn
-}
-
-func (player *Player) GetMovement() int32 {
-	return player.Movement
-}
-
-func (player *Player) GetMovementMax() int32 {
-	return player.MovementMax
-}
-
-func (player *Player) GetName() string {
-	return player.Name
-}
-
-func (player *Player) GetRoomUUID() string {
-	return player.RoomUUID
-}
-
-func (player *Player) GetRoom() interfaces.Room {
-	return player.Room
 }
 
 func (player *Player) GetSizeModifier() int32 {
@@ -107,8 +49,4 @@ func (player *Player) GetSizeModifier() int32 {
 	}
 	// TODO don't hard code this
 	return sizeTable["medium"]
-}
-
-func (player *Player) GetUUID() string {
-	return player.UUID
 }

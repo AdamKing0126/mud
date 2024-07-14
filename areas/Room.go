@@ -2,72 +2,39 @@ package areas
 
 import (
 	"fmt"
-	"mud/interfaces"
-
-	"net"
+	"mud/items"
+	"mud/mobs"
+	"mud/players"
 
 	"github.com/jmoiron/sqlx"
 )
-
-type PlayerInRoomInterface interface {
-	GetUUID() string
-	GetName() string
-	GetInventory() []interfaces.Item
-	SetInventory([]interfaces.Item)
-	GetColorProfile() interfaces.ColorProfile
-	GetConn() net.Conn
-}
 
 type Room struct {
 	UUID        string
 	AreaUUID    string
 	Name        string
 	Description string
-	Area        AreaInfo
+	Area        *AreaInfo
 	Exits       *ExitInfo
-	Items       []interfaces.Item
-	Players     []interfaces.Player
-	Mobs        []interfaces.Mob
+	Items       []*items.Item
+	Players     []*players.Player
+	Mobs        []*mobs.Mob
 }
 
-func (room *Room) GetUUID() string {
-	return room.UUID
-}
-
-func (room *Room) GetPlayers() []interfaces.Player {
-	return room.Players
-}
-
-func (room *Room) GetMobs() []interfaces.Mob {
-	return room.Mobs
-}
-
-func (room *Room) GetPlayerByName(playerName string) interfaces.Player {
-	playersInRoom := room.GetPlayers()
+func (room Room) GetPlayerByName(playerName string) *players.Player {
+	playersInRoom := room.Players
 	for idx := range playersInRoom {
-		if playersInRoom[idx].GetName() == playerName {
+		if playersInRoom[idx].Name == playerName {
 			return playersInRoom[idx]
 		}
 	}
 	return nil
 }
 
-func (room *Room) GetDescription() string {
-	return room.Description
-}
-
-func (room *Room) GetName() string {
-	return room.Name
-}
-
-func (room *Room) GetItems() []interfaces.Item {
-	return room.Items
-}
-
-func (room *Room) AddPlayer(player interfaces.Player) {
+func (room Room) AddPlayer(player *players.Player) {
 	playerIdx := -1
 	for idx := range room.Players {
-		if room.Players[idx].GetUUID() == player.GetUUID() {
+		if room.Players[idx].UUID == player.UUID {
 			playerIdx = idx
 		}
 	}
@@ -76,38 +43,19 @@ func (room *Room) AddPlayer(player interfaces.Player) {
 	} else {
 		// in case the Players in the room is already loaded from the DB, update with the current player.
 		// TODO does this whole logic here need to be reworked so this case doesn't happen?
-		room.Players = append(room.Players[:playerIdx], append([]interfaces.Player{player}, room.Players[playerIdx+1:]...)...)
+		room.Players = append(room.Players[:playerIdx], append([]*players.Player{player}, room.Players[playerIdx+1:]...)...)
 	}
 }
 
-func (room *Room) RemovePlayer(player interfaces.Player) error {
-	for idx := range room.GetPlayers() {
-		if room.GetPlayers()[idx] == player {
+func (room Room) RemovePlayer(player *players.Player) error {
+	playersInRoom := room.Players
+	for idx, playerInRoom := range playersInRoom {
+		if playerInRoom.UUID == player.UUID {
 			room.Players = append(room.Players[:idx], room.Players[idx+1:]...)
 			return nil
 		}
 	}
 	return fmt.Errorf("player not found")
-}
-
-func (room *Room) GetExits() interfaces.ExitInfo {
-	return room.Exits
-}
-
-func (room *Room) SetExits(exits interfaces.ExitInfo) {
-	room.Exits = exits.(*ExitInfo)
-}
-
-func (room *Room) SetPlayers(players []interfaces.Player) {
-	room.Players = players
-}
-
-func (room *Room) SetMobs(mobs []interfaces.Mob) {
-	room.Mobs = mobs
-}
-
-func (room *Room) SetItems(items []interfaces.Item) {
-	room.Items = items
 }
 
 func NewAreaInfo(uuid string, name string, description string) *AreaInfo {
@@ -117,10 +65,10 @@ func NewAreaInfo(uuid string, name string, description string) *AreaInfo {
 func NewRoomWithAreaInfo(uuid string, area_uuid string, name string, description string, area_name string, area_description string, exit_north string, exit_south string, exit_east string, exit_west string, exit_up string, exit_down string) *Room {
 	areaInfo := NewAreaInfo(area_uuid, area_name, area_description)
 	exitInfo := NewExitInfo(exit_north, exit_south, exit_west, exit_east, exit_up, exit_down)
-	return &Room{UUID: uuid, AreaUUID: area_uuid, Name: name, Description: description, Area: *areaInfo, Exits: exitInfo}
+	return &Room{UUID: uuid, AreaUUID: area_uuid, Name: name, Description: description, Area: areaInfo, Exits: exitInfo}
 }
 
-func (room *Room) AddItem(db *sqlx.DB, item interfaces.Item) error {
+func (room *Room) AddItem(db *sqlx.DB, item *items.Item) error {
 	room.Items = append(room.Items, item)
 	err := item.SetLocation(db, "", room.UUID)
 	if err != nil {
@@ -129,9 +77,10 @@ func (room *Room) AddItem(db *sqlx.DB, item interfaces.Item) error {
 	return nil
 }
 
-func (room *Room) RemoveItem(item interfaces.Item) error {
-	for itemIndex := range room.GetItems() {
-		if room.GetItems()[itemIndex] == item {
+func (room *Room) RemoveItem(item *items.Item) error {
+	items := room.Items
+	for itemIndex := range items {
+		if items[itemIndex].UUID == item.UUID {
 			room.Items = append(room.Items[:itemIndex], room.Items[itemIndex+1:]...)
 			return nil
 		}
@@ -140,35 +89,35 @@ func (room *Room) RemoveItem(item interfaces.Item) error {
 }
 
 type ExitInfo struct {
-	North interfaces.Room
-	South interfaces.Room
-	West  interfaces.Room
-	East  interfaces.Room
-	Up    interfaces.Room
-	Down  interfaces.Room
+	North *Room
+	South *Room
+	West  *Room
+	East  *Room
+	Up    *Room
+	Down  *Room
 }
 
-func (e *ExitInfo) GetNorth() interfaces.Room {
+func (e ExitInfo) GetNorth() *Room {
 	return e.North
 }
 
-func (e *ExitInfo) GetSouth() interfaces.Room {
+func (e ExitInfo) GetSouth() *Room {
 	return e.South
 }
 
-func (e *ExitInfo) GetWest() interfaces.Room {
+func (e ExitInfo) GetWest() *Room {
 	return e.West
 }
 
-func (e *ExitInfo) GetEast() interfaces.Room {
+func (e ExitInfo) GetEast() *Room {
 	return e.East
 }
 
-func (e *ExitInfo) GetDown() interfaces.Room {
+func (e ExitInfo) GetDown() *Room {
 	return e.Down
 }
 
-func (e *ExitInfo) GetUp() interfaces.Room {
+func (e ExitInfo) GetUp() *Room {
 	return e.Up
 }
 

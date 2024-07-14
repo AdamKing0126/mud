@@ -2,40 +2,9 @@ package players
 
 import (
 	"fmt"
-	"mud/interfaces"
-	"net"
 
 	"github.com/jmoiron/sqlx"
 )
-
-func (player *Player) SetAbilities(abilities interfaces.PlayerAbilities) error {
-	playerAbilities, ok := abilities.(*PlayerAbilities)
-	if !ok {
-		return fmt.Errorf("error setting abilities")
-	}
-	player.PlayerAbilities = *playerAbilities
-	return nil
-}
-
-func (player *Player) SetRoom(room interfaces.Room) {
-	player.Room = room
-}
-
-func (player *Player) SetCommands(commands []string) {
-	player.Commands = commands
-}
-
-func (player *Player) SetConn(conn net.Conn) {
-	player.Conn = conn
-}
-
-func (player *Player) SetHealth(health int32) {
-	player.HP = health
-}
-
-func (player *Player) SetInventory(inventory []interfaces.Item) {
-	player.Inventory = inventory
-}
 
 func (player *Player) SetLocation(db *sqlx.DB, roomUUID string) error {
 	area_rows, err := db.Query("SELECT area_uuid FROM rooms WHERE uuid=?", roomUUID)
@@ -66,17 +35,12 @@ func (player *Player) SetLocation(db *sqlx.DB, roomUUID string) error {
 
 	defer stmt.Close()
 
-	player.SetMovement(player.GetMovement() - 1)
-	newMovement := player.GetMovement()
-	_, err = stmt.Exec(areaUUID, roomUUID, newMovement, player.UUID)
+	player.Movement--
+	_, err = stmt.Exec(areaUUID, roomUUID, player.Movement, player.UUID)
 	if err != nil {
 		return err
 	}
 
 	stmt.Close()
 	return nil
-}
-
-func (player *Player) SetMovement(movement int32) {
-	player.Movement = movement
 }

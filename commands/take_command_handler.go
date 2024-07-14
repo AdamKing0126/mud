@@ -2,20 +2,28 @@ package commands
 
 import (
 	"fmt"
+	"mud/areas"
 	"mud/display"
-	"mud/interfaces"
 	"mud/notifications"
+	"mud/players"
+	"mud/world_state"
 
 	"github.com/jmoiron/sqlx"
 )
 
 type TakeCommandHandler struct {
-	Notifier *notifications.Notifier
+	Notifier   *notifications.Notifier
+	WorldState *world_state.WorldState
 }
 
-func (h *TakeCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string)) {
-	currentRoom := player.GetRoom()
-	items := currentRoom.GetItems()
+func (h *TakeCommandHandler) SetWorldState(world_state *world_state.WorldState) {
+	h.WorldState = world_state
+}
+
+func (h *TakeCommandHandler) Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+	roomUUID := player.RoomUUID
+	currentRoom := h.WorldState.GetRoom(roomUUID, false)
+	items := currentRoom.Items
 
 	if len(items) > 0 {
 		for _, item := range items {
@@ -27,7 +35,7 @@ func (h *TakeCommandHandler) Execute(db *sqlx.DB, player interfaces.Player, comm
 				player.AddItem(db, item)
 
 				display.PrintWithColor(player, fmt.Sprintf("You take the %s.\n", item.GetName()), "reset")
-				h.Notifier.NotifyRoom(player.GetRoomUUID(), player.GetUUID(), fmt.Sprintf("\n%s takes %s.\n", player.GetName(), item.GetName()))
+				h.Notifier.NotifyRoom(player.RoomUUID, player.UUID, fmt.Sprintf("\n%s takes %s.\n", player.Name, item.Name))
 				break
 			}
 		}

@@ -12,7 +12,7 @@ import (
 type SubraceImport struct {
 	Name        string `json:"name"`
 	Slug        string `json:"slug"`
-	Description string `json:"description"`
+	Description string `json:"desc"`
 	ASI         []Asi  `json:"asi"`
 }
 
@@ -32,7 +32,7 @@ type RaceImport struct {
 	Subraces    []SubraceImport
 }
 
-func SeedGroups(dbPath string, racesImportDbPath string) error {
+func SeedRaces(dbPath string, racesImportDbPath string) error {
 	db, err := sqlx.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Fatalf("Failed to open Sqlite database: %v", err)
@@ -84,12 +84,12 @@ func SeedGroups(dbPath string, racesImportDbPath string) error {
 		ri.Subraces = subraces
 		// need to write each record into the game db now.
 
-		queryString := `INSERT INTO races
+		queryString := `INSERT INTO character_races
 		(name, slug, size, description, asi, subrace_name, subrace_slug, subrace_description)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		`
 		if len(subraces) == 0 {
-			_, err = db.Exec(queryString, ri.Name, ri.Slug, ri.ASIData, "", "", "")
+			_, err = db.Exec(queryString, ri.Name, ri.Slug, ri.Size, ri.Description, ri.ASIData, "", "", "")
 			if err != nil {
 				log.Fatalf("Failed to insert into races table: %v", err)
 			}
@@ -100,7 +100,7 @@ func SeedGroups(dbPath string, racesImportDbPath string) error {
 					log.Fatalf("Failed to marshal ASI into json: %v", err)
 				}
 
-				_, err = db.Exec(queryString, ri.Name, ri.Slug, asi, subrace.Name, subrace.Slug, subrace.Description)
+				_, err = db.Exec(queryString, ri.Name, ri.Slug, ri.Size, ri.Description, asi, subrace.Name, subrace.Slug, subrace.Description)
 				if err != nil {
 					log.Fatalf("Failed to insert into races table: %v", err)
 				}
@@ -108,4 +108,10 @@ func SeedGroups(dbPath string, racesImportDbPath string) error {
 		}
 	}
 	return nil
+}
+
+func main() {
+	dbPath := "./sql_database/mud.db"
+	racesImportDbPath := "./sql_database/race_imports.db"
+	SeedRaces(dbPath, racesImportDbPath)
 }

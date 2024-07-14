@@ -2,9 +2,10 @@ package commands
 
 import (
 	"fmt"
+	"mud/areas"
 	"mud/display"
-	"mud/interfaces"
 	"mud/notifications"
+	"mud/players"
 	"mud/world_state"
 	"strings"
 	"sync"
@@ -13,7 +14,7 @@ import (
 )
 
 type CommandRouterInterface interface {
-	HandleCommand(db *sqlx.DB, player interfaces.Player, command []byte, currentChannel chan interfaces.Action, updateChannel func(string))
+	HandleCommand(db *sqlx.DB, player players.Player, command []byte, currentChannel chan areas.Action, updateChannel func(string))
 }
 
 type CommandRouter struct {
@@ -47,7 +48,7 @@ func RegisterCommands(router *CommandRouter, notifier *notifications.Notifier, w
 	}
 }
 
-func (r *CommandRouter) HandleCommand(db *sqlx.DB, player interfaces.Player, command []byte, currentChannel chan interfaces.Action, updateChannel func(string)) {
+func (r *CommandRouter) HandleCommand(db *sqlx.DB, player *players.Player, command []byte, currentChannel chan areas.Action, updateChannel func(string)) {
 	// Convert the command []byte to a string and trim the extra characters off.
 	commandString := strings.ToLower(strings.TrimSpace(string(command)))
 

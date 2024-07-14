@@ -2,48 +2,27 @@ package areas
 
 import (
 	"fmt"
-	"mud/interfaces"
 )
 
 type Area struct {
 	UUID        string
 	Name        string
 	Description string
-	Rooms       []interfaces.Room
+	Rooms       []*Room
 	Channel     chan Action
 }
 
-func (a *Area) GetUUID() string {
-	return a.UUID
-}
-
-func (a *Area) GetName() string {
-	return a.Name
-}
-
-func (a *Area) GetDescription() string {
-	return a.Description
-}
-
-func (a *Area) GetRooms() []interfaces.Room {
-	return a.Rooms
-}
-
-func (a *Area) GetRoomByUUID(roomUUID string) (interfaces.Room, error) {
-	rooms := a.GetRooms()
+func (a Area) GetRoomByUUID(roomUUID string) (*Room, error) {
+	rooms := a.Rooms
 	for idx := range rooms {
-		if rooms[idx].GetUUID() == roomUUID {
+		if rooms[idx].UUID == roomUUID {
 			return rooms[idx], nil
 		}
 	}
-	return nil, fmt.Errorf("room UUID %s not found in area %s", roomUUID, a.GetUUID())
+	return nil, fmt.Errorf("room UUID %s not found in area %s", roomUUID, a.UUID)
 }
 
-func (a *Area) SetRooms(rooms []interfaces.Room) {
-	a.Rooms = rooms
-}
-
-func (a *Area) SetRoomAtIndex(idx int, room interfaces.Room) {
+func (a *Area) SetRoomAtIndex(idx int, room *Room) {
 	if idx < 0 || idx >= len(a.Rooms) {
 		fmt.Printf("Index out of bounds: %d", idx)
 		return

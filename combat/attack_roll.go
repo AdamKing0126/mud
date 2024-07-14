@@ -1,11 +1,10 @@
 package combat
 
 import (
-	"mud/interfaces"
 	"mud/utilities"
 )
 
-func AttackRoll(combatant interfaces.Combatant, opponent interfaces.Combatant) bool {
+func AttackRoll(combatant Combatant, opponent Combatant) bool {
 	abilities := combatant.GetAbilities()
 	attackModifier := abilities.GetAttackModifier("ranged")
 

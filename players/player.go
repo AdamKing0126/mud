@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"mud/character_classes"
 	"mud/display"
-	"mud/interfaces"
+	"mud/items"
 	"mud/utilities"
 	"net"
 	"reflect"
@@ -20,9 +20,7 @@ type Player struct {
 	UUID            string
 	Name            string
 	RoomUUID        string
-	Room            interfaces.Room
 	AreaUUID        string
-	Area            interfaces.Area
 	HP              int32
 	HPMax           int32
 	Movement        int32
@@ -34,37 +32,42 @@ type Player struct {
 	Password        string
 	PlayerAbilities PlayerAbilities
 	Equipment       PlayerEquipment
-	Inventory       []interfaces.Item
+	Inventory       []*items.Item
 	CharacterClass  character_classes.CharacterClass
+	Race            character_classes.CharacterRace
 }
 
-func (player *Player) AddItem(db *sqlx.DB, item interfaces.Item) error {
+func (player *Player) GetColorProfileColor(colorUse string) string {
+	return player.ColorProfile.GetColor(colorUse)
+}
+
+func (player *Player) AddItem(db *sqlx.DB, item *items.Item) error {
 	err := item.SetLocation(db, player.UUID, "")
 	if err != nil {
 		return err
 	}
-	player.SetInventory(append(player.GetInventory(), item))
+	player.Inventory = append(player.Inventory, item)
 	return nil
 }
 
-func (player *Player) RemoveItem(item interfaces.Item) error {
+func (player *Player) RemoveItem(item *items.Item) error {
 	itemIndex := -1
-	for idx := range player.GetInventory() {
-		if player.Inventory[idx] == item {
+	for idx := range player.Inventory {
+		if player.Inventory[idx].GetUUID() == item.UUID {
 			itemIndex = idx
 			break
 		}
 	}
 	if itemIndex == -1 {
-		return fmt.Errorf("item %s is not found in player %s inventory", item.GetUUID(), player.GetUUID())
+		return fmt.Errorf("item %s is not found in player %s inventory", item.GetUUID(), player.UUID)
 	}
 	player.Inventory = append(player.Inventory[:itemIndex], player.Inventory[itemIndex+1:]...)
 	return nil
 }
 
 func (player *Player) Regen(db *sqlx.DB) error {
-	healthRegen := calculateHPRegen(player)
-	movementRegen := calculateMovementRegen(player)
+	healthRegen := calculateHPRegen(*player)
+	movementRegen := calculateMovementRegen(*player)
 
 	player.HP = int32(float64(player.HP) * healthRegen)
 	if player.HP > player.HPMax {
@@ -86,10 +89,10 @@ func (player *Player) Regen(db *sqlx.DB) error {
 func (player *Player) Remove(db *sqlx.DB, itemName string) {
 	if player.Equipment.DominantHand.GetName() == itemName {
 		equippedItem := player.Equipment.DominantHand
-		player.AddItem(db, equippedItem)
+		player.AddItem(db, equippedItem.Item)
 
 		player.Equipment.DominantHand = nil
-		queryString := fmt.Sprintf("UPDATE player_equipments SET DominantHand = '' WHERE player_uuid = '%s'", player.GetUUID())
+		queryString := fmt.Sprintf("UPDATE player_equipments SET DominantHand = '' WHERE player_uuid = '%s'", player.UUID)
 		_, err := db.Exec(queryString)
 		if err != nil {
 			fmt.Printf("error setting player_equipment to nil: %v", err)
@@ -99,7 +102,7 @@ func (player *Player) Remove(db *sqlx.DB, itemName string) {
 	}
 }
 
-func (player *Player) Equip(db *sqlx.DB, item interfaces.Item) bool {
+func (player *Player) Equip(db *sqlx.DB, item *items.Item) bool {
 	// get the location where the thing goes
 	val := reflect.ValueOf(&player.Equipment).Elem()
 	itemEquipSlots := []string{}
@@ -124,7 +127,7 @@ func (player *Player) Equip(db *sqlx.DB, item interfaces.Item) bool {
 		queryString += slot
 	}
 	queryString += " FROM player_equipments WHERE player_uuid = ? LIMIT 1"
-	rows, err := db.Query(queryString, player.GetUUID())
+	rows, err := db.Query(queryString, player.UUID)
 	if err != nil {
 		fmt.Printf("error retrieving player equipments: %v", err)
 		return false
@@ -161,17 +164,17 @@ func (player *Player) Equip(db *sqlx.DB, item interfaces.Item) bool {
 			queryString += columns[idx]
 			queryString += " = ? WHERE player_uuid = ?"
 			rows.Close()
-			_, err = db.Exec(queryString, itemUUID, player.GetUUID())
+			_, err = db.Exec(queryString, itemUUID, player.UUID)
 			if err != nil {
 				fmt.Printf("error inserting into player_equipments: %v", err)
 				return false
 			}
 			if columns[idx] == "DominantHand" {
-				equippedItem := &PlayerEquippedItem{
+				equippedItem := EquippedItem{
 					Item:         item,
 					EquippedSlot: columns[idx],
 				}
-				player.Equipment.DominantHand = equippedItem
+				player.Equipment.DominantHand = &equippedItem
 			}
 			return true
 		}
@@ -179,7 +182,7 @@ func (player *Player) Equip(db *sqlx.DB, item interfaces.Item) bool {
 	return true
 }
 
-func printEquipmentElement(player interfaces.Player, partName string, getterFunc func() interfaces.EquippedItem) {
+func printEquipmentElement(player *Player, partName string, getterFunc func() *EquippedItem) {
 	part := getterFunc()
 	partText := "nothing"
 	if part != nil {
@@ -192,7 +195,7 @@ func (player *Player) DisplayEquipment() {
 	display.PrintWithColor(player, "\n========================", "primary")
 	display.PrintWithColor(player, "\nYour current equipment:\n", "primary")
 
-	equipment := player.GetEquipment()
+	equipment := player.Equipment
 	printEquipmentElement(player, "Head", equipment.GetHead)
 	printEquipmentElement(player, "Neck", equipment.GetNeck)
 	printEquipmentElement(player, "Chest", equipment.GetChest)
@@ -209,4 +212,13 @@ func (player *Player) RollInitiative() int32 {
 	// todo, there's more than this to rolling initiative but atm I can't
 	// be bothered to look it up.
 	return utilities.DiceRoll("1d20")
+}
+
+func (player *Player) GetColorProfilecolor(colorUse string) string {
+	// TODO this ain't right.
+	return player.ColorProfile.Primary
+}
+
+func (player *Player) GetConn() net.Conn {
+	return player.Conn
 }

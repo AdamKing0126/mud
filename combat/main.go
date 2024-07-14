@@ -1,29 +1,20 @@
 package combat
 
 import (
-	"mud/interfaces"
 	"sort"
 )
 
 type Combat struct {
-	Aggressors []interfaces.Combatant
-	Defenders  []interfaces.Combatant
-	TurnOrder  []interfaces.Combatant
+	Aggressors []Combatant
+	Defenders  []Combatant
+	TurnOrder  []Combatant
 }
 
-func NewCombat(aggressors []interfaces.Combatant, defenders []interfaces.Combatant) Combat {
+func NewCombat(aggressors []Combatant, defenders []Combatant) Combat {
 	return Combat{Aggressors: aggressors, Defenders: defenders}
 }
 
-func (c *Combat) GetAggressors() []interfaces.Combatant {
-	return c.Aggressors
-}
-
-func (c *Combat) GetDefenders() []interfaces.Combatant {
-	return c.Defenders
-}
-
-func (c *Combat) AddAggressor(aggressor interfaces.Combatant) {
+func (c *Combat) AddAggressor(aggressor Combatant) {
 	c.Aggressors = append(c.Aggressors, aggressor)
 	// if the combatant joins the combat after it has begun, they
 	// go to the end of the TurnOrder
@@ -32,7 +23,7 @@ func (c *Combat) AddAggressor(aggressor interfaces.Combatant) {
 	}
 }
 
-func (c *Combat) AddDefender(defender interfaces.Combatant) {
+func (c *Combat) AddDefender(defender Combatant) {
 	// if the combatant joins the combat after it has begun, they
 	// go to the end of the TurnOrder
 	c.Defenders = append(c.Defenders, defender)
@@ -41,13 +32,9 @@ func (c *Combat) AddDefender(defender interfaces.Combatant) {
 	}
 }
 
-func (c *Combat) GetTurnOrder() []interfaces.Combatant {
-	return c.TurnOrder
-}
-
 func (c *Combat) RollInitiative() {
 	type InitiativeCombatant struct {
-		Combatant      interfaces.Combatant
+		Combatant      Combatant
 		InitiativeRoll int32
 	}
 
@@ -73,5 +60,4 @@ func (c *Combat) RollInitiative() {
 	for idx := range combatants {
 		c.TurnOrder = append(c.TurnOrder, combatants[idx].Combatant)
 	}
-
 }

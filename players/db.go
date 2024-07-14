@@ -2,8 +2,9 @@ package players
 
 import (
 	"fmt"
-	"mud/interfaces"
+	"mud/character_classes"
 	"mud/items"
+
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -31,11 +32,33 @@ func GetPlayerByName(db *sqlx.DB, name string) (*Player, error) {
 func GetPlayerFromDB(db *sqlx.DB, playerName string) (*Player, error) {
 	var player Player
 	var colorProfileUUID string
-	err := db.QueryRow("SELECT uuid, name, room, area, hp, hp_max, movement, movement_max, logged_in, password, color_profile FROM players WHERE LOWER(name) = LOWER(?)", playerName).
-		Scan(&player.UUID, &player.Name, &player.RoomUUID, &player.AreaUUID, &player.HP, &player.HPMax, &player.Movement, &player.MovementMax, &player.LoggedIn, &player.Password, &colorProfileUUID)
+	var characterClassArchetypeSlug string
+	var characterRaceSlug, characterSubRaceSlug string
+	err := db.QueryRow("SELECT uuid, name, character_class, race, subrace, room, area, hp, hp_max, movement, movement_max, logged_in, password, color_profile FROM players WHERE LOWER(name) = LOWER(?)", playerName).
+		Scan(&player.UUID, &player.Name, &characterClassArchetypeSlug, &characterRaceSlug, &characterSubRaceSlug, &player.RoomUUID, &player.AreaUUID, &player.HP, &player.HPMax, &player.Movement, &player.MovementMax, &player.LoggedIn, &player.Password, &colorProfileUUID)
 	if err != nil {
 		return nil, err
 	}
+
+	characterClasses, err := character_classes.GetCharacterClassList(db, characterClassArchetypeSlug)
+	if err != nil {
+		return nil, err
+	}
+	if len(characterClasses) != 1 {
+		return nil, nil
+	}
+	var characterClass = characterClasses[0]
+	player.CharacterClass = characterClass
+
+	characterRaces, err := character_classes.GetCharacterRaceList(db, characterRaceSlug, characterSubRaceSlug)
+	if err != nil {
+		return nil, err
+	}
+	if len(characterRaces) != 1 {
+		return nil, nil
+	}
+	player.Race = characterRaces[0]
+
 	player.ColorProfile = ColorProfile{UUID: colorProfileUUID}
 
 	return &player, nil
@@ -45,7 +68,7 @@ func (player *Player) GetColorProfileFromDB(db *sqlx.DB) error {
 	var colorProfile = ColorProfile{}
 	query := `SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color 
 	FROM color_profiles WHERE uuid = ?;`
-	err := db.QueryRow(query, player.GetColorProfile().GetUUID()).Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
+	err := db.QueryRow(query, player.ColorProfile.UUID).Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
 	if err != nil {
 		return err
 	}
@@ -59,7 +82,7 @@ func (player *Player) GetInventoryFromDB(db *sqlx.DB) error {
 	if err != nil {
 		fmt.Printf("error querying: %v", err)
 	}
-	var inventory []interfaces.Item
+	var inventory []*items.Item
 	for rows.Next() {
 		var uuid, name, description, slots string
 		err := rows.Scan(&uuid, &name, &description, &slots)
@@ -116,23 +139,23 @@ func (player *Player) GetEquipmentFromDB(db *sqlx.DB) error {
 
 		switch uuid {
 		case head:
-			pe.Head = items.NewEquippedItem(item, "Head")
+			pe.Head = NewEquippedItem(item, "Head")
 		case neck:
-			pe.Neck = items.NewEquippedItem(item, "Neck")
+			pe.Neck = NewEquippedItem(item, "Neck")
 		case chest:
-			pe.Chest = items.NewEquippedItem(item, "Chest")
+			pe.Chest = NewEquippedItem(item, "Chest")
 		case arms:
-			pe.Arms = items.NewEquippedItem(item, "Arms")
+			pe.Arms = NewEquippedItem(item, "Arms")
 		case hands:
-			pe.Hands = items.NewEquippedItem(item, "Hands")
+			pe.Hands = NewEquippedItem(item, "Hands")
 		case dominantHand:
-			pe.DominantHand = items.NewEquippedItem(item, "DominantHand")
+			pe.DominantHand = NewEquippedItem(item, "DominantHand")
 		case offHand:
-			pe.OffHand = items.NewEquippedItem(item, "OffHand")
+			pe.OffHand = NewEquippedItem(item, "OffHand")
 		case legs:
-			pe.Legs = items.NewEquippedItem(item, "Legs")
+			pe.Legs = NewEquippedItem(item, "Legs")
 		default:
-			pe.Feet = items.NewEquippedItem(item, "Feet")
+			pe.Feet = NewEquippedItem(item, "Feet")
 		}
 	}
 
@@ -156,9 +179,10 @@ func getColorProfileFromDB(db *sqlx.DB, colorProfileUUID string) (*ColorProfile,
 	return &colorProfile, nil
 }
 
-func GetPlayersInRoom(db *sqlx.DB, roomUUID string) ([]interfaces.Player, error) {
+func GetPlayersInRoom(db *sqlx.DB, roomUUID string) ([]*Player, error) {
 	// Would it be better to rely on the `connections` structure attached to the server
 	// or is it better to query the db for this info?
+	var players []*Player
 	query := `
 		SELECT uuid, name 
 		FROM players 
@@ -166,13 +190,12 @@ func GetPlayersInRoom(db *sqlx.DB, roomUUID string) ([]interfaces.Player, error)
 	`
 	rows, err := db.Query(query, roomUUID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %v", err)
+		return players, fmt.Errorf("failed to execute query: %v", err)
 	}
 	defer rows.Close()
 
-	var players []Player
 	for rows.Next() {
-		var player Player
+		player := &Player{}
 		err := rows.Scan(&player.UUID, &player.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row: %v", err)
@@ -184,10 +207,5 @@ func GetPlayersInRoom(db *sqlx.DB, roomUUID string) ([]interfaces.Player, error)
 		return nil, fmt.Errorf("error iterating over rows: %v", err)
 	}
 
-	playerInterfaces := make([]interfaces.Player, len(players))
-	for idx := range players {
-		playerInterfaces[idx] = &players[idx]
-	}
-
-	return playerInterfaces, nil
+	return players, nil
 }

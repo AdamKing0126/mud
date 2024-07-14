@@ -1,15 +1,16 @@
 package commands
 
 import (
-	"mud/interfaces"
+	"mud/areas"
 	"mud/notifications"
+	"mud/players"
 	worldState "mud/world_state"
 
 	"github.com/jmoiron/sqlx"
 )
 
 type CommandHandler interface {
-	Execute(db *sqlx.DB, player interfaces.Player, command string, arguments []string, currentChannel chan interfaces.Action, updateChannel func(string))
+	Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string))
 }
 
 type CommandHandlerWithPriority struct {

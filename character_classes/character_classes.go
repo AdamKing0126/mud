@@ -2,6 +2,7 @@ package character_classes
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -73,14 +74,14 @@ func (c CharacterClasses) GetCharacterClassByArchetypeSlug(archetypeSlug string)
 	return nil
 }
 
-func GetCharacterClassList(db *sqlx.DB, slug string) (CharacterClasses, error) {
+func GetCharacterClassList(db *sqlx.DB, archetype_slug string) (CharacterClasses, error) {
 	const baseQuery = `SELECT name, hit_dice, hp_at_first_level, hp_modifier, saving_throw_charisma, saving_throw_constitution, saving_throw_dexterity, saving_throw_intelligence, saving_throw_strength, saving_throw_wisdom, slug, archetype_slug, archetype_name, archetype_description FROM character_classes`
 	var query string
 	args := []interface{}{}
 
-	if slug != "" {
-		query = baseQuery + " WHERE slug = ? ORDER BY slug, archetype_slug;"
-		args = append(args, slug)
+	if archetype_slug != "" {
+		query = baseQuery + " WHERE archetype_slug = ?;"
+		args = append(args, archetype_slug)
 	} else {
 		query = baseQuery + " ORDER BY slug, archetype_slug;"
 	}
@@ -88,4 +89,33 @@ func GetCharacterClassList(db *sqlx.DB, slug string) (CharacterClasses, error) {
 	characterClasses := []CharacterClass{}
 	err := db.Select(&characterClasses, query, args...)
 	return characterClasses, err
+}
+
+func (c *CharacterClass) GetSavingThrowStatement() string {
+	savingThrows := []string{}
+	if c.SavingThrowCharisma {
+		savingThrows = append(savingThrows, "Charisma")
+	}
+	if c.SavingThrowConstitution {
+		savingThrows = append(savingThrows, "Constitution")
+	}
+	if c.SavingThrowDexterity {
+		savingThrows = append(savingThrows, "Dexterity")
+	}
+	if c.SavingThrowIntelligence {
+		savingThrows = append(savingThrows, "Intelligence")
+	}
+	if c.SavingThrowStrength {
+		savingThrows = append(savingThrows, "Strength")
+	}
+	if c.SavingThrowWisdom {
+		savingThrows = append(savingThrows, "Wisdom")
+	}
+
+	if len(savingThrows) == 1 {
+		return "Your saving throw is " + savingThrows[0]
+	} else {
+		return "Your saving throws are: " + strings.Join(savingThrows, ", ")
+	}
+
 }
