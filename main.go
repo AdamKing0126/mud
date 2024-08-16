@@ -3,15 +3,17 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"mud/areas"
 	"mud/commands"
 	"mud/display"
 	"mud/notifications"
 	"mud/players"
 	"mud/world_state"
-	"net"
-	"sync"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/ssh"
+	"github.com/charmbracelet/wish"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -30,12 +32,12 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, db *sqlx.DB, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *world_state.WorldState) {
-	defer conn.Close()
+func (s *Server) handleConnection(session ssh.Session, router CommandRouterInterface, db *sqlx.DB, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *world_state.WorldState) {
+	defer session.Close()
 
-	player, err := players.LoginPlayer(conn, db)
+	player, err := players.LoginPlayer(session, db)
 	if err != nil {
-		fmt.Fprintf(conn, "Error: %v\n", err)
+		fmt.Fprintf(session, "Error: %v\n", err)
 		return
 	}
 	if player == nil {
@@ -45,7 +47,7 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 	defer func() {
 		err := player.Logout(db)
 		if err != nil {
-			fmt.Fprintf(conn, "Error updating player logged_in status: %v\n", err)
+			fmt.Fprintf(session, "Error updating player logged_in status: %v\n", err)
 		}
 	}()
 
@@ -68,7 +70,7 @@ func (s *Server) handleConnection(conn net.Conn, router CommandRouterInterface, 
 	for {
 		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mvt: %d> ", player.HP, player.Movement), "primary")
 		buf := make([]byte, 1024)
-		n, err := conn.Read(buf)
+		n, err := session.Read(buf)
 		if err != nil {
 			fmt.Println(err)
 			break
@@ -87,7 +89,7 @@ func notifyPlayersInRoomThatNewPlayerHasJoined(player *players.Player, connectio
 	}
 
 	for _, p := range playersInRoom {
-		fmt.Fprintf(p.GetConn(), "\n%s has joined the game.\n", player.Name)
+		fmt.Fprintf(p.GetSession(), "\n%s has joined the game.\n", player.Name)
 		display.PrintWithColor(p, fmt.Sprintf("\nHP: %d Mvt: %d> ", player.HP, player.Movement), "primary")
 	}
 }
@@ -155,44 +157,106 @@ func logoutAllPlayers(db *sqlx.DB) {
 func main() {
 	db, err := openDatabase()
 	if err != nil {
-		fmt.Println(err)
+		log.Fatalln(err)
 	}
 	defer db.Close()
 
-	router := commands.NewCommandRouter()
 	server := NewServer()
 	notifier := notifications.NewNotifier(server.connections)
 
 	logoutAllPlayers(db)
 	areaInstances, roomToAreaMap, areaChannels, err := loadAreas(db, server)
 	if err != nil {
-		fmt.Printf("error loading areas: %v", err)
+		log.Fatalf("error loading areas: %v", err)
 	}
 
 	worldState := world_state.NewWorldState(areaInstances, roomToAreaMap, db)
 
-	commands.RegisterCommands(router, notifier, worldState, commands.CommandHandlers)
-	if len(router.Handlers) == 0 {
-		fmt.Println("Warning: no commands registered. Exiting...")
-		return
-	}
-
-	listener, err := net.Listen("tcp", ":8080")
+	s, err := wish.NewServer(
+		wish.WithAddress(":2222"),
+		wish.WithHostKeyPath(".ssh/term_info_ed25519"),
+		wish.WithMiddleware(
+			BubbleteaMUD(db, server, notifier, areaChannels, roomToAreaMap, worldState),
+		),
+	)
 	if err != nil {
-		fmt.Println(err)
-		return
+		log.Fatalln(err)
 	}
-	defer listener.Close()
-	wg := sync.WaitGroup{}
 
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			fmt.Println(err)
-			continue
+	log.Println("Starting SSH server on :2222")
+	log.Fatalln(s.ListenAndServe())
+}
+
+type mudModel struct {
+	db            *sqlx.DB
+	server        *Server
+	notifier      *notifications.Notifier
+	areaChannels  map[string]chan areas.Action
+	roomToAreaMap map[string]string
+	worldState    *world_state.WorldState
+	router        CommandRouterInterface
+	player        *players.Player
+	session       ssh.Session
+}
+
+func (m mudModel) Init() tea.Cmd {
+	return nil
+}
+
+func (m mudModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return m, nil
+}
+
+func (m mudModel) View() string {
+	return "Welcome to the MUD!"
+}
+
+func BubbleteaMUD(db *sqlx.DB, server *Server, notifier *notifications.Notifier, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *world_state.WorldState) wish.Middleware {
+	return func(sh ssh.Handler) ssh.Handler {
+		return func(s ssh.Session) {
+			player, err := players.LoginPlayer(s, db)
+			if err != nil || player == nil {
+				fmt.Fprintf(s, "Login failed: %v\n", err)
+				return
+			}
+
+			router := commands.NewCommandRouter()
+			commands.RegisterCommands(router, notifier, worldState, commands.CommandHandlers)
+
+			m := mudModel{
+				db:            db,
+				server:        server,
+				notifier:      notifier,
+				router:        router,
+				player:        player,
+				session:       s,
+				areaChannels:  areaChannels,
+				roomToAreaMap: roomToAreaMap,
+				worldState:    worldState,
+			}
+
+			p := tea.NewProgram(m)
+			if _, err := p.Run(); err != nil {
+				log.Println("Error running program:", err)
+			}
+
+			player.Logout(db)
 		}
-
-		wg.Add(1)
-		go server.handleConnection(conn, router, db, areaChannels, roomToAreaMap, worldState)
 	}
 }
+
+// func BubbleteaMUD(db *sqlx.DB, server *Server, notifier *notifications.Notifier, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *world_state.WorldState) wish.Middleware {
+// 	return func(sh ssh.Handler) ssh.Handler {
+// 		return func(s ssh.Session) {
+// 			router := commands.NewCommandRouter()
+// 			commands.RegisterCommands(router, notifier, worldState, commands.CommandHandlers)
+
+// 			if len(router.Handlers) == 0 {
+// 				fmt.Fprintln(s, "Warning: no commands registered. Exiting...")
+// 				return
+// 			}
+
+// 			server.handleConnection(s, router, db, areaChannels, roomToAreaMap, worldState)
+// 		}
+// 	}
+// }

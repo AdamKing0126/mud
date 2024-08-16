@@ -6,14 +6,15 @@ import (
 	"mud/display"
 	"mud/items"
 	"mud/utilities"
-	"net"
 	"reflect"
+
+	"github.com/charmbracelet/ssh"
 
 	"github.com/jmoiron/sqlx"
 )
 
-func NewPlayer(conn net.Conn) *Player {
-	return &Player{Conn: conn}
+func NewPlayer(session ssh.Session) *Player {
+	return &Player{Session: session}
 }
 
 type Player struct {
@@ -25,7 +26,7 @@ type Player struct {
 	HPMax           int32
 	Movement        int32
 	MovementMax     int32
-	Conn            net.Conn
+	Session         ssh.Session
 	Commands        []string
 	ColorProfile    ColorProfile
 	LoggedIn        bool
@@ -219,6 +220,6 @@ func (player *Player) GetColorProfilecolor(colorUse string) string {
 	return player.ColorProfile.Primary
 }
 
-func (player *Player) GetConn() net.Conn {
-	return player.Conn
+func (player *Player) GetSession() ssh.Session {
+	return player.Session
 }

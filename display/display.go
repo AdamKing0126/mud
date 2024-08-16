@@ -2,7 +2,8 @@ package display
 
 import (
 	"fmt"
-	"net"
+
+	"github.com/charmbracelet/ssh"
 )
 
 const (
@@ -31,21 +32,21 @@ func Colorize(text string, color string) string {
 
 type ProfilePlayer interface {
 	GetColorProfileColor(string) string
-	GetConn() net.Conn
+	GetSession() ssh.Session
 }
 
 type colorProfileAndConnectionGetter interface {
 	GetColorProfileColor(string) string
-	GetConn() net.Conn
+	GetSession() ssh.Session
 }
 
 func PrintWithColor(player colorProfileAndConnectionGetter, text string, colorUse string) {
 	color := player.GetColorProfileColor(colorUse)
-	playerConn := player.GetConn()
+	playerConn := player.GetSession()
 	fmt.Fprintf(playerConn, "%s", Colorize(text, color))
 }
 
 func Newline(player ProfilePlayer) {
-	playerConn := player.GetConn()
+	playerConn := player.GetSession()
 	fmt.Fprintf(playerConn, "\n")
 }

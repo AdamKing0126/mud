@@ -1,31 +1,47 @@
 package players
 
 import (
-	"bufio"
 	"database/sql"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"mud/character_classes"
 	"mud/display"
-	"net"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/ssh"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-func getPlayerInput(reader io.Reader) string {
-	r := bufio.NewReader(reader)
-	input, _ := r.ReadString('\n')
-	return strings.TrimSpace(input)
-}
+// func getPlayerInput(reader io.Reader) string {
+// 	r := bufio.NewReader(reader)
+// 	input, _ := r.ReadString('\n')
+// 	return strings.TrimSpace(input)
+// }
 
+func getPlayerInput(session ssh.Session) string {
+	var input strings.Builder
+	for {
+		b := make([]byte, 1)
+		_, err := session.Read(b)
+		if err != nil {
+			log.Printf("Error reading input: %v", err)
+			return ""
+		}
+		if b[0] == '\r' || b[0] == '\n' {
+			fmt.Fprintln(session) // Print newline
+			break
+		}
+		input.Write(b)
+		fmt.Fprint(session, string(b)) // Echo the character
+	}
+	return strings.TrimSpace(input.String())
+}
 func HashPassword(password string) string {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -61,7 +77,7 @@ func getCharacterRaceNamesFromCharacterRaceObjects(c character_classes.Character
 	return characterRaceNames
 }
 
-func selectCharacterClassAndArchetype(conn net.Conn, db *sqlx.DB, player *Player) *character_classes.CharacterClass {
+func selectCharacterClassAndArchetype(session ssh.Session, db *sqlx.DB, player *Player) *character_classes.CharacterClass {
 	characterClasses, err := character_classes.GetCharacterClassList(db, "")
 	if err != nil {
 		log.Fatal(err)
@@ -83,7 +99,7 @@ func selectCharacterClassAndArchetype(conn net.Conn, db *sqlx.DB, player *Player
 		display.PrintMenu(player, menuContents)
 
 		display.PrintWithColor(player, fmt.Sprintf("Make a selection (1-%d, anything else to quit): ", len(characterClassNames)), "primary")
-		choice := getPlayerInput(conn)
+		choice := getPlayerInput(session)
 
 		characterClassChoice, err := strconv.Atoi(choice)
 		if err != nil || characterClassChoice > len(characterClassNames) || characterClassChoice < 1 {
@@ -100,7 +116,7 @@ func selectCharacterClassAndArchetype(conn net.Conn, db *sqlx.DB, player *Player
 			display.PrintMenu(player, menuContents)
 			display.PrintWithColor(player, fmt.Sprintf("Make an archetype selection to learn more (1-%d, anything else to quit): ", len(archetypeNames)), "primary")
 
-			choice = getPlayerInput(conn)
+			choice = getPlayerInput(session)
 			archetypeChoice, err := strconv.Atoi(choice)
 			if err != nil || archetypeChoice > len(archetypes) || archetypeChoice < 1 {
 				break
@@ -115,7 +131,7 @@ func selectCharacterClassAndArchetype(conn net.Conn, db *sqlx.DB, player *Player
 
 			display.PrintWithColor(player, fmt.Sprintf("%s\n", chosenCharacterClass.GetSavingThrowStatement()), "primary")
 			display.PrintWithColor(player, fmt.Sprintf("Would you like to select a Character Class of %s-%s? (Y/N): ", chosenCharacterClass.Name, chosenCharacterClass.ArchetypeName), "primary")
-			choice = getPlayerInput(conn)
+			choice = getPlayerInput(session)
 			choice = strings.ToLower(choice)
 			fmt.Println(choice)
 			if choice == "y" {
@@ -127,7 +143,7 @@ func selectCharacterClassAndArchetype(conn net.Conn, db *sqlx.DB, player *Player
 	}
 }
 
-func selectRace(conn net.Conn, db *sqlx.DB, player *Player) *character_classes.CharacterRace {
+func selectRace(session ssh.Session, db *sqlx.DB, player *Player) *character_classes.CharacterRace {
 	characterRaces, err := character_classes.GetCharacterRaceList(db, "", "")
 	if err != nil {
 		log.Fatal(err)
@@ -150,7 +166,7 @@ func selectRace(conn net.Conn, db *sqlx.DB, player *Player) *character_classes.C
 		display.PrintMenu(player, menuContents)
 
 		display.PrintWithColor(player, fmt.Sprintf("Make a selection (1-%d, anything else to quit): ", len(characterRaceNames)), "primary")
-		choice := getPlayerInput(conn)
+		choice := getPlayerInput(session)
 
 		characterRaceChoice, err := strconv.Atoi(choice)
 		if err != nil || characterRaceChoice > len(characterRaceNames) || characterRaceChoice < 1 {
@@ -170,7 +186,7 @@ func selectRace(conn net.Conn, db *sqlx.DB, player *Player) *character_classes.C
 				display.PrintMenu(player, menuContents)
 				display.PrintWithColor(player, fmt.Sprintf("Make a subrace selection to learn more (1-%d, anything else to quit): ", len(subRaceNames)), "primary")
 
-				choice = getPlayerInput(conn)
+				choice = getPlayerInput(session)
 				subraceChoice, err := strconv.Atoi(choice)
 				if err != nil || subraceChoice > len(subRaces) || subraceChoice < 1 {
 					break
@@ -185,7 +201,7 @@ func selectRace(conn net.Conn, db *sqlx.DB, player *Player) *character_classes.C
 				display.PrintMenu(player, menuContents)
 
 				display.PrintWithColor(player, fmt.Sprintf("Would you like to select a Character Race of %s-%s? (Y/N): ", chosenCharacterRace.Name, chosenCharacterRace.SubRaceName), "primary")
-				choice = getPlayerInput(conn)
+				choice = getPlayerInput(session)
 				choice = strings.ToLower(choice)
 				fmt.Println(choice)
 				if choice == "y" {
@@ -195,7 +211,7 @@ func selectRace(conn net.Conn, db *sqlx.DB, player *Player) *character_classes.C
 				menuContents.Delimiter = &delimiter
 			} else {
 				display.PrintWithColor(player, fmt.Sprintf("Would you like to select a Character Race of %s? (Y/N): ", chosenCharacterRace.Name), "primary")
-				choice = getPlayerInput(conn)
+				choice = getPlayerInput(session)
 				choice = strings.ToLower(choice)
 				fmt.Println(choice)
 				if choice == "y" {
@@ -210,12 +226,12 @@ func selectRace(conn net.Conn, db *sqlx.DB, player *Player) *character_classes.C
 
 }
 
-func createPlayer(conn net.Conn, db *sqlx.DB, playerName string) (*Player, error) {
-	player := NewPlayer(conn)
+func createPlayer(session ssh.Session, db *sqlx.DB, playerName string) (*Player, error) {
+	player := NewPlayer(session)
 	player.Name = playerName
 
-	fmt.Fprintf(conn, "Please enter a password you'd like to use: ")
-	password := getPlayerInput(conn)
+	fmt.Fprintf(session, "Please enter a password you'd like to use: ")
+	password := getPlayerInput(session)
 	player.Password = HashPassword(password)
 
 	// default start point
@@ -229,13 +245,13 @@ func createPlayer(conn net.Conn, db *sqlx.DB, playerName string) (*Player, error
 		return nil, err
 	}
 
-	chosenCharacterClass := selectCharacterClassAndArchetype(conn, db, player)
+	chosenCharacterClass := selectCharacterClassAndArchetype(session, db, player)
 	if chosenCharacterClass == nil {
 		player.Logout(db)
 		return nil, nil
 	}
 
-	chosenRace := selectRace(conn, db, player)
+	chosenRace := selectRace(session, db, player)
 	if chosenRace == nil {
 		player.Logout(db)
 		return nil, nil
@@ -247,7 +263,7 @@ func createPlayer(conn net.Conn, db *sqlx.DB, playerName string) (*Player, error
 	player.Movement = 100
 	player.MovementMax = 100
 	player.UUID = uuid.New().String()
-	player.Conn = conn
+	player.Session = session
 	player.CharacterClass = *chosenCharacterClass
 	player.Race = *chosenRace
 
@@ -285,7 +301,7 @@ func createPlayer(conn net.Conn, db *sqlx.DB, playerName string) (*Player, error
 		log.Fatal(err)
 	}
 
-	player.Conn = conn
+	player.Session = session
 
 	return player, nil
 }
@@ -299,19 +315,19 @@ func createPlayer(conn net.Conn, db *sqlx.DB, playerName string) (*Player, error
 // each one of these steps results in another database query, but I thought it
 // best to keep the actions atomic for now, rather than trying to build one
 // huge query which has joins all over the place.
-func LoginPlayer(conn net.Conn, db *sqlx.DB) (*Player, error) {
+func LoginPlayer(session ssh.Session, db *sqlx.DB) (*Player, error) {
 
-	fmt.Fprintf(conn, "Welcome! Please enter your player name: ")
-	playerName := getPlayerInput(conn)
+	fmt.Fprintf(session, "Welcome! Please enter your player name: ")
+	playerName := getPlayerInput(session)
 
 	player, err := GetPlayerFromDB(db, playerName)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			fmt.Fprintf(conn, "Player not found.  Do you want to create a new player? (y/n): ")
-			answer := getPlayerInput(conn)
+			fmt.Fprintf(session, "Player not found.  Do you want to create a new player? (y/n): ")
+			answer := getPlayerInput(session)
 
 			if strings.ToLower(answer) == "y" {
-				player, err = createPlayer(conn, db, playerName)
+				player, err = createPlayer(session, db, playerName)
 				if err != nil {
 					return nil, err
 				}
@@ -323,14 +339,14 @@ func LoginPlayer(conn net.Conn, db *sqlx.DB) (*Player, error) {
 		return nil, err
 	}
 
-	fmt.Fprintf(conn, "Please enter your password: ")
-	passwd := getPlayerInput(conn)
+	fmt.Fprintf(session, "Please enter your password: ")
+	passwd := getPlayerInput(session)
 	err = bcrypt.CompareHashAndPassword([]byte(player.Password), []byte(passwd))
 	if err != nil {
 		return nil, err
 	}
 
-	player.Conn = conn
+	player.Session = session
 
 	err = player.GetColorProfileFromDB(db)
 	if err != nil {
@@ -367,6 +383,6 @@ func (player *Player) Logout(db *sqlx.DB) error {
 		return err
 	}
 
-	player.Conn.Close()
+	player.Session.Close()
 	return nil
 }
