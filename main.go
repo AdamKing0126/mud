@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"mud/areas"
-	"mud/commands"
-	"mud/display"
-	"mud/notifications"
-	"mud/players"
-	"mud/world_state"
+
+	"github.com/adamking0126/mud/internal/commands"
+	"github.com/adamking0126/mud/internal/game/areas"
+	"github.com/adamking0126/mud/internal/game/players"
+	"github.com/adamking0126/mud/internal/game/world_state"
+	"github.com/adamking0126/mud/internal/notifications"
+	"github.com/adamking0126/mud/internal/ui/display"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/ssh"
@@ -197,6 +198,36 @@ type mudModel struct {
 	router        CommandRouterInterface
 	player        *players.Player
 	session       ssh.Session
+
+	// new fields for state management
+	currentState gameState
+	loginState   loginState
+	charState    characterState
+	gameState    playState
+}
+
+type gameState int
+
+const (
+	stateLogin gameState = iota
+	stateCharacter
+	statePlay
+)
+
+type loginState struct {
+	username string
+	error    string
+}
+
+type characterState struct {
+	characters  []*players.Player
+	newCharName string
+	error       string
+}
+
+type playState struct {
+	currentRoom *areas.Room
+	// add other gameplay related fields as needed
 }
 
 func (m mudModel) Init() tea.Cmd {
@@ -204,11 +235,62 @@ func (m mudModel) Init() tea.Cmd {
 }
 
 func (m mudModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch m.currentState {
+	case stateLogin:
+		return m.updateLogin(msg)
+	case stateCharacter:
+		return m.updateCharacter(msg)
+	case statePlay:
+		return m.updatePlay(msg)
+	}
+
+	return m, cmd
+}
+
+// Implement these methods next
+func (m *mudModel) updateLogin(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// TODO: Implement login logic
 	return m, nil
 }
 
+func (m *mudModel) updateCharacter(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// TODO: Implement character selection/creation logic
+	return m, nil
+}
+
+func (m *mudModel) updatePlay(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// TODO: Implement gameplay logic
+	return m, nil
+}
+
+func (m mudModel) viewLogin() string {
+	// TODO: Implement login view
+	return "Login View"
+}
+
+func (m mudModel) viewCharacter() string {
+	// TODO: Implement character selection/creation view
+	return "Character View"
+}
+
+func (m mudModel) viewPlay() string {
+	// TODO: Implement gameplay view
+	return "Game View"
+}
+
 func (m mudModel) View() string {
-	return "Welcome to the MUD!"
+	switch m.currentState {
+	case stateLogin:
+		return m.viewLogin()
+	case stateCharacter:
+		return m.viewCharacter()
+	case statePlay:
+		return m.viewPlay()
+	default:
+		return "Loading..."
+	}
 }
 
 func BubbleteaMUD(db *sqlx.DB, server *Server, notifier *notifications.Notifier, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *world_state.WorldState) wish.Middleware {
@@ -244,19 +326,3 @@ func BubbleteaMUD(db *sqlx.DB, server *Server, notifier *notifications.Notifier,
 		}
 	}
 }
-
-// func BubbleteaMUD(db *sqlx.DB, server *Server, notifier *notifications.Notifier, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *world_state.WorldState) wish.Middleware {
-// 	return func(sh ssh.Handler) ssh.Handler {
-// 		return func(s ssh.Session) {
-// 			router := commands.NewCommandRouter()
-// 			commands.RegisterCommands(router, notifier, worldState, commands.CommandHandlers)
-
-// 			if len(router.Handlers) == 0 {
-// 				fmt.Fprintln(s, "Warning: no commands registered. Exiting...")
-// 				return
-// 			}
-
-// 			server.handleConnection(s, router, db, areaChannels, roomToAreaMap, worldState)
-// 		}
-// 	}
-// }
