@@ -1,8 +1,9 @@
 package mobs_test
 
 import (
-	"mud/mobs"
 	"testing"
+
+	"github.com/adamking0126/mud/mobs"
 )
 
 // TODO what are these mocks about? I forget

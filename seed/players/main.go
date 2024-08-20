@@ -4,7 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"mud/players"
+
+	"github.com/adamking0126/mud/players"
 
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"

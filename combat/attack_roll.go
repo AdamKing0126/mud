@@ -1,7 +1,7 @@
 package combat
 
 import (
-	"mud/utilities"
+	"github.com/adamking0126/mud/utilities"
 )
 
 func AttackRoll(combatant Combatant, opponent Combatant) bool {
