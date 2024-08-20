@@ -2,8 +2,9 @@ package world_state
 
 import (
 	"fmt"
-	"mud/areas"
-	"mud/players"
+
+	"github.com/adamking0126/mud/areas"
+	"github.com/adamking0126/mud/players"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"

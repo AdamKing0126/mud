@@ -2,10 +2,11 @@ package commands
 
 import (
 	"fmt"
-	"mud/areas"
-	"mud/display"
-	"mud/notifications"
-	"mud/players"
+
+	"github.com/adamking0126/mud/areas"
+	"github.com/adamking0126/mud/display"
+	"github.com/adamking0126/mud/notifications"
+	"github.com/adamking0126/mud/players"
 
 	"github.com/jmoiron/sqlx"
 )

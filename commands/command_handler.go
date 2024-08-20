@@ -1,10 +1,10 @@
 package commands
 
 import (
-	"mud/areas"
-	"mud/notifications"
-	"mud/players"
-	worldState "mud/world_state"
+	"github.com/adamking0126/mud/areas"
+	"github.com/adamking0126/mud/notifications"
+	"github.com/adamking0126/mud/players"
+	worldState "github.com/adamking0126/mud/world_state"
 
 	"github.com/jmoiron/sqlx"
 )

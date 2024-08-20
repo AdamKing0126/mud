@@ -1,7 +1,7 @@
 package players
 
 import (
-	"mud/items"
+	"github.com/adamking0126/mud/items"
 )
 
 func (player *Player) GetArmorClass() int32 {

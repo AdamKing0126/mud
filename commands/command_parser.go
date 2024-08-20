@@ -2,9 +2,10 @@ package commands
 
 import (
 	"math"
-	"mud/notifications"
-	worldState "mud/world_state"
 	"strings"
+
+	"github.com/adamking0126/mud/notifications"
+	worldState "github.com/adamking0126/mud/world_state"
 )
 
 type Notifiable interface {

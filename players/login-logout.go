@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"mud/character_classes"
-	"mud/display"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/adamking0126/mud/character_classes"
+	"github.com/adamking0126/mud/display"
 
 	"github.com/charmbracelet/ssh"
 	"github.com/google/uuid"

@@ -2,8 +2,9 @@ package notifications
 
 import (
 	"fmt"
-	"mud/display"
-	"mud/players"
+
+	"github.com/adamking0126/mud/display"
+	"github.com/adamking0126/mud/players"
 )
 
 type Notifier struct {

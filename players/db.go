@@ -2,8 +2,9 @@ package players
 
 import (
 	"fmt"
-	"mud/character_classes"
-	"mud/items"
+
+	"github.com/adamking0126/mud/character_classes"
+	"github.com/adamking0126/mud/items"
 
 	"strings"
 

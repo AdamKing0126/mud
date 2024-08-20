@@ -2,11 +2,12 @@ package players
 
 import (
 	"fmt"
-	"mud/character_classes"
-	"mud/display"
-	"mud/items"
-	"mud/utilities"
 	"reflect"
+
+	"github.com/adamking0126/mud/character_classes"
+	"github.com/adamking0126/mud/display"
+	"github.com/adamking0126/mud/items"
+	"github.com/adamking0126/mud/utilities"
 
 	"github.com/charmbracelet/ssh"
 

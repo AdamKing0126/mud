@@ -2,10 +2,11 @@ package world_state
 
 import (
 	"fmt"
-	"mud/areas"
-	"mud/items"
-	"mud/mobs"
-	"mud/players"
+
+	"github.com/adamking0126/mud/areas"
+	"github.com/adamking0126/mud/items"
+	"github.com/adamking0126/mud/mobs"
+	"github.com/adamking0126/mud/players"
 
 	"github.com/jmoiron/sqlx"
 )

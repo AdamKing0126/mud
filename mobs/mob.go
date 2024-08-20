@@ -3,10 +3,11 @@ package mobs
 import (
 	"fmt"
 	"log"
-	"mud/utilities"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/adamking0126/mud/utilities"
 
 	_ "github.com/mattn/go-sqlite3"
 )

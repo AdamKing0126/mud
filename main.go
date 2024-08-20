@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/adamking0126/mud/internal/commands"
-	"github.com/adamking0126/mud/internal/game/areas"
-	"github.com/adamking0126/mud/internal/game/players"
-	"github.com/adamking0126/mud/internal/game/world_state"
-	"github.com/adamking0126/mud/internal/notifications"
-	"github.com/adamking0126/mud/internal/ui/display"
+	"github.com/adamking0126/mud/areas"
+	"github.com/adamking0126/mud/commands"
+	"github.com/adamking0126/mud/display"
+	"github.com/adamking0126/mud/notifications"
+	"github.com/adamking0126/mud/players"
+	worldState "github.com/adamking0126/mud/world_state"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/ssh"
@@ -33,7 +33,7 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) handleConnection(session ssh.Session, router CommandRouterInterface, db *sqlx.DB, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *world_state.WorldState) {
+func (s *Server) handleConnection(session ssh.Session, router CommandRouterInterface, db *sqlx.DB, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *worldState.WorldState) {
 	defer session.Close()
 
 	player, err := players.LoginPlayer(session, db)
@@ -171,7 +171,7 @@ func main() {
 		log.Fatalf("error loading areas: %v", err)
 	}
 
-	worldState := world_state.NewWorldState(areaInstances, roomToAreaMap, db)
+	worldState := worldState.NewWorldState(areaInstances, roomToAreaMap, db)
 
 	s, err := wish.NewServer(
 		wish.WithAddress(":2222"),
@@ -194,7 +194,7 @@ type mudModel struct {
 	notifier      *notifications.Notifier
 	areaChannels  map[string]chan areas.Action
 	roomToAreaMap map[string]string
-	worldState    *world_state.WorldState
+	worldState    *worldState.WorldState
 	router        CommandRouterInterface
 	player        *players.Player
 	session       ssh.Session
@@ -293,7 +293,7 @@ func (m mudModel) View() string {
 	}
 }
 
-func BubbleteaMUD(db *sqlx.DB, server *Server, notifier *notifications.Notifier, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *world_state.WorldState) wish.Middleware {
+func BubbleteaMUD(db *sqlx.DB, server *Server, notifier *notifications.Notifier, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *worldState.WorldState) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			player, err := players.LoginPlayer(s, db)

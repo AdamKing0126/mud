@@ -1,7 +1,7 @@
 package players
 
 import (
-	"mud/items"
+	"github.com/adamking0126/mud/items"
 
 	"github.com/jmoiron/sqlx"
 )

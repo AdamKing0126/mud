@@ -2,11 +2,12 @@ package commands
 
 import (
 	"fmt"
-	"mud/areas"
-	"mud/display"
-	"mud/players"
-	"mud/world_state"
 	"strings"
+
+	"github.com/adamking0126/mud/areas"
+	"github.com/adamking0126/mud/display"
+	"github.com/adamking0126/mud/players"
+	world_state "github.com/adamking0126/mud/world_state"
 
 	"github.com/jmoiron/sqlx"
 )

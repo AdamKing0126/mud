@@ -2,9 +2,10 @@ package areas
 
 import (
 	"fmt"
-	"mud/display"
-	"mud/players"
 	"time"
+
+	"github.com/adamking0126/mud/display"
+	"github.com/adamking0126/mud/players"
 
 	"github.com/jmoiron/sqlx"
 )
