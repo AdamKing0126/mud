@@ -1,0 +1,37 @@
+---
+uuid: d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9
+name: The Arena
+description: A small arena where gladiators fight to the death.
+rooms:
+  - uuid: 189a729d-4e40-4184-a732-e2c45c66ff46
+    name: Entrance
+    description: The entrance to the arena.
+    items: 
+      - e7c0fd9b-1ef6-4d2a-868c-02053c37197d
+    exits:
+      south: 3efa0a8a-09ce-4d77-b340-31b374fabef8
+      west: f883e17b-c322-4198-b753-5552b6dd03df
+      east: 68357a14-e157-41ce-8865-c6150e10fd79
+
+  - uuid: 3efa0a8a-09ce-4d77-b340-31b374fabef8
+    name: Gladiator Quarters
+    description: The quarters where the gladiators live and train.
+    exits:
+      north: 189a729d-4e40-4184-a732-e2c45c66ff46
+
+  - uuid: f883e17b-c322-4198-b753-5552b6dd03df
+    name: Arena Floor
+    description: The arena floor where the gladiators fight.
+    mobs: 
+      - aboleth
+    exits:
+      south: afbd9110-e203-4035-9802-7a2bc09c408c
+      east: 189a729d-4e40-4184-a732-e2c45c66ff46
+
+  - uuid: afbd9110-e203-4035-9802-7a2bc09c408c
+    name: Spectator Stands
+    description: The stands where the spectators watch the fights.
+    exits:
+      north: f883e17b-c322-4198-b753-5552b6dd03df
+      down: 3efa0a8a-09ce-4d77-b340-31b374fabef8
+

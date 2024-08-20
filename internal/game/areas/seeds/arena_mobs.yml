@@ -1,0 +1,17 @@
+- uuid: 49d6f745-5680-4b76-856a-b58be0a76ce6
+  name: Gladiator Bob
+  tags:
+    - gladiator
+    - bob
+  description: A fierce gladiator with a strong will to survive.
+  health: 100
+  mana: 10
+
+- uuid: 7bfb0762-1a05-4710-9824-589a360692c6
+  name: Gladiator Alice
+  tags:
+    - gladiator
+    - alice
+  description: A cunning gladiator known for her quick reflexes.
+  health: 90
+  mana: 10

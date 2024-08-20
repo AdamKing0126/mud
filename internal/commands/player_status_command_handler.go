@@ -1,0 +1,39 @@
+package commands
+
+import (
+	"fmt"
+
+	"github.com/adamking0126/mud/internal/display"
+	"github.com/adamking0126/mud/internal/game/areas"
+	"github.com/adamking0126/mud/internal/game/players"
+
+	"github.com/jmoiron/sqlx"
+)
+
+type PlayerStatusCommandHandler struct{}
+
+func (h *PlayerStatusCommandHandler) Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+	playerAbilities := &players.PlayerAbilities{}
+
+	query := "SELECT * FROM player_abilities WHERE player_uuid = ?"
+	err := db.QueryRow(query, player.UUID).Scan(&playerAbilities.UUID, &playerAbilities.PlayerUUID, &playerAbilities.Strength, &playerAbilities.Intelligence, &playerAbilities.Wisdom, &playerAbilities.Constitution, &playerAbilities.Charisma, &playerAbilities.Dexterity)
+	if err != nil {
+		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
+	}
+
+	player.PlayerAbilities = *playerAbilities
+
+	display.PrintWithColor(player, fmt.Sprintf("%s\n", player.GetCharacterClass()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("%s\n", player.GetRace()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Strength: %d\n", playerAbilities.GetStrength()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Dexterity: %d\n", playerAbilities.GetDexterity()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Constitution: %d\n", playerAbilities.GetConstitution()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Intelligence: %d\n", playerAbilities.GetIntelligence()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Wisdom: %d\n", playerAbilities.GetWisdom()), "danger")
+	display.PrintWithColor(player, fmt.Sprintf("Charisma: %d\n", playerAbilities.GetCharisma()), "danger")
+
+	// TODO for debugging purposes only - remove later
+	// display.PrintWithColor(player, "\n\n***********DEBUG***************\n", "danger")
+	// display.PrintWithColor(player, fmt.Sprintf("Attack Roll Hits: %t\n", combat.AttackRoll(player, player)), "danger")
+	// display.PrintWithColor(player, "*******************************\n", "danger")
+}

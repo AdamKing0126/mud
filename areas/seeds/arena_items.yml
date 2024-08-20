@@ -1,7 +1,0 @@
----
-- uuid: e7c0fd9b-1ef6-4d2a-868c-02053c37197d
-  name: sword
-  description: a super-sharp sword
-  equipment_slots: 
-    - DominantHand
-    - OffHand

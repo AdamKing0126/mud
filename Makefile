@@ -15,21 +15,21 @@ test ?= false
 
 create_tables:
 ifeq ($(test), true)
-	go run ./seed/create_tables/main.go -test=true
+	go run ./internal/seed/create_tables/main.go -test=true
 else
-	go run ./seed/create_tables/main.go
+	go run ./internal/seed/create_tables/main.go
 endif
 
 seed_db:
-	go run ./seed/items/main.go
-	go run ./seed/areas/main.go
-	go run ./seed/display/main.go	
-	go run ./seed/players/main.go
-	go run ./seed/classes/main.go
-	go run ./seed/races/main.go
+	go run ./internal/seed/items/main.go
+	go run ./internal/seed/areas/main.go
+	go run ./internal/seed/display/main.go	
+	go run ./internal/seed/players/main.go
+	go run ./internal/seed/classes/main.go
+	go run ./internal/seed/races/main.go
 
 build:
-	go build -o ./bin/mud ./main.go
+	go build -o ./bin/mud ./cmd/mud/main.go
 
 run_server:
-	go run ./main.go	
+	go run ./cmd/mud/main.go	
