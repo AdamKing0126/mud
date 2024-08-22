@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -8,19 +9,18 @@ import (
 	"github.com/adamking0126/mud/internal/game/areas"
 	"github.com/adamking0126/mud/internal/game/players"
 	"github.com/adamking0126/mud/internal/notifications"
-
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
 type AdminSetHealthCommandHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func (h *AdminSetHealthCommandHandler) Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+func (h *AdminSetHealthCommandHandler) Execute(ctx context.Context, db database.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	target := arguments[0]
 	value := arguments[1]
 
-	retrievedPlayer, err := players.GetPlayerByName(db, target)
+	retrievedPlayer, err := players.GetPlayerByName(ctx, db, target)
 	if err != nil {
 		display.PrintWithColor(player, fmt.Sprintf("Error retrieving player UUID: %v\n", err), "danger")
 		return
@@ -28,7 +28,7 @@ func (h *AdminSetHealthCommandHandler) Execute(db *sqlx.DB, player *players.Play
 
 	query := "UPDATE players SET health = ? WHERE UUID = ?"
 
-	_, err = db.Exec(query, value, retrievedPlayer.UUID)
+	err = db.Exec(ctx, query, value, retrievedPlayer.UUID)
 
 	if err != nil {
 		display.PrintWithColor(player, fmt.Sprintf("Error updating health: %v\n", err), "danger")

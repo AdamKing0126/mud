@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/adamking0126/mud/mobs"
+	"github.com/adamking0126/mud/internal/game/mobs"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/jmoiron/sqlx/reflectx"

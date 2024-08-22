@@ -1,6 +1,7 @@
 package players
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -11,10 +12,10 @@ import (
 
 	"github.com/adamking0126/mud/internal/display"
 	"github.com/adamking0126/mud/internal/game/character_classes"
+	"github.com/adamking0126/mud/pkg/database"
 
 	"github.com/charmbracelet/ssh"
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -78,8 +79,8 @@ func getCharacterRaceNamesFromCharacterRaceObjects(c character_classes.Character
 	return characterRaceNames
 }
 
-func selectCharacterClassAndArchetype(session ssh.Session, db *sqlx.DB, player *Player) *character_classes.CharacterClass {
-	characterClasses, err := character_classes.GetCharacterClassList(db, "")
+func selectCharacterClassAndArchetype(ctx context.Context, session ssh.Session, db database.DB, player *Player) *character_classes.CharacterClass {
+	characterClasses, err := character_classes.GetCharacterClassList(ctx, db, "")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -144,8 +145,8 @@ func selectCharacterClassAndArchetype(session ssh.Session, db *sqlx.DB, player *
 	}
 }
 
-func selectRace(session ssh.Session, db *sqlx.DB, player *Player) *character_classes.CharacterRace {
-	characterRaces, err := character_classes.GetCharacterRaceList(db, "", "")
+func selectRace(ctx context.Context, session ssh.Session, db database.DB, player *Player) *character_classes.CharacterRace {
+	characterRaces, err := character_classes.GetCharacterRaceList(ctx, db, "", "")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -227,7 +228,7 @@ func selectRace(session ssh.Session, db *sqlx.DB, player *Player) *character_cla
 
 }
 
-func createPlayer(session ssh.Session, db *sqlx.DB, playerName string) (*Player, error) {
+func createPlayer(ctx context.Context, session ssh.Session, db database.DB, playerName string) (*Player, error) {
 	player := NewPlayer(session)
 	player.Name = playerName
 
@@ -241,20 +242,20 @@ func createPlayer(session ssh.Session, db *sqlx.DB, playerName string) (*Player,
 	player.UUID = uuid.New().String()
 
 	// "default" light mode color profile.  Should let the user choose?
-	colorProfile, err := getColorProfileFromDB(db, "2c7dfd5b-d160-42e0-accb-b77d9686dbea")
+	colorProfile, err := getColorProfileFromDB(ctx, db, "2c7dfd5b-d160-42e0-accb-b77d9686dbea")
 	if err != nil {
 		return nil, err
 	}
 
-	chosenCharacterClass := selectCharacterClassAndArchetype(session, db, player)
+	chosenCharacterClass := selectCharacterClassAndArchetype(ctx, session, db, player)
 	if chosenCharacterClass == nil {
-		player.Logout(db)
+		player.Logout(ctx, db)
 		return nil, nil
 	}
 
-	chosenRace := selectRace(session, db, player)
+	chosenRace := selectRace(ctx, session, db, player)
 	if chosenRace == nil {
-		player.Logout(db)
+		player.Logout(ctx, db)
 		return nil, nil
 	}
 
@@ -268,12 +269,12 @@ func createPlayer(session ssh.Session, db *sqlx.DB, playerName string) (*Player,
 	player.CharacterClass = *chosenCharacterClass
 	player.Race = *chosenRace
 
-	tx, err := db.Begin()
+	tx, err := db.Begin(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	_, err = tx.Exec("INSERT INTO players (uuid, character_class, race, subrace, name, area, room, hp, hp_max, movement, movement_max, color_profile, password, logged_in) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	err = tx.Exec(ctx, "INSERT INTO players (uuid, character_class, race, subrace, name, area, room, hp, hp_max, movement, movement_max, color_profile, password, logged_in) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		player.UUID, player.CharacterClass.ArchetypeSlug, player.Race.Slug, player.Race.SubRaceSlug, player.Name, player.AreaUUID, player.RoomUUID, player.HP, player.HPMax, player.Movement, player.MovementMax, player.ColorProfile.GetUUID(), player.Password, true)
 	if err != nil {
 		tx.Rollback()
@@ -282,14 +283,14 @@ func createPlayer(session ssh.Session, db *sqlx.DB, playerName string) (*Player,
 
 	// TODO: everything below this line is probably junk.  Need to build player character based off choices made above.
 
-	_, err = tx.Exec("INSERT INTO player_abilities (uuid, player_uuid, strength, dexterity, constitution, intelligence, wisdom, charisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+	err = tx.Exec(ctx, "INSERT INTO player_abilities (uuid, player_uuid, strength, dexterity, constitution, intelligence, wisdom, charisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		uuid.New(), player.UUID, 10, 10, 10, 10, 10, 10)
 	if err != nil {
 		tx.Rollback()
 		log.Fatalf("Failed to set player abilities: %v", err)
 	}
 
-	_, err = tx.Exec("INSERT INTO player_equipments (uuid, player_uuid, Head, Neck, Chest, Arms, Hands, DominantHand, OffHand, Legs, Feet) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	err = tx.Exec(ctx, "INSERT INTO player_equipments (uuid, player_uuid, Head, Neck, Chest, Arms, Hands, DominantHand, OffHand, Legs, Feet) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		uuid.New(), player.UUID, "", "", "", "", "", "", "", "", "", "")
 	if err != nil {
 		tx.Rollback()
@@ -316,19 +317,19 @@ func createPlayer(session ssh.Session, db *sqlx.DB, playerName string) (*Player,
 // each one of these steps results in another database query, but I thought it
 // best to keep the actions atomic for now, rather than trying to build one
 // huge query which has joins all over the place.
-func LoginPlayer(session ssh.Session, db *sqlx.DB) (*Player, error) {
+func LoginPlayer(ctx context.Context, session ssh.Session, db database.DB) (*Player, error) {
 
 	fmt.Fprintf(session, "Welcome! Please enter your player name: ")
 	playerName := getPlayerInput(session)
 
-	player, err := GetPlayerFromDB(db, playerName)
+	player, err := GetPlayerFromDB(ctx, db, playerName)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			fmt.Fprintf(session, "Player not found.  Do you want to create a new player? (y/n): ")
 			answer := getPlayerInput(session)
 
 			if strings.ToLower(answer) == "y" {
-				player, err = createPlayer(session, db, playerName)
+				player, err = createPlayer(ctx, session, db, playerName)
 				if err != nil {
 					return nil, err
 				}
@@ -349,22 +350,22 @@ func LoginPlayer(session ssh.Session, db *sqlx.DB) (*Player, error) {
 
 	player.Session = session
 
-	err = player.GetColorProfileFromDB(db)
+	err = player.GetColorProfileFromDB(ctx, db)
 	if err != nil {
 		return nil, err
 	}
 
-	err = player.GetEquipmentFromDB(db)
+	err = player.GetEquipmentFromDB(ctx, db)
 	if err != nil {
 		return nil, err
 	}
 
-	err = player.GetInventoryFromDB(db)
+	err = player.GetInventoryFromDB(ctx, db)
 	if err != nil {
 		return nil, err
 	}
 
-	err = setPlayerLoggedInStatusInDB(db, player.UUID, true)
+	err = setPlayerLoggedInStatusInDB(ctx, db, player.UUID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -372,14 +373,14 @@ func LoginPlayer(session ssh.Session, db *sqlx.DB) (*Player, error) {
 	return player, nil
 }
 
-func (player *Player) Logout(db *sqlx.DB) error {
-	stmt, err := db.Prepare("UPDATE players SET logged_in = FALSE WHERE uuid = ?")
+func (player *Player) Logout(ctx context.Context, db database.DB) error {
+	stmt, err := db.Prepare(ctx, "UPDATE players SET logged_in = FALSE WHERE uuid = ?")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(player.UUID)
+	err = stmt.Exec(ctx, player.UUID)
 	if err != nil {
 		return err
 	}

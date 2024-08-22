@@ -1,13 +1,13 @@
 package areas
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/adamking0126/mud/internal/display"
 	"github.com/adamking0126/mud/internal/game/players"
-
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
 type Action struct {
@@ -29,7 +29,7 @@ func (a *Action) GetArguments() []string {
 }
 
 type ActionHandler interface {
-	Execute(db *sqlx.DB, player players.Player, action Action, updateChannel func(string))
+	Execute(db database.DB, player players.Player, action Action, updateChannel func(string))
 }
 
 // TODO WTF is this?
@@ -50,7 +50,7 @@ type PlayerActions struct {
 	Actions []Action
 }
 
-func (a *Area) Run(db *sqlx.DB, ch chan Action, connections map[string]*players.Player) {
+func (a *Area) Run(ctx context.Context, db database.DB, ch chan Action, connections map[string]*players.Player) {
 	ticker := time.NewTicker(time.Second)
 	tickerCounter := 0
 	defer ticker.Stop()
@@ -79,7 +79,7 @@ func (a *Area) Run(db *sqlx.DB, ch chan Action, connections map[string]*players.
 				for _, player := range playersInArea {
 					// Process what hapens on the beat.
 					display.PrintWithColor(player, "\nboom-boom\n", "danger")
-					if err := player.Regen(db); err != nil {
+					if err := player.Regen(ctx, db); err != nil {
 						fmt.Printf("Error: %v\n", err)
 					}
 					display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mvt: %d> ", player.HP, player.Movement), "primary")

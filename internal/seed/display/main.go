@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/adamking0126/mud/display"
+	"github.com/adamking0126/mud/internal/display"
 
 	_ "github.com/mattn/go-sqlite3"
 

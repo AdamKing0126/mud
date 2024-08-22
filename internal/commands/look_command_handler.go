@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -8,8 +9,7 @@ import (
 	"github.com/adamking0126/mud/internal/game/areas"
 	"github.com/adamking0126/mud/internal/game/players"
 	"github.com/adamking0126/mud/internal/game/world_state"
-
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
 type LookCommandHandler struct {
@@ -20,9 +20,9 @@ func (h *LookCommandHandler) SetWorldState(world_state *world_state.WorldState) 
 	h.WorldState = world_state
 }
 
-func (h *LookCommandHandler) Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+func (h *LookCommandHandler) Execute(ctx context.Context, db database.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	currentRoomUUID := player.RoomUUID
-	currentRoom := h.WorldState.GetRoom(currentRoomUUID, false)
+	currentRoom := h.WorldState.GetRoom(ctx, currentRoomUUID, false)
 
 	if len(arguments) == 0 {
 		display.PrintWithColor(player, fmt.Sprintf("%s\n", currentRoom.Name), "primary")
@@ -55,7 +55,7 @@ func (h *LookCommandHandler) Execute(db *sqlx.DB, player *players.Player, comman
 		}
 
 		exitsHandler := &ExitsCommandHandler{ShowOnlyDirections: true, WorldState: h.WorldState}
-		exitsHandler.Execute(db, player, "exits", arguments, currentChannel, updateChannel)
+		exitsHandler.Execute(ctx, db, player, "exits", arguments, currentChannel, updateChannel)
 	} else if len(arguments) == 1 {
 		exits := currentRoom.Exits
 		exitMap := map[string]*areas.Room{
@@ -74,7 +74,7 @@ func (h *LookCommandHandler) Execute(db *sqlx.DB, player *players.Player, comman
 			if lookDirection == direction {
 				directionMatch = true
 				if exit != nil {
-					exitRoom := h.WorldState.GetRoom(exit.UUID, false)
+					exitRoom := h.WorldState.GetRoom(ctx, exit.UUID, false)
 					display.PrintWithColor(player, fmt.Sprintf("You look %s.  You see %s\n", direction, exitRoom.Name), "reset")
 				} else {
 					display.PrintWithColor(player, "You don't see anything in that direction\n", "reset")

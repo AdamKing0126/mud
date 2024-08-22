@@ -1,16 +1,17 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/adamking0126/mud/internal/game/areas"
 	"github.com/adamking0126/mud/internal/game/players"
 	worldState "github.com/adamking0126/mud/internal/game/world_state"
 	"github.com/adamking0126/mud/internal/notifications"
-
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
 type CommandHandler interface {
-	Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string))
+	Execute(ctx context.Context, db database.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string))
 }
 
 type CommandHandlerWithPriority struct {

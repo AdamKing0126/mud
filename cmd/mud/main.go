@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/adamking0126/mud/internal/game/players"
 	worldState "github.com/adamking0126/mud/internal/game/world_state"
 	"github.com/adamking0126/mud/internal/notifications"
+	"github.com/adamking0126/mud/pkg/database"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/ssh"
@@ -20,7 +22,7 @@ import (
 )
 
 type CommandRouterInterface interface {
-	HandleCommand(db *sqlx.DB, player *players.Player, command []byte, currentChannel chan areas.Action, updateChannel func(string))
+	HandleCommand(ctx context.Context, db database.DB, player *players.Player, command []byte, currentChannel chan areas.Action, updateChannel func(string))
 }
 
 type Server struct {
@@ -33,10 +35,10 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) handleConnection(session ssh.Session, router CommandRouterInterface, db *sqlx.DB, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *worldState.WorldState) {
+func (s *Server) handleConnection(ctx context.Context, session ssh.Session, router CommandRouterInterface, db database.DB, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *worldState.WorldState) {
 	defer session.Close()
 
-	player, err := players.LoginPlayer(session, db)
+	player, err := players.LoginPlayer(ctx, session, db)
 	if err != nil {
 		fmt.Fprintf(session, "Error: %v\n", err)
 		return
@@ -46,7 +48,7 @@ func (s *Server) handleConnection(session ssh.Session, router CommandRouterInter
 	}
 
 	defer func() {
-		err := player.Logout(db)
+		err := player.Logout(ctx, db)
 		if err != nil {
 			fmt.Fprintf(session, "Error updating player logged_in status: %v\n", err)
 		}
@@ -55,7 +57,7 @@ func (s *Server) handleConnection(session ssh.Session, router CommandRouterInter
 	s.connections[player.UUID] = player
 	defer delete(s.connections, player.UUID)
 
-	currentRoom := worldState.GetRoom(player.RoomUUID, false)
+	currentRoom := worldState.GetRoom(ctx, player.RoomUUID, false)
 	currentRoom.AddPlayer(player)
 
 	notifyPlayersInRoomThatNewPlayerHasJoined(player, s.connections)
@@ -66,7 +68,7 @@ func (s *Server) handleConnection(session ssh.Session, router CommandRouterInter
 		ch = areaChannels[newArea]
 	}
 
-	router.HandleCommand(db, player, bytes.NewBufferString("look").Bytes(), ch, updateChannel)
+	router.HandleCommand(ctx, db, player, bytes.NewBufferString("look").Bytes(), ch, updateChannel)
 
 	for {
 		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mvt: %d> ", player.HP, player.Movement), "primary")
@@ -77,7 +79,7 @@ func (s *Server) handleConnection(session ssh.Session, router CommandRouterInter
 			break
 		}
 
-		router.HandleCommand(db, player, buf[:n], ch, updateChannel)
+		router.HandleCommand(ctx, db, player, buf[:n], ch, updateChannel)
 	}
 }
 
@@ -111,7 +113,7 @@ func openDatabase() (*sqlx.DB, error) {
 }
 
 // TODO should this function be moved into the world_state package?
-func loadAreas(db *sqlx.DB, server *Server) (map[string]*areas.Area, map[string]string, map[string]chan areas.Action, error) {
+func loadAreas(ctx context.Context, db database.DB, server *Server) (map[string]*areas.Area, map[string]string, map[string]chan areas.Action, error) {
 	areaInstances := make(map[string]*areas.Area)
 	areaInstancesInterface := make(map[string]*areas.Area)
 	roomToAreaMap := make(map[string]string)
@@ -122,7 +124,7 @@ func loadAreas(db *sqlx.DB, server *Server) (map[string]*areas.Area, map[string]
 		FROM rooms r
 		JOIN areas a ON r.area_uuid = a.uuid;
 	`
-	rows, err := db.Query(queryString)
+	rows, err := db.Query(ctx, queryString)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error retrieving areas/rooms: %v", err)
 	}
@@ -137,7 +139,7 @@ func loadAreas(db *sqlx.DB, server *Server) (map[string]*areas.Area, map[string]
 			areaInstances[areaUUID] = areas.NewArea(areaUUID, name, description)
 			areaInstancesInterface[areaUUID] = areaInstances[areaUUID]
 			areaChannels[areaUUID] = make(chan areas.Action)
-			go areaInstances[areaUUID].Run(db, areaChannels[areaUUID], server.connections)
+			go areaInstances[areaUUID].Run(ctx, db, areaChannels[areaUUID], server.connections)
 		}
 		roomToAreaMap[roomUUID] = areaUUID
 	}
@@ -145,39 +147,41 @@ func loadAreas(db *sqlx.DB, server *Server) (map[string]*areas.Area, map[string]
 	return areaInstancesInterface, roomToAreaMap, areaChannels, nil
 }
 
-func logoutAllPlayers(db *sqlx.DB) {
+func logoutAllPlayers(ctx context.Context, db database.DB) {
 	queryString := `
 		UPDATE players SET logged_in = 0 WHERE logged_in = 1;
 	`
-	_, err := db.Exec(queryString)
+	err := db.Exec(ctx, queryString)
 	if err != nil {
 		fmt.Printf("error logging out players: %v", err)
 	}
 }
 
 func main() {
-	db, err := openDatabase()
+	// db, err := openDatabase()
+	db, err := database.NewSQLiteDB("./pkg/database/sqlite_databases/mud.db")
 	if err != nil {
 		log.Fatalln(err)
 	}
 	defer db.Close()
 
+	ctx := context.Background()
 	server := NewServer()
 	notifier := notifications.NewNotifier(server.connections)
 
-	logoutAllPlayers(db)
-	areaInstances, roomToAreaMap, areaChannels, err := loadAreas(db, server)
+	logoutAllPlayers(ctx, db)
+	areaInstances, roomToAreaMap, areaChannels, err := loadAreas(ctx, db, server)
 	if err != nil {
 		log.Fatalf("error loading areas: %v", err)
 	}
 
-	worldState := worldState.NewWorldState(areaInstances, roomToAreaMap, db)
+	worldState := worldState.NewWorldState(ctx, areaInstances, roomToAreaMap, db)
 
 	s, err := wish.NewServer(
 		wish.WithAddress(":2222"),
 		wish.WithHostKeyPath(".ssh/term_info_ed25519"),
 		wish.WithMiddleware(
-			BubbleteaMUD(db, server, notifier, areaChannels, roomToAreaMap, worldState),
+			BubbleteaMUD(ctx, db, server, notifier, areaChannels, roomToAreaMap, worldState),
 		),
 	)
 	if err != nil {
@@ -189,7 +193,7 @@ func main() {
 }
 
 type mudModel struct {
-	db            *sqlx.DB
+	db            database.DB
 	server        *Server
 	notifier      *notifications.Notifier
 	areaChannels  map[string]chan areas.Action
@@ -293,10 +297,10 @@ func (m mudModel) View() string {
 	}
 }
 
-func BubbleteaMUD(db *sqlx.DB, server *Server, notifier *notifications.Notifier, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *worldState.WorldState) wish.Middleware {
+func BubbleteaMUD(ctx context.Context, db database.DB, server *Server, notifier *notifications.Notifier, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *worldState.WorldState) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
-			player, err := players.LoginPlayer(s, db)
+			player, err := players.LoginPlayer(ctx, s, db)
 			if err != nil || player == nil {
 				fmt.Fprintf(s, "Login failed: %v\n", err)
 				return
@@ -322,7 +326,7 @@ func BubbleteaMUD(db *sqlx.DB, server *Server, notifier *notifications.Notifier,
 				log.Println("Error running program:", err)
 			}
 
-			player.Logout(db)
+			player.Logout(ctx, db)
 		}
 	}
 }

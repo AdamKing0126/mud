@@ -1,12 +1,13 @@
 package areas
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
-func GetRoomFromDB(roomUUID string, db *sqlx.DB) (*Room, error) {
+func GetRoomFromDB(ctx context.Context, db database.DB, roomUUID string) (*Room, error) {
 	query := `
 		SELECT r.UUID, r.area_uuid, r.name, r.description,
 			r.exit_north, r.exit_south, r.exit_east, r.exit_west,
@@ -16,7 +17,7 @@ func GetRoomFromDB(roomUUID string, db *sqlx.DB) (*Room, error) {
 		LEFT JOIN areas a ON r.area_uuid = a.UUID
 		WHERE r.UUID = ?`
 
-	room_rows, err := db.Query(query, roomUUID)
+	room_rows, err := db.Query(ctx, query, roomUUID)
 	if err != nil {
 		return nil, err
 	}

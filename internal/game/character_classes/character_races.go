@@ -1,10 +1,11 @@
 package character_classes
 
 import (
+	"context"
 	"encoding/json"
 	"sort"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
 type CharacterRaces []CharacterRace
@@ -68,7 +69,7 @@ func (c CharacterRaces) GetCharacterRaceByName(raceName string) *CharacterRace {
 	return nil
 }
 
-func GetCharacterRaceList(db *sqlx.DB, raceSlug string, subRaceSlug string) (CharacterRaces, error) {
+func GetCharacterRaceList(ctx context.Context, db database.DB, raceSlug string, subRaceSlug string) (CharacterRaces, error) {
 	const baseQuery = `SELECT name, slug, subrace_name, subrace_slug, description, asi, subrace_description FROM character_races`
 	var query string
 	args := []interface{}{}
@@ -86,7 +87,7 @@ func GetCharacterRaceList(db *sqlx.DB, raceSlug string, subRaceSlug string) (Cha
 	}
 
 	characterRaces := []CharacterRace{}
-	err := db.Select(&characterRaces, query, args...)
+	err := db.Select(ctx, &characterRaces, query, args...)
 
 	for i := range characterRaces {
 		err := json.Unmarshal([]byte(characterRaces[i].ASIData), &characterRaces[i].ASI)

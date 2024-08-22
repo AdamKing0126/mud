@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/adamking0126/mud/internal/display"
@@ -9,7 +10,7 @@ import (
 	world_state "github.com/adamking0126/mud/internal/game/world_state"
 	"github.com/adamking0126/mud/internal/notifications"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
 type TakeCommandHandler struct {
@@ -21,9 +22,9 @@ func (h *TakeCommandHandler) SetWorldState(world_state *world_state.WorldState) 
 	h.WorldState = world_state
 }
 
-func (h *TakeCommandHandler) Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+func (h *TakeCommandHandler) Execute(ctx context.Context, db database.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	roomUUID := player.RoomUUID
-	currentRoom := h.WorldState.GetRoom(roomUUID, false)
+	currentRoom := h.WorldState.GetRoom(ctx, roomUUID, false)
 	items := currentRoom.Items
 
 	if len(items) > 0 {
@@ -33,7 +34,7 @@ func (h *TakeCommandHandler) Execute(db *sqlx.DB, player *players.Player, comman
 					display.PrintWithColor(player, fmt.Sprintf("error removing item from room: %v", err), "reset")
 					break
 				}
-				player.AddItem(db, item)
+				player.AddItem(ctx, db, item)
 
 				display.PrintWithColor(player, fmt.Sprintf("You take the %s.\n", item.GetName()), "reset")
 				h.Notifier.NotifyRoom(player.RoomUUID, player.UUID, fmt.Sprintf("\n%s takes %s.\n", player.Name, item.Name))

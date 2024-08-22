@@ -1,13 +1,14 @@
 package players
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
-func (player *Player) SetLocation(db *sqlx.DB, roomUUID string) error {
-	area_rows, err := db.Query("SELECT area_uuid FROM rooms WHERE uuid=?", roomUUID)
+func (player *Player) SetLocation(ctx context.Context, db database.DB, roomUUID string) error {
+	area_rows, err := db.Query(ctx, "SELECT area_uuid FROM rooms WHERE uuid=?", roomUUID)
 	if err != nil {
 		return fmt.Errorf("error retrieving area: %v", err)
 	}
@@ -28,7 +29,7 @@ func (player *Player) SetLocation(db *sqlx.DB, roomUUID string) error {
 
 	area_rows.Close()
 
-	stmt, err := db.Prepare("UPDATE players SET area = ?, room = ?, movement = ? WHERE uuid = ?")
+	stmt, err := db.Prepare(ctx, "UPDATE players SET area = ?, room = ?, movement = ? WHERE uuid = ?")
 	if err != nil {
 		return err
 	}
@@ -36,7 +37,7 @@ func (player *Player) SetLocation(db *sqlx.DB, roomUUID string) error {
 	defer stmt.Close()
 
 	player.Movement--
-	_, err = stmt.Exec(areaUUID, roomUUID, player.Movement, player.UUID)
+	err = stmt.Exec(ctx, areaUUID, roomUUID, player.Movement, player.UUID)
 	if err != nil {
 		return err
 	}

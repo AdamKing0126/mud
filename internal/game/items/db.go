@@ -1,21 +1,22 @@
 package items
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
-func GetItemsInRoom(db *sqlx.DB, roomUUID string) ([]*Item, error) {
+func GetItemsInRoom(ctx context.Context, db database.DB, roomUUID string) ([]*Item, error) {
 	query := `
 		SELECT i.uuid, i.name, i.description, i.equipment_slots
 		FROM item_locations il
 		JOIN items i ON il.item_uuid = i.uuid
 		WHERE il.room_uuid = ?
 	`
-	rows, err := db.Query(query, roomUUID)
+	rows, err := db.Query(ctx, query, roomUUID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query: %v", err)
 	}
@@ -68,21 +69,21 @@ func GetItemsInRoom(db *sqlx.DB, roomUUID string) ([]*Item, error) {
 	return items, nil
 }
 
-func (item *Item) SetLocation(db *sqlx.DB, playerUUID string, roomUUID string) error {
+func (item *Item) SetLocation(ctx context.Context, db database.DB, playerUUID string, roomUUID string) error {
 	var query string
 	if playerUUID != "" {
 		query = fmt.Sprintf("UPDATE item_locations SET room_uuid = '', player_uuid = '%s' WHERE item_uuid = '%s'", playerUUID, item.UUID)
 	} else {
 		query = fmt.Sprintf("UPDATE item_locations SET room_uuid = '%s', player_uuid = '' WHERE item_uuid = '%s'", roomUUID, item.UUID)
 	}
-	_, err := db.Exec(query)
+	err := db.Exec(ctx, query)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func GetItemsForPlayer(db *sqlx.DB, playerUUID string) ([]*Item, error) {
+func GetItemsForPlayer(ctx context.Context, db database.DB, playerUUID string) ([]*Item, error) {
 	query := `
 		SELECT i.uuid, i.name, i.description, i.equipment_slots
 		FROM item_locations il
@@ -96,7 +97,7 @@ func GetItemsForPlayer(db *sqlx.DB, playerUUID string) ([]*Item, error) {
 		)
 	`
 
-	rows, err := db.Query(query, playerUUID)
+	rows, err := db.Query(ctx, query, playerUUID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query: %v", err)
 	}
@@ -143,8 +144,8 @@ func GetItemsForPlayer(db *sqlx.DB, playerUUID string) ([]*Item, error) {
 	return items, nil
 }
 
-func GetItemByNameForPlayer(db *sqlx.DB, itemName string, playerUUID string) (*Item, error) {
-	items, err := GetItemsForPlayer(db, playerUUID)
+func GetItemByNameForPlayer(ctx context.Context, db database.DB, itemName string, playerUUID string) (*Item, error) {
+	items, err := GetItemsForPlayer(ctx, db, playerUUID)
 	if err != nil {
 		return nil, err
 	}

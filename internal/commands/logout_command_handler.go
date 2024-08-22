@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/adamking0126/mud/internal/display"
@@ -8,8 +9,7 @@ import (
 	"github.com/adamking0126/mud/internal/game/players"
 	"github.com/adamking0126/mud/internal/game/world_state"
 	"github.com/adamking0126/mud/internal/notifications"
-
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
 type LogoutCommandHandler struct {
@@ -17,9 +17,9 @@ type LogoutCommandHandler struct {
 	WorldState *world_state.WorldState
 }
 
-func (h *LogoutCommandHandler) Execute(db *sqlx.DB, player *players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
+func (h *LogoutCommandHandler) Execute(ctx context.Context, db database.DB, player *players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
 	display.PrintWithColor(player, "Goodbye!\n", "reset")
-	if err := player.Logout(db); err != nil {
+	if err := player.Logout(ctx, db); err != nil {
 		fmt.Printf("Error logging out player: %v\n", err)
 		return
 	}

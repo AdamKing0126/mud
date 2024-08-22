@@ -1,13 +1,13 @@
 package areas
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/adamking0126/mud/internal/game/items"
 	"github.com/adamking0126/mud/internal/game/mobs"
 	"github.com/adamking0126/mud/internal/game/players"
-
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
 type Room struct {
@@ -69,9 +69,9 @@ func NewRoomWithAreaInfo(uuid string, area_uuid string, name string, description
 	return &Room{UUID: uuid, AreaUUID: area_uuid, Name: name, Description: description, Area: areaInfo, Exits: exitInfo}
 }
 
-func (room *Room) AddItem(db *sqlx.DB, item *items.Item) error {
+func (room *Room) AddItem(ctx context.Context, db database.DB, item *items.Item) error {
 	room.Items = append(room.Items, item)
-	err := item.SetLocation(db, "", room.UUID)
+	err := item.SetLocation(ctx, db, "", room.UUID)
 	if err != nil {
 		return err
 	}

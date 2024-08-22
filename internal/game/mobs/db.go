@@ -1,12 +1,11 @@
 package mobs
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
-	"github.com/jmoiron/sqlx"
-	"github.com/mitchellh/mapstructure"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
 // this object represents how mobs are stored in the database.  the fields should
@@ -51,42 +50,23 @@ type MobDB struct {
 	Actions               string  `db:"actions" mapstructure:"actions"`
 }
 
-func GetMobsInRoom(db *sqlx.DB, roomUUID string) ([]*Mob, error) {
-	var mobs []*Mob
-	rows, err := db.Queryx("SELECT * FROM mobs WHERE room_uuid = ?", roomUUID)
+func GetMobsInRoom(ctx context.Context, db database.DB, roomUUID string) ([]*Mob, error) {
+	query := `SELECT * FROM mobs WHERE room_uuid = ?`
+	var mobDbs []MobDB
+	err := db.Select(ctx, &mobDbs, query, roomUUID)
 	if err != nil {
-		log.Fatalf("failed to fetch mobs from tabel: %v", err)
+		return nil, fmt.Errorf("failed to fetch mobs from table: %v", err)
 	}
 
-	for rows.Next() {
-		result := make(map[string]interface{})
-		err = rows.MapScan(result)
-		if err != nil {
-			log.Fatalf("failed to scan row: %v", err)
-		}
-
-		var mobDb MobDB
-		err = mapstructure.Decode(result, &mobDb)
-		if err != nil {
-			log.Fatalf("failed to decode row: %v", err)
-		}
-
-		fmt.Printf("Actions: %s\n", mobDb.Actions)
-		// TODO I have no idea what I meant to do here...
-		fmt.Printf("Type of Action: foo\n")
-
-		var actions []Action
+	mobs := make([]*Mob, len(mobDbs))
+	for i, mobDb := range mobDbs {
+		var actions []*Action
 		err = json.Unmarshal([]byte(mobDb.Actions), &actions)
 		if err != nil {
-			log.Fatalf("error unmarshaling actions: %v", err)
+			return nil, fmt.Errorf("error unmarshaling actions for mob %d: %v", mobDb.ID, err)
 		}
 
-		var mobActions []*Action
-		for idx := range actions {
-			mobActions = append(mobActions, &actions[idx])
-		}
-
-		mob := Mob{
+		mobs[i] = &Mob{
 			ID:                    mobDb.ID,
 			AreaUUID:              mobDb.AreaUUID,
 			RoomUUID:              mobDb.RoomUUID,
@@ -123,13 +103,9 @@ func GetMobsInRoom(db *sqlx.DB, roomUUID string) ([]*Mob, error) {
 			Type:                  mobDb.Type,
 			Wisdom:                mobDb.Wisdom,
 			WisdomSave:            mobDb.WisdomSave,
-			// TODO figure out what to do here.
-			// Actions:               mobDb.Actions,
+			Actions:               actions,
 		}
-
-		mobs = append(mobs, &mob)
 	}
 
 	return mobs, nil
-
 }

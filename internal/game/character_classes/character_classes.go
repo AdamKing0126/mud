@@ -1,10 +1,11 @@
 package character_classes
 
 import (
+	"context"
 	"sort"
 	"strings"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
 type CharacterClass struct {
@@ -74,7 +75,7 @@ func (c CharacterClasses) GetCharacterClassByArchetypeSlug(archetypeSlug string)
 	return nil
 }
 
-func GetCharacterClassList(db *sqlx.DB, archetype_slug string) (CharacterClasses, error) {
+func GetCharacterClassList(ctx context.Context, db database.DB, archetype_slug string) (CharacterClasses, error) {
 	const baseQuery = `SELECT name, hit_dice, hp_at_first_level, hp_modifier, saving_throw_charisma, saving_throw_constitution, saving_throw_dexterity, saving_throw_intelligence, saving_throw_strength, saving_throw_wisdom, slug, archetype_slug, archetype_name, archetype_description FROM character_classes`
 	var query string
 	args := []interface{}{}
@@ -87,7 +88,7 @@ func GetCharacterClassList(db *sqlx.DB, archetype_slug string) (CharacterClasses
 	}
 
 	characterClasses := []CharacterClass{}
-	err := db.Select(&characterClasses, query, args...)
+	err := db.Select(ctx, &characterClasses, query, args...)
 	return characterClasses, err
 }
 

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -8,8 +9,7 @@ import (
 	"github.com/adamking0126/mud/internal/game/areas"
 	"github.com/adamking0126/mud/internal/game/players"
 	"github.com/adamking0126/mud/internal/game/world_state"
-
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
 type ExitsCommandHandler struct {
@@ -21,9 +21,9 @@ func (h *ExitsCommandHandler) SetWorldState(world_state *world_state.WorldState)
 	h.WorldState = world_state
 }
 
-func (h *ExitsCommandHandler) Execute(_ *sqlx.DB, player *players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
+func (h *ExitsCommandHandler) Execute(ctx context.Context, db database.DB, player *players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
 	roomUUID := player.RoomUUID
-	currentRoom := h.WorldState.GetRoom(roomUUID, true)
+	currentRoom := h.WorldState.GetRoom(ctx, roomUUID, true)
 	exits := currentRoom.Exits
 	exitMap := map[string]*areas.Room{
 		"North": exits.GetNorth(),
@@ -40,7 +40,7 @@ func (h *ExitsCommandHandler) Execute(_ *sqlx.DB, player *players.Player, _ stri
 	for direction, exit := range exitMap {
 		if exit != nil {
 			abbreviatedDirections = append(abbreviatedDirections, direction)
-			exitRoom := h.WorldState.GetRoom(exit.UUID, false)
+			exitRoom := h.WorldState.GetRoom(ctx, exit.UUID, false)
 			longDirections = append(longDirections, fmt.Sprintf("%s: %s", direction, exitRoom.Name))
 		}
 	}

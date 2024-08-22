@@ -1,25 +1,25 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/adamking0126/mud/internal/game/areas"
+	"github.com/adamking0126/mud/pkg/database"
 
 	"github.com/adamking0126/mud/internal/display"
 	"github.com/adamking0126/mud/internal/game/players"
 	"github.com/adamking0126/mud/internal/notifications"
-
-	"github.com/jmoiron/sqlx"
 )
 
 type TellHandler struct {
 	Notifier *notifications.Notifier
 }
 
-func (h *TellHandler) Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+func (h *TellHandler) Execute(ctx context.Context, db database.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	msg := strings.Join(arguments[1:], " ")
-	retrievedPlayer, err := players.GetPlayerByName(db, arguments[0])
+	retrievedPlayer, err := players.GetPlayerByName(ctx, db, arguments[0])
 	if err != nil {
 		display.PrintWithColor(player, fmt.Sprintf("Error retrieving player UUID: %v\n", err), "danger")
 		return

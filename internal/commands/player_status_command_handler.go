@@ -1,22 +1,22 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/adamking0126/mud/internal/display"
 	"github.com/adamking0126/mud/internal/game/areas"
 	"github.com/adamking0126/mud/internal/game/players"
-
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
 type PlayerStatusCommandHandler struct{}
 
-func (h *PlayerStatusCommandHandler) Execute(db *sqlx.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+func (h *PlayerStatusCommandHandler) Execute(ctx context.Context, db database.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	playerAbilities := &players.PlayerAbilities{}
 
 	query := "SELECT * FROM player_abilities WHERE player_uuid = ?"
-	err := db.QueryRow(query, player.UUID).Scan(&playerAbilities.UUID, &playerAbilities.PlayerUUID, &playerAbilities.Strength, &playerAbilities.Intelligence, &playerAbilities.Wisdom, &playerAbilities.Constitution, &playerAbilities.Charisma, &playerAbilities.Dexterity)
+	err := db.QueryRow(ctx, query, player.UUID).Scan(&playerAbilities.UUID, &playerAbilities.PlayerUUID, &playerAbilities.Strength, &playerAbilities.Intelligence, &playerAbilities.Wisdom, &playerAbilities.Constitution, &playerAbilities.Charisma, &playerAbilities.Dexterity)
 	if err != nil {
 		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
 	}

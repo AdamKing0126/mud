@@ -1,6 +1,7 @@
 package players
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -8,10 +9,9 @@ import (
 	"github.com/adamking0126/mud/internal/game/character_classes"
 	"github.com/adamking0126/mud/internal/game/items"
 	"github.com/adamking0126/mud/internal/utilities"
+	"github.com/adamking0126/mud/pkg/database"
 
 	"github.com/charmbracelet/ssh"
-
-	"github.com/jmoiron/sqlx"
 )
 
 func NewPlayer(session ssh.Session) *Player {
@@ -43,8 +43,8 @@ func (player *Player) GetColorProfileColor(colorUse string) string {
 	return player.ColorProfile.GetColor(colorUse)
 }
 
-func (player *Player) AddItem(db *sqlx.DB, item *items.Item) error {
-	err := item.SetLocation(db, player.UUID, "")
+func (player *Player) AddItem(ctx context.Context, db database.DB, item *items.Item) error {
+	err := item.SetLocation(ctx, db, player.UUID, "")
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (player *Player) RemoveItem(item *items.Item) error {
 	return nil
 }
 
-func (player *Player) Regen(db *sqlx.DB) error {
+func (player *Player) Regen(ctx context.Context, db database.DB) error {
 	healthRegen := calculateHPRegen(*player)
 	movementRegen := calculateMovementRegen(*player)
 
@@ -81,21 +81,21 @@ func (player *Player) Regen(db *sqlx.DB) error {
 		player.Movement = player.MovementMax
 	}
 
-	_, err := db.Exec("UPDATE players SET hp = ?, movement = ? WHERE uuid = ?", player.HP, player.Movement, player.UUID)
+	err := db.Exec(ctx, "UPDATE players SET hp = ?, movement = ? WHERE uuid = ?", player.HP, player.Movement, player.UUID)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (player *Player) Remove(db *sqlx.DB, itemName string) {
+func (player *Player) Remove(ctx context.Context, db database.DB, itemName string) {
 	if player.Equipment.DominantHand.GetName() == itemName {
 		equippedItem := player.Equipment.DominantHand
-		player.AddItem(db, equippedItem.Item)
+		player.AddItem(ctx, db, equippedItem.Item)
 
 		player.Equipment.DominantHand = nil
 		queryString := fmt.Sprintf("UPDATE player_equipments SET DominantHand = '' WHERE player_uuid = '%s'", player.UUID)
-		_, err := db.Exec(queryString)
+		err := db.Exec(ctx, queryString)
 		if err != nil {
 			fmt.Printf("error setting player_equipment to nil: %v", err)
 		}
@@ -104,7 +104,7 @@ func (player *Player) Remove(db *sqlx.DB, itemName string) {
 	}
 }
 
-func (player *Player) Equip(db *sqlx.DB, item *items.Item) bool {
+func (player *Player) Equip(ctx context.Context, db database.DB, item *items.Item) bool {
 	// get the location where the thing goes
 	val := reflect.ValueOf(&player.Equipment).Elem()
 	itemEquipSlots := []string{}
@@ -129,7 +129,7 @@ func (player *Player) Equip(db *sqlx.DB, item *items.Item) bool {
 		queryString += slot
 	}
 	queryString += " FROM player_equipments WHERE player_uuid = ? LIMIT 1"
-	rows, err := db.Query(queryString, player.UUID)
+	rows, err := db.Query(ctx, queryString, player.UUID)
 	if err != nil {
 		fmt.Printf("error retrieving player equipments: %v", err)
 		return false
@@ -166,7 +166,7 @@ func (player *Player) Equip(db *sqlx.DB, item *items.Item) bool {
 			queryString += columns[idx]
 			queryString += " = ? WHERE player_uuid = ?"
 			rows.Close()
-			_, err = db.Exec(queryString, itemUUID, player.UUID)
+			err = db.Exec(ctx, queryString, itemUUID, player.UUID)
 			if err != nil {
 				fmt.Printf("error inserting into player_equipments: %v", err)
 				return false

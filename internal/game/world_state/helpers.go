@@ -1,17 +1,17 @@
 package world_state
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/adamking0126/mud/internal/game/areas"
 	"github.com/adamking0126/mud/internal/game/items"
 	"github.com/adamking0126/mud/internal/game/mobs"
 	"github.com/adamking0126/mud/internal/game/players"
-
-	"github.com/jmoiron/sqlx"
+	"github.com/adamking0126/mud/pkg/database"
 )
 
-func getRoomFromAreaByUUID(area *areas.Area, roomUUID string) *areas.Room {
+func getRoomFromAreaByUUID(ctx context.Context, area *areas.Area, roomUUID string) *areas.Room {
 	for _, room := range area.Rooms {
 		if room.UUID == roomUUID {
 			return room
@@ -21,7 +21,7 @@ func getRoomFromAreaByUUID(area *areas.Area, roomUUID string) *areas.Room {
 	return nil
 }
 
-func retrieveRoomFromDB(db *sqlx.DB, area *areas.Area, requestedRoomUUID string, followExits bool) *areas.Room {
+func retrieveRoomFromDB(ctx context.Context, db database.DB, area *areas.Area, requestedRoomUUID string, followExits bool) *areas.Room {
 	var retrievedRoom *areas.Room
 	queryString := `
 	SELECT r.UUID, r.area_uuid, r.name, r.description,
@@ -31,7 +31,7 @@ func retrieveRoomFromDB(db *sqlx.DB, area *areas.Area, requestedRoomUUID string,
 	FROM rooms r
 	LEFT JOIN areas a ON r.area_uuid = a.UUID
 	WHERE a.UUID = ?`
-	rows, err := db.Query(queryString, area.UUID)
+	rows, err := db.Query(ctx, queryString, area.UUID)
 	if err != nil {
 		fmt.Printf("Error querying rows: %v", err)
 	}
@@ -53,23 +53,23 @@ func retrieveRoomFromDB(db *sqlx.DB, area *areas.Area, requestedRoomUUID string,
 	// exits.  if one of the exits happens to exist in a different area, we can make a db query to retrieve that one.
 	for _, roomInArea := range area.Rooms {
 		if followExits {
-			setExits(db, area, roomInArea)
+			setExits(ctx, db, area, roomInArea)
 		}
-		setItems(db, roomInArea)
-		setPlayers(db, roomInArea)
-		setMobs(db, roomInArea)
+		setItems(ctx, db, roomInArea)
+		setPlayers(ctx, db, roomInArea)
+		setMobs(ctx, db, roomInArea)
 	}
 	return retrievedRoom
 }
 
-func getExitRoom(area *areas.Area, room *areas.Room, db *sqlx.DB) *areas.Room {
+func getExitRoom(ctx context.Context, area *areas.Area, room *areas.Room, db database.DB) *areas.Room {
 	if room != nil {
 		if room.Name == "" {
-			exitRoom := getRoomFromAreaByUUID(area, room.UUID)
+			exitRoom := getRoomFromAreaByUUID(ctx, area, room.UUID)
 			// TODO Adam - looks like this is not triggering, because we end up loading the adjoining areas
 			// from the db.  but not the adjoining-adjoining areas, if that makes sense.
 			if exitRoom == nil {
-				rm, err := areas.GetRoomFromDB(room.UUID, db)
+				rm, err := areas.GetRoomFromDB(ctx, db, room.UUID)
 				if err != nil {
 					fmt.Printf("error getting room: %v", err)
 				}
@@ -81,42 +81,42 @@ func getExitRoom(area *areas.Area, room *areas.Room, db *sqlx.DB) *areas.Room {
 	return nil
 }
 
-func setExits(db *sqlx.DB, area *areas.Area, roomInArea *areas.Room) {
+func setExits(ctx context.Context, db database.DB, area *areas.Area, roomInArea *areas.Room) {
 	exits := roomInArea.Exits
 	exitInfo := areas.ExitInfo{}
-	exitInfo.South = getExitRoom(area, exits.South, db)
-	exitInfo.North = getExitRoom(area, exits.North, db)
-	exitInfo.West = getExitRoom(area, exits.West, db)
-	exitInfo.East = getExitRoom(area, exits.East, db)
-	exitInfo.Up = getExitRoom(area, exits.Up, db)
-	exitInfo.Down = getExitRoom(area, exits.Down, db)
+	exitInfo.South = getExitRoom(ctx, area, exits.South, db)
+	exitInfo.North = getExitRoom(ctx, area, exits.North, db)
+	exitInfo.West = getExitRoom(ctx, area, exits.West, db)
+	exitInfo.East = getExitRoom(ctx, area, exits.East, db)
+	exitInfo.Up = getExitRoom(ctx, area, exits.Up, db)
+	exitInfo.Down = getExitRoom(ctx, area, exits.Down, db)
 	// TODO wtf is this even doing?
 	// am I just refreshing the exits from the db?
 	// roomInArea.SetExits(exitInfo)
 	roomInArea.Exits = &exitInfo
 }
 
-func setMobs(db *sqlx.DB, roomInArea *areas.Room) {
+func setMobs(ctx context.Context, db database.DB, roomInArea *areas.Room) {
 	// retrieve the mobs and attach them to the room in the WorldState
-	mobsInRoom, err := mobs.GetMobsInRoom(db, roomInArea.UUID)
+	mobsInRoom, err := mobs.GetMobsInRoom(ctx, db, roomInArea.UUID)
 	if err != nil {
 		fmt.Printf("error retrieving mobs: %v", err)
 	}
 	roomInArea.Mobs = mobsInRoom
 }
 
-func setPlayers(db *sqlx.DB, roomInArea *areas.Room) {
+func setPlayers(ctx context.Context, db database.DB, roomInArea *areas.Room) {
 	// retrieve the players and attach them to the room in the WorldState
-	playersInRoom, err := players.GetPlayersInRoom(db, roomInArea.UUID)
+	playersInRoom, err := players.GetPlayersInRoom(ctx, db, roomInArea.UUID)
 	if err != nil {
 		fmt.Printf("error retrieving players: %v", err)
 	}
 	roomInArea.Players = playersInRoom
 }
 
-func setItems(db *sqlx.DB, roomInArea *areas.Room) {
+func setItems(ctx context.Context, db database.DB, roomInArea *areas.Room) {
 	// retrieve the items and attach them to the room in the WorldState
-	itemsInRoom, err := items.GetItemsInRoom(db, roomInArea.UUID)
+	itemsInRoom, err := items.GetItemsInRoom(ctx, db, roomInArea.UUID)
 	if err != nil {
 		fmt.Printf("error retrieving items: %v", err)
 	}

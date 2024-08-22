@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -10,6 +11,7 @@ import (
 	"github.com/adamking0126/mud/internal/game/players"
 	world_state "github.com/adamking0126/mud/internal/game/world_state"
 	"github.com/adamking0126/mud/internal/notifications"
+	"github.com/adamking0126/mud/pkg/database"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -49,7 +51,7 @@ func RegisterCommands(router *CommandRouter, notifier *notifications.Notifier, w
 	}
 }
 
-func (r *CommandRouter) HandleCommand(db *sqlx.DB, player *players.Player, command []byte, currentChannel chan areas.Action, updateChannel func(string)) {
+func (r *CommandRouter) HandleCommand(ctx context.Context, db database.DB, player *players.Player, command []byte, currentChannel chan areas.Action, updateChannel func(string)) {
 	// Convert the command []byte to a string and trim the extra characters off.
 	commandString := strings.ToLower(strings.TrimSpace(string(command)))
 
@@ -72,6 +74,6 @@ func (r *CommandRouter) HandleCommand(db *sqlx.DB, player *players.Player, comma
 			return
 		}
 
-		handler.Execute(db, player, command, arguments, currentChannel, updateChannel)
+		handler.Execute(ctx, db, player, command, arguments, currentChannel, updateChannel)
 	}
 }
