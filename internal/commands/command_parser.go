@@ -4,6 +4,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/adamking0126/mud/internal/game/areas"
 	"github.com/adamking0126/mud/internal/game/players"
 	worldState "github.com/adamking0126/mud/internal/game/world_state"
 	"github.com/adamking0126/mud/internal/notifications"
@@ -19,6 +20,10 @@ type UsesWorldState interface {
 
 type UsesPlayerService interface {
 	SetPlayerService(playerService *players.Service)
+}
+
+type UsesAreaService interface {
+	SetAreaService(areaService *areas.Service)
 }
 
 type CommandParser struct {

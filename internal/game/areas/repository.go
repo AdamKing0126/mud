@@ -4,10 +4,20 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/adamking0126/mud/internal/game/items"
 	"github.com/adamking0126/mud/pkg/database"
 )
 
-func GetRoomFromDB(ctx context.Context, db database.DB, roomUUID string) (*Room, error) {
+type Repository struct {
+	db database.DB
+}
+
+func NewRepository(db database.DB) *Repository {
+	return &Repository{db: db}
+}
+
+func (r *Repository) GetRoomFromDB(ctx context.Context, roomUUID string) (*Room, error) {
+
 	query := `
 		SELECT r.UUID, r.area_uuid, r.name, r.description,
 			r.exit_north, r.exit_south, r.exit_east, r.exit_west,
@@ -17,7 +27,7 @@ func GetRoomFromDB(ctx context.Context, db database.DB, roomUUID string) (*Room,
 		LEFT JOIN areas a ON r.area_uuid = a.UUID
 		WHERE r.UUID = ?`
 
-	room_rows, err := db.Query(ctx, query, roomUUID)
+	room_rows, err := r.db.Query(ctx, query, roomUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -68,4 +78,14 @@ func GetRoomFromDB(ctx context.Context, db database.DB, roomUUID string) (*Room,
 	}
 
 	return room, nil
+}
+
+// relaces room.AddItem() - need to find where this is called
+func (r *Repository) AddItemToRoom(ctx context.Context, room *Room, item *items.Item) error {
+	query := fmt.Sprintf("UPDATE item_locations SET room_uuid = '%s', player_uuid = '' WHERE item_uuid = '%s'", room.UUID, item.UUID)
+	err := r.db.Exec(ctx, query)
+	if err != nil {
+		return err
+	}
+	return nil
 }

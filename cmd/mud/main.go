@@ -35,6 +35,7 @@ func NewServer() *Server {
 	}
 }
 
+// WTF is this thing even used at all?
 func (s *Server) handleConnection(ctx context.Context, session ssh.Session, router CommandRouterInterface, db database.DB, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *worldState.WorldState) {
 	defer session.Close()
 
@@ -147,18 +148,7 @@ func loadAreas(ctx context.Context, db database.DB, server *Server) (map[string]
 	return areaInstancesInterface, roomToAreaMap, areaChannels, nil
 }
 
-func logoutAllPlayers(ctx context.Context, db database.DB) {
-	queryString := `
-		UPDATE players SET logged_in = 0 WHERE logged_in = 1;
-	`
-	err := db.Exec(ctx, queryString)
-	if err != nil {
-		fmt.Printf("error logging out players: %v", err)
-	}
-}
-
 func main() {
-	// db, err := openDatabase()
 	db, err := database.NewSQLiteDB("./pkg/database/sqlite_databases/mud.db")
 	if err != nil {
 		log.Fatalln(err)
@@ -170,20 +160,25 @@ func main() {
 	notifier := notifications.NewNotifier(server.connections)
 
 	playerService := players.NewService(db)
+	areaService := areas.NewService(db)
 
-	logoutAllPlayers(ctx, db)
+	err = playerService.LogoutAllPlayers(ctx)
+	if err != nil {
+		log.Fatalf("error logging out all players: %v", err)
+	}
+
 	areaInstances, roomToAreaMap, areaChannels, err := loadAreas(ctx, db, server)
 	if err != nil {
 		log.Fatalf("error loading areas: %v", err)
 	}
 
-	worldState := worldState.NewWorldState(ctx, areaInstances, roomToAreaMap, db)
+	worldState := worldState.NewWorldState(ctx, areaInstances, roomToAreaMap, db, areaService)
 
 	s, err := wish.NewServer(
 		wish.WithAddress(":2222"),
 		wish.WithHostKeyPath(".ssh/term_info_ed25519"),
 		wish.WithMiddleware(
-			BubbleteaMUD(ctx, db, server, notifier, areaChannels, roomToAreaMap, worldState, playerService),
+			BubbleteaMUD(ctx, db, server, notifier, areaChannels, roomToAreaMap, worldState, playerService, areaService),
 		),
 	)
 	if err != nil {
@@ -211,6 +206,7 @@ type mudModel struct {
 	charState     characterState
 	gameState     playState
 	playerService *players.Service
+	areaService   *areas.Service
 }
 
 type gameState int
@@ -300,7 +296,7 @@ func (m mudModel) View() string {
 	}
 }
 
-func BubbleteaMUD(ctx context.Context, db database.DB, server *Server, notifier *notifications.Notifier, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *worldState.WorldState, playerService *players.Service) wish.Middleware {
+func BubbleteaMUD(ctx context.Context, db database.DB, server *Server, notifier *notifications.Notifier, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *worldState.WorldState, playerService *players.Service, areaService *areas.Service) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			player, err := players.LoginPlayer(ctx, s, playerService)
@@ -310,7 +306,7 @@ func BubbleteaMUD(ctx context.Context, db database.DB, server *Server, notifier 
 			}
 
 			router := commands.NewCommandRouter()
-			commands.RegisterCommands(router, notifier, worldState, playerService, commands.CommandHandlers)
+			commands.RegisterCommands(router, notifier, worldState, playerService, areaService, commands.CommandHandlers)
 
 			m := mudModel{
 				db:            db,
@@ -323,6 +319,7 @@ func BubbleteaMUD(ctx context.Context, db database.DB, server *Server, notifier 
 				roomToAreaMap: roomToAreaMap,
 				worldState:    worldState,
 				playerService: playerService,
+				areaService:   areaService,
 			}
 
 			p := tea.NewProgram(m)
@@ -330,7 +327,7 @@ func BubbleteaMUD(ctx context.Context, db database.DB, server *Server, notifier 
 				log.Println("Error running program:", err)
 			}
 
-			player.Logout(ctx, db)
+			playerService.LogoutPlayer(ctx, player)
 		}
 	}
 }

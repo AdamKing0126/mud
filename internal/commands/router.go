@@ -39,7 +39,7 @@ func (r *CommandRouter) RegisterHandler(command string, handler CommandHandler) 
 	r.Handlers[command] = handler
 }
 
-func RegisterCommands(router *CommandRouter, notifier *notifications.Notifier, worldState *world_state.WorldState, playerService *players.Service, commands map[string]CommandHandlerWithPriority) {
+func RegisterCommands(router *CommandRouter, notifier *notifications.Notifier, worldState *world_state.WorldState, playerService *players.Service, areaService *areas.Service, commands map[string]CommandHandlerWithPriority) {
 	for command, handlerWithPriority := range commands {
 		if notifiable, ok := handlerWithPriority.Handler.(Notifiable); ok {
 			notifiable.SetNotifier(notifier)
@@ -49,6 +49,9 @@ func RegisterCommands(router *CommandRouter, notifier *notifications.Notifier, w
 		}
 		if playerServiceable, ok := handlerWithPriority.Handler.(UsesPlayerService); ok {
 			playerServiceable.SetPlayerService(playerService)
+		}
+		if areaServiceable, ok := handlerWithPriority.Handler.(UsesAreaService); ok {
+			areaServiceable.SetAreaService(areaService)
 		}
 		router.RegisterHandler(command, handlerWithPriority.Handler)
 	}

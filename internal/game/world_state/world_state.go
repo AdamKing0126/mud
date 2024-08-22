@@ -15,10 +15,11 @@ type WorldState struct {
 	Areas         map[string]*areas.Area
 	RoomToAreaMap map[string]string
 	DB            database.DB
+	AreasService  *areas.Service
 }
 
-func NewWorldState(ctx context.Context, areas map[string]*areas.Area, roomToAreaMap map[string]string, db database.DB) *WorldState {
-	return &WorldState{Areas: areas, RoomToAreaMap: roomToAreaMap, DB: db}
+func NewWorldState(ctx context.Context, areas map[string]*areas.Area, roomToAreaMap map[string]string, db database.DB, areasService *areas.Service) *WorldState {
+	return &WorldState{Areas: areas, RoomToAreaMap: roomToAreaMap, DB: db, AreasService: areasService}
 }
 
 func (worldState *WorldState) RemovePlayerFromRoom(roomUUID string, player *players.Player) error {

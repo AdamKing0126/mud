@@ -9,19 +9,19 @@ import (
 	"github.com/adamking0126/mud/internal/game/players"
 	"github.com/adamking0126/mud/internal/game/world_state"
 	"github.com/adamking0126/mud/internal/notifications"
-	"github.com/adamking0126/mud/pkg/database"
 )
 
 type DropCommandHandler struct {
-	Notifier   *notifications.Notifier
-	WorldState *world_state.WorldState
+	Notifier    *notifications.Notifier
+	AreaService *areas.Service
+	WorldState  *world_state.WorldState
 }
 
 func (h *DropCommandHandler) SetWorldState(world_state *world_state.WorldState) {
 	h.WorldState = world_state
 }
 
-func (h *DropCommandHandler) Execute(ctx context.Context, db database.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+func (h *DropCommandHandler) Execute(ctx context.Context, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	roomUUID := player.RoomUUID
 	room := h.WorldState.GetRoom(ctx, roomUUID, false)
 
@@ -32,12 +32,8 @@ func (h *DropCommandHandler) Execute(ctx context.Context, db database.DB, player
 				if err := player.RemoveItem(item); err != nil {
 					fmt.Printf("error removing item: %s", err)
 				}
-				room.AddItem(ctx, db, item)
-				query := "UPDATE item_locations SET room_uuid = ?, player_uuid = NULL WHERE item_uuid = ?"
-				err := db.Exec(ctx, query, roomUUID, item.GetUUID())
-				if err != nil {
-					display.PrintWithColor(player, fmt.Sprintf("Failed to update item location: %v\n", err), "danger")
-				}
+
+				h.AreaService.AddItemToRoom(ctx, room, item)
 				display.PrintWithColor(player, fmt.Sprintf("You drop the %s.\n", item.GetName()), "reset")
 				h.Notifier.NotifyRoom(player.RoomUUID, player.UUID, fmt.Sprintf("\n%s dropped %s.\n", player.Name, item.Name))
 				break

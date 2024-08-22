@@ -1,13 +1,11 @@
 package areas
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/adamking0126/mud/internal/game/items"
 	"github.com/adamking0126/mud/internal/game/mobs"
 	"github.com/adamking0126/mud/internal/game/players"
-	"github.com/adamking0126/mud/pkg/database"
 )
 
 type Room struct {
@@ -32,7 +30,7 @@ func (room Room) GetPlayerByName(playerName string) *players.Player {
 	return nil
 }
 
-func (room Room) AddPlayer(player *players.Player) {
+func (room *Room) AddPlayer(player *players.Player) {
 	playerIdx := -1
 	for idx := range room.Players {
 		if room.Players[idx].UUID == player.UUID {
@@ -48,7 +46,7 @@ func (room Room) AddPlayer(player *players.Player) {
 	}
 }
 
-func (room Room) RemovePlayer(player *players.Player) error {
+func (room *Room) RemovePlayer(player *players.Player) error {
 	playersInRoom := room.Players
 	for idx, playerInRoom := range playersInRoom {
 		if playerInRoom.UUID == player.UUID {
@@ -67,15 +65,6 @@ func NewRoomWithAreaInfo(uuid string, area_uuid string, name string, description
 	areaInfo := NewAreaInfo(area_uuid, area_name, area_description)
 	exitInfo := NewExitInfo(exit_north, exit_south, exit_west, exit_east, exit_up, exit_down)
 	return &Room{UUID: uuid, AreaUUID: area_uuid, Name: name, Description: description, Area: areaInfo, Exits: exitInfo}
-}
-
-func (room *Room) AddItem(ctx context.Context, db database.DB, item *items.Item) error {
-	room.Items = append(room.Items, item)
-	err := item.SetLocation(ctx, db, "", room.UUID)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (room *Room) RemoveItem(item *items.Item) error {

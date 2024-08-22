@@ -73,3 +73,11 @@ func (s *Service) AddItemToPlayer(ctx context.Context, player *Player, item *ite
 func (s *Service) SetPlayerHealth(ctx context.Context, player *Player, health int) error {
 	return s.repo.SetPlayerHealth(ctx, player.UUID, health)
 }
+
+func (s *Service) LogoutAllPlayers(ctx context.Context) error {
+	return s.repo.LogoutAll(ctx)
+}
+
+func (s *Service) LogoutPlayer(ctx context.Context, player *Player) error {
+	return s.repo.Logout(ctx, player)
+}

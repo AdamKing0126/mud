@@ -173,20 +173,20 @@ func (r *Repository) CreatePlayer(ctx context.Context, session ssh.Session, play
 	player.UUID = uuid.New().String()
 
 	// "default" light mode color profile.  Should let the user choose?
-	colorProfile, err := getColorProfileFromDB(ctx, r.db, "2c7dfd5b-d160-42e0-accb-b77d9686dbea")
+	colorProfile, err := r.GetColorProfileFromDB(ctx, r.db, "2c7dfd5b-d160-42e0-accb-b77d9686dbea")
 	if err != nil {
 		return nil, err
 	}
 
 	chosenCharacterClass := selectCharacterClassAndArchetype(ctx, session, r.db, player)
 	if chosenCharacterClass == nil {
-		player.Logout(ctx, r.db)
+		r.Logout(ctx, player)
 		return nil, nil
 	}
 
 	chosenRace := selectRace(ctx, session, r.db, player)
 	if chosenRace == nil {
-		player.Logout(ctx, r.db)
+		r.Logout(ctx, player)
 		return nil, nil
 	}
 
@@ -239,29 +239,41 @@ func (r *Repository) CreatePlayer(ctx context.Context, session ssh.Session, play
 	return player, nil
 }
 
+func (r *Repository) LogoutAll(ctx context.Context) error {
+	return r.db.Exec(ctx, "UPDATE players SET logged_in = 0")
+}
+
+func (r *Repository) Logout(ctx context.Context, player *Player) error {
+	stmt, err := r.db.Prepare(ctx, "UPDATE players SET logged_in = FALSE WHERE uuid = ?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	err = stmt.Exec(ctx, player.UUID)
+	if err != nil {
+		return err
+	}
+
+	player.Session.Close()
+	return nil
+}
+
 func (r *Repository) SetPlayerHealth(ctx context.Context, playerUUID string, health int) error {
 	return r.db.Exec(ctx, "UPDATE players SET hp = ? WHERE uuid = ?", health, playerUUID)
 }
 
-func setPlayerLoggedInStatusInDB(ctx context.Context, db database.DB, playerUUID string, loggedIn bool) error {
-	err := db.Exec(ctx, "UPDATE players SET logged_in = ? WHERE uuid = ?", loggedIn, playerUUID)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func getColorProfileFromDB(ctx context.Context, db database.DB, uuid string) (*ColorProfile, error) {
+func (r *Repository) GetColorProfileFromDB(ctx context.Context, uuid string) (*ColorProfile, error) {
 	var colorProfile ColorProfile
 	query := `SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color FROM color_profiles WHERE uuid = ?`
-	db.QueryRow(ctx, query, uuid).Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
+	r.db.QueryRow(ctx, query, uuid).Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
 	return &colorProfile, nil
 }
 
-func GetPlayersInRoom(ctx context.Context, db database.DB, roomUUID string) ([]*Player, error) {
+func (r *Repository) GetPlayersInRoom(ctx context.Context, roomUUID string) ([]*Player, error) {
 	var players []*Player
 	query := `SELECT uuid, name FROM players WHERE room = ? and logged_in = 1`
-	rows, err := db.Query(ctx, query, roomUUID)
+	rows, err := r.db.Query(ctx, query, roomUUID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query: %v", err)
 	}
@@ -281,15 +293,4 @@ func GetPlayersInRoom(ctx context.Context, db database.DB, roomUUID string) ([]*
 	}
 
 	return players, nil
-}
-
-func (player *Player) GetColorProfileFromDB(ctx context.Context, db database.DB) error {
-	var colorProfile = ColorProfile{}
-	query := `SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color FROM color_profiles WHERE uuid = ?`
-	err := db.QueryRow(ctx, query, player.ColorProfile.UUID).Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
-	if err != nil {
-		return err
-	}
-	player.ColorProfile = colorProfile
-	return nil
 }

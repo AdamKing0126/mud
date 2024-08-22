@@ -19,12 +19,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// func getPlayerInput(reader io.Reader) string {
-// 	r := bufio.NewReader(reader)
-// 	input, _ := r.ReadString('\n')
-// 	return strings.TrimSpace(input)
-// }
-
 func getPlayerInput(session ssh.Session) string {
 	var input strings.Builder
 	for {
@@ -278,20 +272,4 @@ func LoginPlayer(ctx context.Context, session ssh.Session, playerService *Servic
 	}
 
 	return player, nil
-}
-
-func (player *Player) Logout(ctx context.Context, db database.DB) error {
-	stmt, err := db.Prepare(ctx, "UPDATE players SET logged_in = FALSE WHERE uuid = ?")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	err = stmt.Exec(ctx, player.UUID)
-	if err != nil {
-		return err
-	}
-
-	player.Session.Close()
-	return nil
 }

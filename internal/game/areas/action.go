@@ -32,17 +32,6 @@ type ActionHandler interface {
 	Execute(db database.DB, player players.Player, action Action, updateChannel func(string))
 }
 
-// TODO WTF is this?
-// type FooActionHandler struct{}
-
-// func (h *FooActionHandler) Execute(db *sqlx.DB, player players.Player, action *Action, updateChannel func(string)) {
-// 	display.PrintWithColor(player, "FooActionHandler.Execute()\n", "danger")
-// }
-
-// var ActionHandlers = map[string]ActionHandler{
-// 	"foo": &FooActionHandler{},
-// }
-
 var ActionHandlers = map[string]ActionHandler{}
 
 type PlayerActions struct {
