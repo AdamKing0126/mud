@@ -15,7 +15,6 @@ import (
 	"github.com/adamking0126/mud/pkg/database"
 
 	"github.com/charmbracelet/ssh"
-	"github.com/google/uuid"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -228,86 +227,6 @@ func selectRace(ctx context.Context, session ssh.Session, db database.DB, player
 
 }
 
-func createPlayer(ctx context.Context, session ssh.Session, db database.DB, playerName string) (*Player, error) {
-	player := NewPlayer(session)
-	player.Name = playerName
-
-	fmt.Fprintf(session, "Please enter a password you'd like to use: ")
-	password := getPlayerInput(session)
-	player.Password = HashPassword(password)
-
-	// default start point
-	player.AreaUUID = "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9"
-	player.RoomUUID = "189a729d-4e40-4184-a732-e2c45c66ff46"
-	player.UUID = uuid.New().String()
-
-	// "default" light mode color profile.  Should let the user choose?
-	colorProfile, err := getColorProfileFromDB(ctx, db, "2c7dfd5b-d160-42e0-accb-b77d9686dbea")
-	if err != nil {
-		return nil, err
-	}
-
-	chosenCharacterClass := selectCharacterClassAndArchetype(ctx, session, db, player)
-	if chosenCharacterClass == nil {
-		player.Logout(ctx, db)
-		return nil, nil
-	}
-
-	chosenRace := selectRace(ctx, session, db, player)
-	if chosenRace == nil {
-		player.Logout(ctx, db)
-		return nil, nil
-	}
-
-	player.ColorProfile = *colorProfile
-	player.HP = int32(chosenCharacterClass.HPAtFirstLevel)
-	player.HPMax = int32(chosenCharacterClass.HPAtFirstLevel)
-	player.Movement = 100
-	player.MovementMax = 100
-	player.UUID = uuid.New().String()
-	player.Session = session
-	player.CharacterClass = *chosenCharacterClass
-	player.Race = *chosenRace
-
-	tx, err := db.Begin(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = tx.Exec(ctx, "INSERT INTO players (uuid, character_class, race, subrace, name, area, room, hp, hp_max, movement, movement_max, color_profile, password, logged_in) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		player.UUID, player.CharacterClass.ArchetypeSlug, player.Race.Slug, player.Race.SubRaceSlug, player.Name, player.AreaUUID, player.RoomUUID, player.HP, player.HPMax, player.Movement, player.MovementMax, player.ColorProfile.GetUUID(), player.Password, true)
-	if err != nil {
-		tx.Rollback()
-		log.Fatalf("Failed to insert player: %v", err)
-	}
-
-	// TODO: everything below this line is probably junk.  Need to build player character based off choices made above.
-
-	err = tx.Exec(ctx, "INSERT INTO player_abilities (uuid, player_uuid, strength, dexterity, constitution, intelligence, wisdom, charisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-		uuid.New(), player.UUID, 10, 10, 10, 10, 10, 10)
-	if err != nil {
-		tx.Rollback()
-		log.Fatalf("Failed to set player abilities: %v", err)
-	}
-
-	err = tx.Exec(ctx, "INSERT INTO player_equipments (uuid, player_uuid, Head, Neck, Chest, Arms, Hands, DominantHand, OffHand, Legs, Feet) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		uuid.New(), player.UUID, "", "", "", "", "", "", "", "", "", "")
-	if err != nil {
-		tx.Rollback()
-		log.Fatalf("Failed to set player equipments: %v", err)
-	}
-	player.Equipment = *NewPlayerEquipment()
-
-	err = tx.Commit()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	player.Session = session
-
-	return player, nil
-}
-
 // Handle the login process for a player.  After authentication,
 // cycle through related fields to populate the `player` object:
 // - ColorProfile
@@ -317,19 +236,19 @@ func createPlayer(ctx context.Context, session ssh.Session, db database.DB, play
 // each one of these steps results in another database query, but I thought it
 // best to keep the actions atomic for now, rather than trying to build one
 // huge query which has joins all over the place.
-func LoginPlayer(ctx context.Context, session ssh.Session, db database.DB) (*Player, error) {
+func LoginPlayer(ctx context.Context, session ssh.Session, playerService *Service) (*Player, error) {
 
 	fmt.Fprintf(session, "Welcome! Please enter your player name: ")
 	playerName := getPlayerInput(session)
 
-	player, err := GetPlayerFromDB(ctx, db, playerName)
+	player, err := playerService.GetPlayerFromDB(ctx, playerName)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			fmt.Fprintf(session, "Player not found.  Do you want to create a new player? (y/n): ")
 			answer := getPlayerInput(session)
 
 			if strings.ToLower(answer) == "y" {
-				player, err = createPlayer(ctx, session, db, playerName)
+				player, err = playerService.CreatePlayer(ctx, session, playerName)
 				if err != nil {
 					return nil, err
 				}
@@ -350,22 +269,10 @@ func LoginPlayer(ctx context.Context, session ssh.Session, db database.DB) (*Pla
 
 	player.Session = session
 
-	err = player.GetColorProfileFromDB(ctx, db)
-	if err != nil {
-		return nil, err
-	}
-
-	err = player.GetEquipmentFromDB(ctx, db)
-	if err != nil {
-		return nil, err
-	}
-
-	err = player.GetInventoryFromDB(ctx, db)
-	if err != nil {
-		return nil, err
-	}
-
-	err = setPlayerLoggedInStatusInDB(ctx, db, player.UUID, true)
+	playerService.SetPlayerColorProfile(ctx, player)
+	playerService.SetPlayerEquipment(ctx, player)
+	playerService.SetPlayerInventory(ctx, player)
+	err = playerService.SetPlayerLoggedInStatus(ctx, player, true)
 	if err != nil {
 		return nil, err
 	}

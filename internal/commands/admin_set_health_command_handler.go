@@ -9,45 +9,43 @@ import (
 	"github.com/adamking0126/mud/internal/game/areas"
 	"github.com/adamking0126/mud/internal/game/players"
 	"github.com/adamking0126/mud/internal/notifications"
-	"github.com/adamking0126/mud/pkg/database"
 )
 
 type AdminSetHealthCommandHandler struct {
-	Notifier *notifications.Notifier
+	Notifier      *notifications.Notifier
+	PlayerService *players.Service
 }
 
-func (h *AdminSetHealthCommandHandler) Execute(ctx context.Context, db database.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
-	target := arguments[0]
+func (h *AdminSetHealthCommandHandler) Execute(ctx context.Context, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+	name := arguments[0]
 	value := arguments[1]
 
-	retrievedPlayer, err := players.GetPlayerByName(ctx, db, target)
+	targetPlayer, err := h.PlayerService.GetPlayerByName(ctx, name)
 	if err != nil {
-		display.PrintWithColor(player, fmt.Sprintf("Error retrieving player UUID: %v\n", err), "danger")
+		display.PrintWithColor(player, fmt.Sprintf("Player %s not found\n", name), "danger")
 		return
 	}
 
-	query := "UPDATE players SET health = ? WHERE UUID = ?"
-
-	err = db.Exec(ctx, query, value, retrievedPlayer.UUID)
-
-	if err != nil {
-		display.PrintWithColor(player, fmt.Sprintf("Error updating health: %v\n", err), "danger")
-		return
-	}
-
-	intValue, err := strconv.Atoi(value)
+	convertedValue, err := strconv.Atoi(value)
 	if err != nil {
 		display.PrintWithColor(player, fmt.Sprintf("Error converting value to int: %v\n", err), "danger")
 		return
 	}
-	playerInNotifier := h.Notifier.Players[retrievedPlayer.UUID]
+
+	h.PlayerService.SetPlayerHealth(ctx, targetPlayer, convertedValue)
+
+	playerInNotifier := h.Notifier.Players[targetPlayer.UUID]
 	// TODO what if the player isn't found
-	playerInNotifier.HP = int32(intValue)
-	display.PrintWithColor(player, fmt.Sprintf("You set %s's health to %d\n", target, intValue), "reset")
-	h.Notifier.NotifyPlayer(retrievedPlayer.UUID, fmt.Sprintf("\n%s magically sets your health to %d\n", player.Name, intValue))
+	playerInNotifier.HP = int32(convertedValue)
+	display.PrintWithColor(player, fmt.Sprintf("You set %s's health to %d\n", name, convertedValue), "reset")
+	h.Notifier.NotifyPlayer(targetPlayer.UUID, fmt.Sprintf("\n%s magically sets your health to %d\n", player.Name, convertedValue))
 
 }
 
 func (h *AdminSetHealthCommandHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
+}
+
+func (h *AdminSetHealthCommandHandler) SetPlayerService(playerService *players.Service) {
+	h.PlayerService = playerService
 }

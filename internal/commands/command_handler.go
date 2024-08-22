@@ -11,7 +11,7 @@ import (
 )
 
 type CommandHandler interface {
-	Execute(ctx context.Context, db database.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string))
+	Execute(ctx context.Context, db database.DB, playerService *players.Service, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string))
 }
 
 type CommandHandlerWithPriority struct {

@@ -169,6 +169,8 @@ func main() {
 	server := NewServer()
 	notifier := notifications.NewNotifier(server.connections)
 
+	playerService := players.NewService(db)
+
 	logoutAllPlayers(ctx, db)
 	areaInstances, roomToAreaMap, areaChannels, err := loadAreas(ctx, db, server)
 	if err != nil {
@@ -181,7 +183,7 @@ func main() {
 		wish.WithAddress(":2222"),
 		wish.WithHostKeyPath(".ssh/term_info_ed25519"),
 		wish.WithMiddleware(
-			BubbleteaMUD(ctx, db, server, notifier, areaChannels, roomToAreaMap, worldState),
+			BubbleteaMUD(ctx, db, server, notifier, areaChannels, roomToAreaMap, worldState, playerService),
 		),
 	)
 	if err != nil {
@@ -204,10 +206,11 @@ type mudModel struct {
 	session       ssh.Session
 
 	// new fields for state management
-	currentState gameState
-	loginState   loginState
-	charState    characterState
-	gameState    playState
+	currentState  gameState
+	loginState    loginState
+	charState     characterState
+	gameState     playState
+	playerService *players.Service
 }
 
 type gameState int
@@ -297,17 +300,17 @@ func (m mudModel) View() string {
 	}
 }
 
-func BubbleteaMUD(ctx context.Context, db database.DB, server *Server, notifier *notifications.Notifier, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *worldState.WorldState) wish.Middleware {
+func BubbleteaMUD(ctx context.Context, db database.DB, server *Server, notifier *notifications.Notifier, areaChannels map[string]chan areas.Action, roomToAreaMap map[string]string, worldState *worldState.WorldState, playerService *players.Service) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
-			player, err := players.LoginPlayer(ctx, s, db)
+			player, err := players.LoginPlayer(ctx, s, playerService)
 			if err != nil || player == nil {
 				fmt.Fprintf(s, "Login failed: %v\n", err)
 				return
 			}
 
 			router := commands.NewCommandRouter()
-			commands.RegisterCommands(router, notifier, worldState, commands.CommandHandlers)
+			commands.RegisterCommands(router, notifier, worldState, playerService, commands.CommandHandlers)
 
 			m := mudModel{
 				db:            db,
@@ -319,6 +322,7 @@ func BubbleteaMUD(ctx context.Context, db database.DB, server *Server, notifier 
 				areaChannels:  areaChannels,
 				roomToAreaMap: roomToAreaMap,
 				worldState:    worldState,
+				playerService: playerService,
 			}
 
 			p := tea.NewProgram(m)

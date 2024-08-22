@@ -3,11 +3,14 @@ package players
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/adamking0126/mud/internal/game/character_classes"
 	"github.com/adamking0126/mud/internal/game/items"
 	"github.com/adamking0126/mud/pkg/database"
+	"github.com/charmbracelet/ssh"
+	"github.com/google/uuid"
 )
 
 type Repository struct {
@@ -24,13 +27,9 @@ func (r *Repository) SetPlayerLoggedInStatus(ctx context.Context, playerUUID str
 }
 
 func (r *Repository) GetPlayerByName(ctx context.Context, name string) (*Player, error) {
-	return GetPlayerByName(ctx, r.db, name)
-}
-
-func GetPlayerByName(ctx context.Context, db database.DB, name string) (*Player, error) {
 	var player Player
 	var playerAbilities PlayerAbilities
-	db.QueryRow(ctx, `
+	r.db.QueryRow(ctx, `
 		SELECT p.uuid, p.name, p.room, p.area, p.hp, p.movement, p.logged_in, 
 		       pa.intelligence, pa.dexterity, pa.charisma, pa.constitution, pa.wisdom, pa.strength 
 		FROM players p 
@@ -74,7 +73,7 @@ func (r *Repository) GetPlayerByNameFull(ctx context.Context, playerName string)
 	return &player, nil
 }
 
-func (r *Repository) GetColorProfile(ctx context.Context, uuid string) *ColorProfile {
+func (r *Repository) GetColorProfileForPlayerByUUID(ctx context.Context, uuid string) *ColorProfile {
 	var colorProfile ColorProfile
 	query := `SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color 
 			  FROM color_profiles WHERE uuid = ?`
@@ -113,9 +112,151 @@ func (r *Repository) GetPlayerInventory(ctx context.Context, playerUUID string) 
 	return inventory, nil
 }
 
-// func (r *Repository) GetPlayerEquipment(ctx context.Context, playerUUID string) (*PlayerEquipment, error) {
-// ... (implement GetPlayerEquipment similar to GetEquipmentFromDB)
-// }
+func (r *Repository) GetPlayerFromDB(ctx context.Context, playerName string) (*Player, error) {
+	var player Player
+	var colorProfileUUID string
+	var characterClassArchetypeSlug string
+	var characterRaceSlug, characterSubRaceSlug string
+	err := r.db.QueryRow(ctx, "SELECT uuid, name, character_class, race, subrace, room, area, hp, hp_max, movement, movement_max, logged_in, password, color_profile FROM players WHERE LOWER(name) = LOWER(?)", playerName).
+		Scan(&player.UUID, &player.Name, &characterClassArchetypeSlug, &characterRaceSlug, &characterSubRaceSlug, &player.RoomUUID, &player.AreaUUID, &player.HP, &player.HPMax, &player.Movement, &player.MovementMax, &player.LoggedIn, &player.Password, &colorProfileUUID)
+	if err != nil {
+		return nil, err
+	}
+	return &player, nil
+}
+
+func (r *Repository) GetEquipmentForPlayerByUUID(ctx context.Context, playerUUID string) *PlayerEquipment {
+	var head, neck, chest, arms, hands, dominantHand, offHand, legs, feet string
+	query := `SELECT uuid, player_uuid, Head, Neck, Chest, Arms, Hands, DominantHand, OffHand, Legs, Feet
+			  FROM player_equipments
+			  WHERE player_uuid = ?`
+
+	var pe PlayerEquipment
+	err := r.db.QueryRow(ctx, query, playerUUID).Scan(&pe.UUID, &pe.PlayerUUID, &head, &neck, &chest, &arms, &hands, &dominantHand, &offHand, &legs, &feet)
+	if err != nil {
+		return nil
+	}
+	return &pe
+}
+
+func (r *Repository) GetInventoryForPlayerByUUID(ctx context.Context, playerUUID string) []*items.Item {
+	queryString := `SELECT i.uuid, i.name, i.description, i.equipment_slots FROM item_locations il JOIN items i ON il.player_uuid = ? AND il.item_uuid = i.uuid;`
+	rows, err := r.db.Query(ctx, queryString, playerUUID)
+	if err != nil {
+		fmt.Printf("error querying: %v", err)
+	}
+	var inventory []*items.Item
+	for rows.Next() {
+		var uuid, name, description, slots string
+		err := rows.Scan(&uuid, &name, &description, &slots)
+		equipmentSlots := strings.Split(slots, ",")
+		if err == nil {
+			fmt.Println("uh oh")
+		}
+		item := items.NewItem(uuid, name, description, equipmentSlots)
+		inventory = append(inventory, item)
+	}
+	return inventory
+}
+
+func (r *Repository) CreatePlayer(ctx context.Context, session ssh.Session, playerName string) (*Player, error) {
+	player := NewPlayer(session)
+	player.Name = playerName
+
+	fmt.Fprintf(session, "Please enter a password you'd like to use: ")
+	password := getPlayerInput(session)
+	player.Password = HashPassword(password)
+
+	// default start point
+	player.AreaUUID = "d71e8cf1-d5ba-426c-8915-4c7f5b22e3a9"
+	player.RoomUUID = "189a729d-4e40-4184-a732-e2c45c66ff46"
+	player.UUID = uuid.New().String()
+
+	// "default" light mode color profile.  Should let the user choose?
+	colorProfile, err := getColorProfileFromDB(ctx, r.db, "2c7dfd5b-d160-42e0-accb-b77d9686dbea")
+	if err != nil {
+		return nil, err
+	}
+
+	chosenCharacterClass := selectCharacterClassAndArchetype(ctx, session, r.db, player)
+	if chosenCharacterClass == nil {
+		player.Logout(ctx, r.db)
+		return nil, nil
+	}
+
+	chosenRace := selectRace(ctx, session, r.db, player)
+	if chosenRace == nil {
+		player.Logout(ctx, r.db)
+		return nil, nil
+	}
+
+	player.ColorProfile = *colorProfile
+	player.HP = int32(chosenCharacterClass.HPAtFirstLevel)
+	player.HPMax = int32(chosenCharacterClass.HPAtFirstLevel)
+	player.Movement = 100
+	player.MovementMax = 100
+	player.UUID = uuid.New().String()
+	player.Session = session
+	player.CharacterClass = *chosenCharacterClass
+	player.Race = *chosenRace
+
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = tx.Exec(ctx, "INSERT INTO players (uuid, character_class, race, subrace, name, area, room, hp, hp_max, movement, movement_max, color_profile, password, logged_in) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		player.UUID, player.CharacterClass.ArchetypeSlug, player.Race.Slug, player.Race.SubRaceSlug, player.Name, player.AreaUUID, player.RoomUUID, player.HP, player.HPMax, player.Movement, player.MovementMax, player.ColorProfile.GetUUID(), player.Password, true)
+	if err != nil {
+		tx.Rollback()
+		log.Fatalf("Failed to insert player: %v", err)
+	}
+
+	// TODO: everything below this line is probably junk.  Need to build player character based off choices made above.
+
+	err = tx.Exec(ctx, "INSERT INTO player_abilities (uuid, player_uuid, strength, dexterity, constitution, intelligence, wisdom, charisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		uuid.New(), player.UUID, 10, 10, 10, 10, 10, 10)
+	if err != nil {
+		tx.Rollback()
+		log.Fatalf("Failed to set player abilities: %v", err)
+	}
+
+	err = tx.Exec(ctx, "INSERT INTO player_equipments (uuid, player_uuid, Head, Neck, Chest, Arms, Hands, DominantHand, OffHand, Legs, Feet) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		uuid.New(), player.UUID, "", "", "", "", "", "", "", "", "", "")
+	if err != nil {
+		tx.Rollback()
+		log.Fatalf("Failed to set player equipments: %v", err)
+	}
+	player.Equipment = *NewPlayerEquipment()
+
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	player.Session = session
+
+	return player, nil
+}
+
+func (r *Repository) SetPlayerHealth(ctx context.Context, playerUUID string, health int) error {
+	return r.db.Exec(ctx, "UPDATE players SET hp = ? WHERE uuid = ?", health, playerUUID)
+}
+
+func setPlayerLoggedInStatusInDB(ctx context.Context, db database.DB, playerUUID string, loggedIn bool) error {
+	err := db.Exec(ctx, "UPDATE players SET logged_in = ? WHERE uuid = ?", loggedIn, playerUUID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func getColorProfileFromDB(ctx context.Context, db database.DB, uuid string) (*ColorProfile, error) {
+	var colorProfile ColorProfile
+	query := `SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color FROM color_profiles WHERE uuid = ?`
+	db.QueryRow(ctx, query, uuid).Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
+	return &colorProfile, nil
+}
 
 func GetPlayersInRoom(ctx context.Context, db database.DB, roomUUID string) ([]*Player, error) {
 	var players []*Player
@@ -151,205 +292,4 @@ func (player *Player) GetColorProfileFromDB(ctx context.Context, db database.DB)
 	}
 	player.ColorProfile = colorProfile
 	return nil
-}
-
-func GetPlayerFromDB(ctx context.Context, db database.DB, playerName string) (*Player, error) {
-	var player Player
-	var colorProfileUUID string
-	var characterClassArchetypeSlug string
-	var characterRaceSlug, characterSubRaceSlug string
-	err := db.QueryRow(ctx, "SELECT uuid, name, character_class, race, subrace, room, area, hp, hp_max, movement, movement_max, logged_in, password, color_profile FROM players WHERE LOWER(name) = LOWER(?)", playerName).
-		Scan(&player.UUID, &player.Name, &characterClassArchetypeSlug, &characterRaceSlug, &characterSubRaceSlug, &player.RoomUUID, &player.AreaUUID, &player.HP, &player.HPMax, &player.Movement, &player.MovementMax, &player.LoggedIn, &player.Password, &colorProfileUUID)
-	if err != nil {
-		return nil, err
-	}
-	return &player, nil
-}
-
-// package players
-
-// import (
-// 	"fmt"
-
-// 	"github.com/adamking0126/mud/internal/game/character_classes"
-// 	"github.com/adamking0126/mud/internal/game/items"
-
-// 	"strings"
-
-// 	"github.com/jmoiron/sqlx"
-// )
-
-func setPlayerLoggedInStatusInDB(ctx context.Context, db database.DB, playerUUID string, loggedIn bool) error {
-	err := db.Exec(ctx, "UPDATE players SET logged_in = ? WHERE uuid = ?", loggedIn, playerUUID)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// func GetPlayerByName(db *sqlx.DB, name string) (*Player, error) {
-// 	var player Player
-// 	var playerAbilities PlayerAbilities
-// 	err := db.QueryRow("SELECT p.uuid, p.name, p.room, p.area, p.hp, p.movement, p.logged_in, pa.intelligence, pa.dexterity, pa.charisma, pa.constitution, pa.wisdom, pa.strength FROM players p JOIN player_attributes pa ON p.uuid = pa.player_uuid WHERE LOWER(p.name) = LOWER(?)", name).
-// 		Scan(&player.UUID, &player.Name, &player.RoomUUID, &player.AreaUUID, &player.HP, &player.Movement, &player.LoggedIn, &playerAbilities.Intelligence, &playerAbilities.Dexterity, &playerAbilities.Charisma, &playerAbilities.Constitution, &playerAbilities.Wisdom, &playerAbilities.Strength)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return &player, nil
-// }
-
-// 	characterClasses, err := character_classes.GetCharacterClassList(db, characterClassArchetypeSlug)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	if len(characterClasses) != 1 {
-// 		return nil, nil
-// 	}
-// 	var characterClass = characterClasses[0]
-// 	player.CharacterClass = characterClass
-
-// 	characterRaces, err := character_classes.GetCharacterRaceList(db, characterRaceSlug, characterSubRaceSlug)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	if len(characterRaces) != 1 {
-// 		return nil, nil
-// 	}
-// 	player.Race = characterRaces[0]
-
-// 	player.ColorProfile = ColorProfile{UUID: colorProfileUUID}
-
-// 	return &player, nil
-// }
-
-func (player *Player) GetInventoryFromDB(ctx context.Context, db database.DB) error {
-	queryString := `SELECT i.uuid, i.name, i.description, i.equipment_slots FROM item_locations il JOIN items i ON il.player_uuid = ? AND il.item_uuid = i.uuid;`
-	rows, err := db.Query(ctx, queryString, player.UUID)
-	if err != nil {
-		fmt.Printf("error querying: %v", err)
-	}
-	var inventory []*items.Item
-	for rows.Next() {
-		var uuid, name, description, slots string
-		err := rows.Scan(&uuid, &name, &description, &slots)
-		equipmentSlots := strings.Split(slots, ",")
-		if err == nil {
-			fmt.Println("uh oh")
-		}
-		item := items.NewItem(uuid, name, description, equipmentSlots)
-		inventory = append(inventory, item)
-	}
-
-	player.Inventory = inventory
-	return nil
-
-}
-
-func (player *Player) GetEquipmentFromDB(ctx context.Context, db database.DB) error {
-	var head, neck, chest, arms, hands, dominantHand, offHand, legs, feet string
-	query := `SELECT uuid, player_uuid, Head, Neck, Chest, Arms, Hands, DominantHand, OffHand, Legs, Feet
-			  FROM player_equipments
-			  WHERE player_uuid = ?`
-
-	var pe PlayerEquipment
-	err := db.QueryRow(ctx, query, player.UUID).Scan(&pe.UUID, &pe.PlayerUUID, &head, &neck, &chest, &arms, &hands, &dominantHand, &offHand, &legs, &feet)
-	if err != nil {
-		return err
-	}
-	player.Equipment = pe
-	return nil
-}
-
-// 	item_uuids := []string{head, neck, chest, arms, hands, dominantHand, offHand, legs, feet}
-
-// 	placeholders := strings.Trim(strings.Repeat("?,", len(item_uuids)), ",")
-
-// 	queryString := fmt.Sprintf("SELECT uuid, name, description, equipment_slots FROM items where uuid in (%s)", placeholders)
-
-// 	args := make([]interface{}, len(item_uuids))
-// 	for i, v := range item_uuids {
-// 		args[i] = v
-// 	}
-
-// 	rows, err := db.Query(queryString, args...)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer rows.Close()
-
-// 	for rows.Next() {
-// 		var uuid, name, description, equipmentSlots string
-// 		err := rows.Scan(&uuid, &name, &description, &equipmentSlots)
-// 		if err != nil {
-// 			return fmt.Errorf("failed to scan row: %v", err)
-// 		}
-// 		equipmentSlotArray := strings.Split(equipmentSlots, ",")
-// 		item := items.NewItem(uuid, name, description, equipmentSlotArray)
-
-// 		switch uuid {
-// 		case head:
-// 			pe.Head = NewEquippedItem(item, "Head")
-// 		case neck:
-// 			pe.Neck = NewEquippedItem(item, "Neck")
-// 		case chest:
-// 			pe.Chest = NewEquippedItem(item, "Chest")
-// 		case arms:
-// 			pe.Arms = NewEquippedItem(item, "Arms")
-// 		case hands:
-// 			pe.Hands = NewEquippedItem(item, "Hands")
-// 		case dominantHand:
-// 			pe.DominantHand = NewEquippedItem(item, "DominantHand")
-// 		case offHand:
-// 			pe.OffHand = NewEquippedItem(item, "OffHand")
-// 		case legs:
-// 			pe.Legs = NewEquippedItem(item, "Legs")
-// 		default:
-// 			pe.Feet = NewEquippedItem(item, "Feet")
-// 		}
-// 	}
-
-// 	player.Equipment = pe
-
-// 	return nil
-// }
-
-// 	return &colorProfile, nil
-// }
-
-// func GetPlayersInRoom(db *sqlx.DB, roomUUID string) ([]*Player, error) {
-// 	// Would it be better to rely on the `connections` structure attached to the server
-// 	// or is it better to query the db for this info?
-// 	var players []*Player
-// 	query := `
-// 		SELECT uuid, name
-// 		FROM players
-// 		WHERE room = ? and logged_in = 1
-// 	`
-// 	rows, err := db.Query(query, roomUUID)
-// 	if err != nil {
-// 		return players, fmt.Errorf("failed to execute query: %v", err)
-// 	}
-// 	defer rows.Close()
-
-// 	for rows.Next() {
-// 		player := &Player{}
-// 		err := rows.Scan(&player.UUID, &player.Name)
-// 		if err != nil {
-// 			return nil, fmt.Errorf("failed to scan row: %v", err)
-// 		}
-// 		players = append(players, player)
-// 	}
-
-// 	if err := rows.Err(); err != nil {
-// 		return nil, fmt.Errorf("error iterating over rows: %v", err)
-// 	}
-
-// 	return players, nil
-// }
-
-func getColorProfileFromDB(ctx context.Context, db database.DB, uuid string) (*ColorProfile, error) {
-	var colorProfile ColorProfile
-	query := `SELECT uuid, name, primary_color, secondary_color, warning_color, danger_color, title_color, description_color FROM color_profiles WHERE uuid = ?`
-	db.QueryRow(ctx, query, uuid).Scan(&colorProfile.UUID, &colorProfile.Name, &colorProfile.Primary, &colorProfile.Secondary, &colorProfile.Warning, &colorProfile.Danger, &colorProfile.Title, &colorProfile.Description)
-	return &colorProfile, nil
 }

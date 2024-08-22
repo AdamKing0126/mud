@@ -4,6 +4,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/adamking0126/mud/internal/game/players"
 	worldState "github.com/adamking0126/mud/internal/game/world_state"
 	"github.com/adamking0126/mud/internal/notifications"
 )
@@ -14,6 +15,10 @@ type Notifiable interface {
 
 type UsesWorldState interface {
 	SetWorldState(worldState *worldState.WorldState)
+}
+
+type UsesPlayerService interface {
+	SetPlayerService(playerService *players.Service)
 }
 
 type CommandParser struct {
