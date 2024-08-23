@@ -15,11 +15,11 @@ type LookCommandHandler struct {
 	WorldStateService *world_state.Service
 }
 
-func (h *LookCommandHandler) SetWorldStateService(world_state_service *world_state.Service) {
-	h.WorldStateService = world_state_service
+func (h *LookCommandHandler) SetWorldStateService(worldStateService *world_state.Service) {
+	h.WorldStateService = worldStateService
 }
 
-func (h *LookCommandHandler) Execute(ctx context.Context, worldStateService *world_state.Service, playerService *players.Service, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+func (h *LookCommandHandler) Execute(ctx context.Context, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	currentRoomUUID := player.RoomUUID
 	currentRoom := h.WorldStateService.GetRoom(ctx, currentRoomUUID, false)
 
@@ -54,7 +54,7 @@ func (h *LookCommandHandler) Execute(ctx context.Context, worldStateService *wor
 		}
 
 		exitsHandler := &ExitsCommandHandler{ShowOnlyDirections: true, WorldStateService: h.WorldStateService}
-		exitsHandler.Execute(ctx, worldStateService, playerService, player, "exits", arguments, currentChannel, updateChannel)
+		exitsHandler.Execute(ctx, player, "exits", arguments, currentChannel, updateChannel)
 	} else if len(arguments) == 1 {
 		exits := currentRoom.Exits
 		exitMap := map[string]*areas.Room{

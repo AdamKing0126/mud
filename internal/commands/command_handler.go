@@ -12,8 +12,6 @@ import (
 type CommandHandler interface {
 	Execute(
 		ctx context.Context,
-		worldStateService *worldState.Service,
-		playerService *players.Service,
 		player *players.Player,
 		command string,
 		arguments []string,

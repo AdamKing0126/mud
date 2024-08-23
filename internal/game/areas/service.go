@@ -2,6 +2,7 @@ package areas
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/adamking0126/mud/internal/game/items"
@@ -198,4 +199,17 @@ func (s *Service) getExitRoom(ctx context.Context, area *Area, room *Room) *Room
 func (s *Service) setPlayers(ctx context.Context, room *Room) {
 	players := s.playerService.GetPlayersInRoom(ctx, room.UUID)
 	room.Players = players
+}
+
+func (s *Service) RemovePlayerFromRoom(ctx context.Context, roomUUID string, playerToRemove *players.Player) error {
+	room := s.GetRoomByUUID(ctx, roomUUID)
+	if room == nil {
+		return fmt.Errorf("room not found")
+	}
+	for i, player := range room.Players {
+		if player.UUID == playerToRemove.UUID {
+			room.Players = append(room.Players[:i], room.Players[i+1:]...)
+		}
+	}
+	return nil
 }

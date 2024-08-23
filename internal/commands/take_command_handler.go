@@ -9,8 +9,6 @@ import (
 	"github.com/adamking0126/mud/internal/game/players"
 	world_state "github.com/adamking0126/mud/internal/game/world_state"
 	"github.com/adamking0126/mud/internal/notifications"
-
-	"github.com/adamking0126/mud/pkg/database"
 )
 
 type TakeCommandHandler struct {
@@ -22,7 +20,7 @@ func (h *TakeCommandHandler) SetWorldStateService(worldStateService *world_state
 	h.WorldStateService = worldStateService
 }
 
-func (h *TakeCommandHandler) Execute(ctx context.Context, db database.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+func (h *TakeCommandHandler) Execute(ctx context.Context, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	roomUUID := player.RoomUUID
 	currentRoom := h.WorldStateService.GetRoomByUUID(ctx, roomUUID)
 	items := currentRoom.Items

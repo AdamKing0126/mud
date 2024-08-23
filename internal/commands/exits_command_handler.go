@@ -20,7 +20,7 @@ func (h *ExitsCommandHandler) SetWorldStateService(worldStateService *world_stat
 	h.WorldStateService = worldStateService
 }
 
-func (h *ExitsCommandHandler) Execute(ctx context.Context, worldStateService *world_state.Service, playerService *players.Service, player *players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
+func (h *ExitsCommandHandler) Execute(ctx context.Context, player *players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
 	roomUUID := player.RoomUUID
 	currentRoom := h.WorldStateService.GetRoom(ctx, roomUUID, true)
 	exits := currentRoom.Exits

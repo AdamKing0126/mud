@@ -9,22 +9,22 @@ import (
 	"github.com/adamking0126/mud/internal/game/players"
 	"github.com/adamking0126/mud/internal/game/world_state"
 	"github.com/adamking0126/mud/internal/notifications"
-	"github.com/adamking0126/mud/pkg/database"
 )
 
 type LogoutCommandHandler struct {
-	Notifier   *notifications.Notifier
-	WorldState *world_state.WorldState
+	Notifier          *notifications.Notifier
+	WorldStateService *world_state.Service
+	PlayerService     *players.Service
 }
 
-func (h *LogoutCommandHandler) Execute(ctx context.Context, db database.DB, player *players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
+func (h *LogoutCommandHandler) Execute(ctx context.Context, player *players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
 	display.PrintWithColor(player, "Goodbye!\n", "reset")
-	if err := player.Logout(ctx, db); err != nil {
+	if err := h.PlayerService.LogoutPlayer(ctx, player); err != nil {
 		fmt.Printf("Error logging out player: %v\n", err)
 		return
 	}
 
-	err := h.WorldState.RemovePlayerFromRoom(player.RoomUUID, player)
+	err := h.WorldStateService.RemovePlayerFromRoom(ctx, player.RoomUUID, player)
 	if err != nil {
 		fmt.Printf("error removing player %s from room %s - %v", player.UUID, player.RoomUUID, err)
 		return
@@ -37,6 +37,10 @@ func (h *LogoutCommandHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
 }
 
-func (h *LogoutCommandHandler) SetWorldState(worldState *world_state.WorldState) {
-	h.WorldState = worldState
+func (h *LogoutCommandHandler) SetWorldStateService(worldStateService *world_state.Service) {
+	h.WorldStateService = worldStateService
+}
+
+func (h *LogoutCommandHandler) SetPlayerService(playerService *players.Service) {
+	h.PlayerService = playerService
 }

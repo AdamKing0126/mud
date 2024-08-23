@@ -79,6 +79,6 @@ func (r *CommandRouter) HandleCommand(ctx context.Context, worldStateService *wo
 			return
 		}
 
-		handler.Execute(ctx, worldStateService, playerService, player, command, arguments, currentChannel, updateChannel)
+		handler.Execute(ctx, player, command, arguments, currentChannel, updateChannel)
 	}
 }
