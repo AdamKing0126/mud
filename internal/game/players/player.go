@@ -52,21 +52,6 @@ func (player *Player) AddItem(ctx context.Context, db database.DB, item *items.I
 	return nil
 }
 
-func (player *Player) RemoveItem(item *items.Item) error {
-	itemIndex := -1
-	for idx := range player.Inventory {
-		if player.Inventory[idx].GetUUID() == item.UUID {
-			itemIndex = idx
-			break
-		}
-	}
-	if itemIndex == -1 {
-		return fmt.Errorf("item %s is not found in player %s inventory", item.GetUUID(), player.UUID)
-	}
-	player.Inventory = append(player.Inventory[:itemIndex], player.Inventory[itemIndex+1:]...)
-	return nil
-}
-
 func (player *Player) Regen(ctx context.Context, db database.DB) error {
 	healthRegen := calculateHPRegen(*player)
 	movementRegen := calculateMovementRegen(*player)

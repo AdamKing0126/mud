@@ -2,6 +2,7 @@ package players
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/adamking0126/mud/internal/game/items"
 	"github.com/adamking0126/mud/pkg/database"
@@ -38,6 +39,14 @@ func (s *Service) GetColorProfileForPlayer(ctx context.Context, playerUUID strin
 	return s.repo.GetColorProfileForPlayerByUUID(ctx, playerUUID)
 }
 
+func (s *Service) GetPlayersInRoom(ctx context.Context, roomUUID string) []*Player {
+	players, err := s.repo.GetPlayersInRoom(ctx, roomUUID)
+	if err != nil {
+		return nil
+	}
+	return players
+}
+
 func (s *Service) SetPlayerColorProfile(ctx context.Context, player *Player) error {
 	colorProfile := s.GetColorProfileForPlayer(ctx, player.UUID)
 	player.ColorProfile = *colorProfile
@@ -67,6 +76,21 @@ func (s *Service) AddItemToPlayer(ctx context.Context, player *Player, item *ite
 	}
 
 	player.Inventory = append(player.Inventory, item)
+	return nil
+}
+
+func (s *Service) RemoveItemFromPlayer(ctx context.Context, player *Player, item *items.Item) error {
+	itemIndex := -1
+	for idx := range player.Inventory {
+		if player.Inventory[idx].GetUUID() == item.UUID {
+			itemIndex = idx
+			break
+		}
+	}
+	if itemIndex == -1 {
+		return fmt.Errorf("item %s is not found in player %s inventory", item.GetUUID(), player.UUID)
+	}
+	player.Inventory = append(player.Inventory[:itemIndex], player.Inventory[itemIndex+1:]...)
 	return nil
 }
 

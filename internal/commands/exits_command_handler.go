@@ -9,21 +9,20 @@ import (
 	"github.com/adamking0126/mud/internal/game/areas"
 	"github.com/adamking0126/mud/internal/game/players"
 	"github.com/adamking0126/mud/internal/game/world_state"
-	"github.com/adamking0126/mud/pkg/database"
 )
 
 type ExitsCommandHandler struct {
 	ShowOnlyDirections bool
-	WorldState         *world_state.WorldState
+	WorldStateService  *world_state.Service
 }
 
-func (h *ExitsCommandHandler) SetWorldState(world_state *world_state.WorldState) {
-	h.WorldState = world_state
+func (h *ExitsCommandHandler) SetWorldStateService(worldStateService *world_state.Service) {
+	h.WorldStateService = worldStateService
 }
 
-func (h *ExitsCommandHandler) Execute(ctx context.Context, db database.DB, player *players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
+func (h *ExitsCommandHandler) Execute(ctx context.Context, worldStateService *world_state.Service, playerService *players.Service, player *players.Player, _ string, _ []string, _ chan areas.Action, _ func(string)) {
 	roomUUID := player.RoomUUID
-	currentRoom := h.WorldState.GetRoom(ctx, roomUUID, true)
+	currentRoom := h.WorldStateService.GetRoom(ctx, roomUUID, true)
 	exits := currentRoom.Exits
 	exitMap := map[string]*areas.Room{
 		"North": exits.GetNorth(),
@@ -40,7 +39,7 @@ func (h *ExitsCommandHandler) Execute(ctx context.Context, db database.DB, playe
 	for direction, exit := range exitMap {
 		if exit != nil {
 			abbreviatedDirections = append(abbreviatedDirections, direction)
-			exitRoom := h.WorldState.GetRoom(ctx, exit.UUID, false)
+			exitRoom := h.WorldStateService.GetRoom(ctx, exit.UUID, false)
 			longDirections = append(longDirections, fmt.Sprintf("%s: %s", direction, exitRoom.Name))
 		}
 	}

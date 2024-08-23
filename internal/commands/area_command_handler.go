@@ -12,16 +12,16 @@ import (
 )
 
 type AreaCommandHandler struct {
-	WorldState *world_state.WorldState
+	WorldStateService *world_state.Service
 }
 
-func (h *AreaCommandHandler) SetWorldState(world_state *world_state.WorldState) {
-	h.WorldState = world_state
+func (h *AreaCommandHandler) SetWorldStateService(worldStateService *world_state.Service) {
+	h.WorldStateService = worldStateService
 }
 
 func (h *AreaCommandHandler) Execute(ctx context.Context, db database.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	areaUUID := player.AreaUUID
-	area := h.WorldState.GetArea(ctx, areaUUID)
+	area := h.WorldStateService.GetAreaByUUID(ctx, areaUUID)
 
 	display.PrintWithColor(player, fmt.Sprintf("%s\n", area.Name), "primary")
 	display.PrintWithColor(player, fmt.Sprintf("%s\n", area.Description), "secondary")

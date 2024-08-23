@@ -8,14 +8,14 @@ import (
 	"github.com/adamking0126/mud/internal/game/areas"
 	"github.com/adamking0126/mud/internal/game/players"
 	"github.com/adamking0126/mud/internal/notifications"
-	"github.com/adamking0126/mud/pkg/database"
 )
 
 type EquipHandler struct {
-	Notifier *notifications.Notifier
+	Notifier      *notifications.Notifier
+	PlayerService *players.Service
 }
 
-func (h *EquipHandler) Execute(ctx context.Context, db database.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
+func (h *EquipHandler) Execute(ctx context.Context, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	if len(arguments) == 0 {
 		player.DisplayEquipment()
 		return
@@ -26,10 +26,10 @@ func (h *EquipHandler) Execute(ctx context.Context, db database.DB, player *play
 	if len(playerItems) > 0 {
 		for _, item := range playerItems {
 			if item.GetName() == arguments[0] {
-				if player.Equip(ctx, db, item) {
+				if h.PlayerService.EquipItem(ctx, player, item) {
 					display.PrintWithColor(player, fmt.Sprintf("You wield %s.\n", item.GetName()), "reset")
 					h.Notifier.NotifyRoom(player.RoomUUID, player.UUID, fmt.Sprintf("\n%s wields %s.\n", player.Name, item.Name))
-					player.RemoveItem(item)
+					h.PlayerService.RemoveItemFromPlayer(ctx, player, item)
 				}
 				break
 			}
@@ -41,4 +41,8 @@ func (h *EquipHandler) Execute(ctx context.Context, db database.DB, player *play
 
 func (h *EquipHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
+}
+
+func (h *EquipHandler) SetPlayerService(playerService *players.Service) {
+	h.PlayerService = playerService
 }

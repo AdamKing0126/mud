@@ -11,7 +11,6 @@ import (
 	"github.com/adamking0126/mud/internal/game/players"
 	world_state "github.com/adamking0126/mud/internal/game/world_state"
 	"github.com/adamking0126/mud/internal/notifications"
-	"github.com/adamking0126/mud/pkg/database"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -39,13 +38,13 @@ func (r *CommandRouter) RegisterHandler(command string, handler CommandHandler) 
 	r.Handlers[command] = handler
 }
 
-func RegisterCommands(router *CommandRouter, notifier *notifications.Notifier, worldState *world_state.WorldState, playerService *players.Service, areaService *areas.Service, commands map[string]CommandHandlerWithPriority) {
+func RegisterCommands(router *CommandRouter, notifier *notifications.Notifier, worldStateService *world_state.Service, playerService *players.Service, areaService *areas.Service, commands map[string]CommandHandlerWithPriority) {
 	for command, handlerWithPriority := range commands {
 		if notifiable, ok := handlerWithPriority.Handler.(Notifiable); ok {
 			notifiable.SetNotifier(notifier)
 		}
-		if worldStateable, ok := handlerWithPriority.Handler.(UsesWorldState); ok {
-			worldStateable.SetWorldState(worldState)
+		if worldStateServiceable, ok := handlerWithPriority.Handler.(UsesWorldStateService); ok {
+			worldStateServiceable.SetWorldStateService(worldStateService)
 		}
 		if playerServiceable, ok := handlerWithPriority.Handler.(UsesPlayerService); ok {
 			playerServiceable.SetPlayerService(playerService)
@@ -57,7 +56,7 @@ func RegisterCommands(router *CommandRouter, notifier *notifications.Notifier, w
 	}
 }
 
-func (r *CommandRouter) HandleCommand(ctx context.Context, db database.DB, player *players.Player, command []byte, currentChannel chan areas.Action, updateChannel func(string)) {
+func (r *CommandRouter) HandleCommand(ctx context.Context, worldStateService *world_state.Service, playerService *players.Service, player *players.Player, command []byte, currentChannel chan areas.Action, updateChannel func(string)) {
 	// Convert the command []byte to a string and trim the extra characters off.
 	commandString := strings.ToLower(strings.TrimSpace(string(command)))
 
@@ -80,6 +79,6 @@ func (r *CommandRouter) HandleCommand(ctx context.Context, db database.DB, playe
 			return
 		}
 
-		handler.Execute(ctx, db, player, command, arguments, currentChannel, updateChannel)
+		handler.Execute(ctx, worldStateService, playerService, player, command, arguments, currentChannel, updateChannel)
 	}
 }

@@ -2,7 +2,6 @@ package world_state
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/adamking0126/mud/internal/game/areas"
 	"github.com/adamking0126/mud/internal/game/players"
@@ -11,6 +10,12 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// WorldState is, shockingly, the state of the game world.
+// Chiefly, we maintain a map of area UUIDs to areas.
+// All changes that happen in each room of the MUD are reflected in the WorldState.
+// We also maintain a map of room UUIDs to area UUIDs.
+// This allows us to look up the area of a room, which is useful for things like
+// moving players between rooms.
 type WorldState struct {
 	Areas         map[string]*areas.Area
 	RoomToAreaMap map[string]string
@@ -49,38 +54,6 @@ func (worldState *WorldState) AddPlayerToRoom(roomUUID string, player *players.P
 	player.RoomUUID = roomUUID
 
 	return nil
-}
-
-func (worldState *WorldState) GetRoom(ctx context.Context, roomUUID string, followExits bool) *areas.Room {
-	areaUUID := worldState.RoomToAreaMap[roomUUID]
-
-	queryString := `
-		SELECT COUNT(*) AS room_count
-		FROM rooms
-		WHERE area_uuid = ?`
-	rows, err := worldState.DB.Query(ctx, queryString, areaUUID)
-	if err != nil {
-		fmt.Printf("Error querying rows: %v", err)
-	}
-	defer rows.Close()
-
-	var numberOfRoomsInArea int
-	for rows.Next() {
-		err := rows.Scan(&numberOfRoomsInArea)
-		if err != nil {
-			fmt.Printf("Error scanning rows: %v", err)
-		}
-	}
-
-	area := worldState.Areas[areaUUID]
-	if len(area.Rooms) == numberOfRoomsInArea {
-		for idx := range area.Rooms {
-			if area.Rooms[idx].UUID == roomUUID {
-				return area.Rooms[idx]
-			}
-		}
-	}
-	return retrieveRoomFromDB(ctx, worldState.DB, area, roomUUID, followExits)
 }
 
 func (worldState *WorldState) GetArea(ctx context.Context, areaUUID string) *areas.Area {

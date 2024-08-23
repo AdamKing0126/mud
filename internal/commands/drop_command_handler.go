@@ -12,28 +12,28 @@ import (
 )
 
 type DropCommandHandler struct {
-	Notifier    *notifications.Notifier
-	AreaService *areas.Service
-	WorldState  *world_state.WorldState
+	Notifier          *notifications.Notifier
+	PlayerService     *players.Service
+	WorldStateService *world_state.Service
 }
 
-func (h *DropCommandHandler) SetWorldState(world_state *world_state.WorldState) {
-	h.WorldState = world_state
+func (h *DropCommandHandler) SetWorldStateService(worldStateService *world_state.Service) {
+	h.WorldStateService = worldStateService
 }
 
 func (h *DropCommandHandler) Execute(ctx context.Context, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	roomUUID := player.RoomUUID
-	room := h.WorldState.GetRoom(ctx, roomUUID, false)
+	room := h.WorldStateService.GetRoomByUUID(ctx, roomUUID)
 
 	playerItems := player.Inventory
 	if len(playerItems) > 0 {
 		for _, item := range playerItems {
 			if item.GetName() == arguments[0] {
-				if err := player.RemoveItem(item); err != nil {
+				if err := h.PlayerService.RemoveItemFromPlayer(ctx, player, item); err != nil {
 					fmt.Printf("error removing item: %s", err)
 				}
 
-				h.AreaService.AddItemToRoom(ctx, room, item)
+				h.WorldStateService.AddItemToRoom(ctx, room, item)
 				display.PrintWithColor(player, fmt.Sprintf("You drop the %s.\n", item.GetName()), "reset")
 				h.Notifier.NotifyRoom(player.RoomUUID, player.UUID, fmt.Sprintf("\n%s dropped %s.\n", player.Name, item.Name))
 				break

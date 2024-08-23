@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/adamking0126/mud/internal/game/areas"
+	"github.com/adamking0126/mud/internal/game/world_state"
+	worldState "github.com/adamking0126/mud/internal/game/world_state"
 
 	"github.com/adamking0126/mud/internal/display"
 	"github.com/adamking0126/mud/internal/game/players"
@@ -13,8 +15,9 @@ import (
 )
 
 type TellHandler struct {
-	Notifier      *notifications.Notifier
-	PlayerService *players.Service
+	Notifier          *notifications.Notifier
+	PlayerService     *players.Service
+	WorldStateService *worldState.Service
 }
 
 func (h *TellHandler) Execute(ctx context.Context, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
@@ -45,4 +48,8 @@ func (h *TellHandler) SetNotifier(notifier *notifications.Notifier) {
 
 func (h *TellHandler) SetPlayerService(playerService *players.Service) {
 	h.PlayerService = playerService
+}
+
+func (h *TellHandler) SetWorldStateService(worldStateService *world_state.Service) {
+	h.WorldStateService = worldStateService
 }

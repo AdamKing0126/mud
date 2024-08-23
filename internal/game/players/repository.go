@@ -173,7 +173,7 @@ func (r *Repository) CreatePlayer(ctx context.Context, session ssh.Session, play
 	player.UUID = uuid.New().String()
 
 	// "default" light mode color profile.  Should let the user choose?
-	colorProfile, err := r.GetColorProfileFromDB(ctx, r.db, "2c7dfd5b-d160-42e0-accb-b77d9686dbea")
+	colorProfile, err := r.GetColorProfileFromDB(ctx, "2c7dfd5b-d160-42e0-accb-b77d9686dbea")
 	if err != nil {
 		return nil, err
 	}

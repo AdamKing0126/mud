@@ -14,17 +14,17 @@ import (
 )
 
 type TakeCommandHandler struct {
-	Notifier   *notifications.Notifier
-	WorldState *world_state.WorldState
+	Notifier          *notifications.Notifier
+	WorldStateService *world_state.Service
 }
 
-func (h *TakeCommandHandler) SetWorldState(world_state *world_state.WorldState) {
-	h.WorldState = world_state
+func (h *TakeCommandHandler) SetWorldStateService(worldStateService *world_state.Service) {
+	h.WorldStateService = worldStateService
 }
 
 func (h *TakeCommandHandler) Execute(ctx context.Context, db database.DB, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
 	roomUUID := player.RoomUUID
-	currentRoom := h.WorldState.GetRoom(ctx, roomUUID, false)
+	currentRoom := h.WorldStateService.GetRoomByUUID(ctx, roomUUID)
 	items := currentRoom.Items
 
 	if len(items) > 0 {

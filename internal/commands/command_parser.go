@@ -14,8 +14,8 @@ type Notifiable interface {
 	SetNotifier(notifier *notifications.Notifier)
 }
 
-type UsesWorldState interface {
-	SetWorldState(worldState *worldState.WorldState)
+type UsesWorldStateService interface {
+	SetWorldStateService(worldStateService *worldState.Service)
 }
 
 type UsesPlayerService interface {

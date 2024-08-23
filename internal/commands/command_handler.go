@@ -7,18 +7,26 @@ import (
 	"github.com/adamking0126/mud/internal/game/players"
 	worldState "github.com/adamking0126/mud/internal/game/world_state"
 	"github.com/adamking0126/mud/internal/notifications"
-	"github.com/adamking0126/mud/pkg/database"
 )
 
 type CommandHandler interface {
-	Execute(ctx context.Context, db database.DB, playerService *players.Service, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string))
+	Execute(
+		ctx context.Context,
+		worldStateService *worldState.Service,
+		playerService *players.Service,
+		player *players.Player,
+		command string,
+		arguments []string,
+		currentChannel chan areas.Action,
+		updateChannel func(string),
+	)
 }
 
 type CommandHandlerWithPriority struct {
-	Handler    CommandHandler
-	Notifier   notifications.Notifier
-	WorldState worldState.WorldState
-	Priority   int
+	Handler           CommandHandler
+	Notifier          notifications.Notifier
+	WorldStateService worldState.Service
+	Priority          int
 }
 
 var CommandHandlers = map[string]CommandHandlerWithPriority{
