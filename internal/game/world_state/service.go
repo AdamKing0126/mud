@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/adamking0126/mud/internal/game/areas"
+	"github.com/adamking0126/mud/internal/game/items"
 	"github.com/adamking0126/mud/internal/game/players"
 	"github.com/adamking0126/mud/pkg/database"
 )
@@ -44,6 +45,25 @@ func (s *Service) GetAreaByUUID(ctx context.Context, areaUUID string) *areas.Are
 }
 
 func (s *Service) RemovePlayerFromRoom(ctx context.Context, roomUUID string, player *players.Player) error {
-	s.areaService.RemovePlayerFromRoom(ctx, roomUUID, player)
+	err := s.areaService.RemovePlayerFromRoom(ctx, roomUUID, player)
+	if err != nil {
+		return err
+	}
 	return nil
+}
+
+func (s *Service) AddPlayerToRoom(ctx context.Context, roomUUID string, player *players.Player) error {
+	err := s.areaService.AddPlayerToRoom(ctx, roomUUID, player)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Service) AddItemToRoom(ctx context.Context, room *areas.Room, item *items.Item) {
+	s.areaService.AddItemToRoom(ctx, room, item)
+}
+
+func (s *Service) RemoveItemFromRoom(ctx context.Context, room *areas.Room, item *items.Item) {
+	s.areaService.RemoveItemFromRoom(ctx, room, item)
 }

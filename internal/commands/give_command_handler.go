@@ -45,8 +45,8 @@ func (h *GiveCommandHandler) Execute(ctx context.Context, player *players.Player
 		return
 	}
 
-	h.PlayerService.RemoveItemFromPlayer(ctx, player, item)
-	h.PlayerService.AddItemToPlayer(ctx, recipient, item)
+	h.PlayerService.RemoveItemFromPlayerInventory(ctx, player, item)
+	h.PlayerService.AddItemToPlayerInventory(ctx, recipient, item)
 
 	display.PrintWithColor(player, fmt.Sprintf("You give %s to %s\n", item.GetName(), recipient.Name), "reset")
 	h.Notifier.NotifyPlayer(recipient.UUID, fmt.Sprintf("\n%s gives you %s\n", player.Name, item.GetName()))

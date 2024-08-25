@@ -29,7 +29,7 @@ func (h *DropCommandHandler) Execute(ctx context.Context, player *players.Player
 	if len(playerItems) > 0 {
 		for _, item := range playerItems {
 			if item.GetName() == arguments[0] {
-				if err := h.PlayerService.RemoveItemFromPlayer(ctx, player, item); err != nil {
+				if err := h.PlayerService.RemoveItemFromPlayerInventory(ctx, player, item); err != nil {
 					fmt.Printf("error removing item: %s", err)
 				}
 

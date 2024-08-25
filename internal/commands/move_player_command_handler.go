@@ -21,12 +21,10 @@ type MovePlayerCommandHandler struct {
 func movePlayerToDirection(
 	ctx context.Context,
 	worldStateService *world_state.Service,
-	playerService *players.Service,
 	player *players.Player,
 	room *areas.Room,
 	direction string,
 	notifier *notifications.Notifier,
-	world_state *world_state.WorldState,
 	currentChannel chan areas.Action,
 	updateChannel func(string)) {
 
@@ -36,15 +34,17 @@ func movePlayerToDirection(
 		display.PrintWithColor(player, "=======================\n\n", "secondary")
 		notifier.NotifyRoom(player.RoomUUID, player.UUID, fmt.Sprintf("\n%s goes %s.\n", player.Name, direction))
 
-		worldStateService.RemovePlayerFromRoom(player.RoomUUID, player)
-		worldStateService.AddPlayerToRoom(room.UUID, player)
+		worldStateService.RemovePlayerFromRoom(ctx, player.RoomUUID, player)
+		err := worldStateService.AddPlayerToRoom(ctx, room.UUID, player)
+		if err != nil {
+			display.PrintWithColor(player, "Error moving player to room: "+err.Error(), "error")
+		} else {
+			notifier.NotifyRoom(room.UUID, player.UUID, fmt.Sprintf("\n%s has arrived.\n", player.Name))
+		}
 
-		notifier.NotifyRoom(room.UUID, player.UUID, fmt.Sprintf("\n%s has arrived.\n", player.Name))
-
-		playerService.SetLocation(ctx, room.UUID)
 		var lookArgs []string
-		lookHandler := &LookCommandHandler{WorldState: world_state}
-		lookHandler.Execute(ctx, worldStateService, playerService, player, "look", lookArgs, currentChannel, updateChannel)
+		lookHandler := &LookCommandHandler{WorldStateService: worldStateService}
+		lookHandler.Execute(ctx, player, "look", lookArgs, currentChannel, updateChannel)
 	}
 }
 
@@ -52,22 +52,22 @@ func (h *MovePlayerCommandHandler) Execute(ctx context.Context, player *players.
 	areaUUID := player.AreaUUID
 
 	currentRoomUUID := player.RoomUUID
-	currentRoom := h.WorldStateService.GetRoomByUUID(ctx, currentRoomUUID, true)
+	currentRoom := h.WorldStateService.GetRoom(ctx, currentRoomUUID, true)
 	exits := currentRoom.Exits
 
 	switch h.Direction {
 	case "north":
-		movePlayerToDirection(ctx, player, exits.North, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
+		movePlayerToDirection(ctx, h.WorldStateService, player, exits.North, h.Direction, h.Notifier, currentChannel, updateChannel)
 	case "south":
-		movePlayerToDirection(ctx, player, exits.South, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
+		movePlayerToDirection(ctx, h.WorldStateService, player, exits.South, h.Direction, h.Notifier, currentChannel, updateChannel)
 	case "west":
-		movePlayerToDirection(ctx, h.WorldStateService, player, exits.West, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
+		movePlayerToDirection(ctx, h.WorldStateService, player, exits.West, h.Direction, h.Notifier, currentChannel, updateChannel)
 	case "east":
-		movePlayerToDirection(ctx, h.WorldStateService, player, exits.East, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
+		movePlayerToDirection(ctx, h.WorldStateService, player, exits.East, h.Direction, h.Notifier, currentChannel, updateChannel)
 	case "up":
-		movePlayerToDirection(ctx, h.WorldStateService, player, exits.Up, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
+		movePlayerToDirection(ctx, h.WorldStateService, player, exits.Up, h.Direction, h.Notifier, currentChannel, updateChannel)
 	default:
-		movePlayerToDirection(ctx, h.WorldStateService, player, exits.Down, h.Direction, h.Notifier, h.WorldState, currentChannel, updateChannel)
+		movePlayerToDirection(ctx, h.WorldStateService, player, exits.Down, h.Direction, h.Notifier, currentChannel, updateChannel)
 	}
 
 	if areaUUID != player.AreaUUID {

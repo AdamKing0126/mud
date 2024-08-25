@@ -14,10 +14,15 @@ import (
 type TakeCommandHandler struct {
 	Notifier          *notifications.Notifier
 	WorldStateService *world_state.Service
+	PlayerService     *players.Service
 }
 
 func (h *TakeCommandHandler) SetWorldStateService(worldStateService *world_state.Service) {
 	h.WorldStateService = worldStateService
+}
+
+func (h *TakeCommandHandler) SetPlayerService(playerService *players.Service) {
+	h.PlayerService = playerService
 }
 
 func (h *TakeCommandHandler) Execute(ctx context.Context, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
@@ -28,11 +33,12 @@ func (h *TakeCommandHandler) Execute(ctx context.Context, player *players.Player
 	if len(items) > 0 {
 		for _, item := range items {
 			if item.GetName() == arguments[0] {
+				h.WorldStateService.RemoveItemFromRoom(ctx, currentRoom, item)
 				if err := currentRoom.RemoveItem(item); err != nil {
 					display.PrintWithColor(player, fmt.Sprintf("error removing item from room: %v", err), "reset")
 					break
 				}
-				player.AddItem(ctx, db, item)
+				h.PlayerService.AddItemToPlayerInventory(ctx, player, item)
 
 				display.PrintWithColor(player, fmt.Sprintf("You take the %s.\n", item.GetName()), "reset")
 				h.Notifier.NotifyRoom(player.RoomUUID, player.UUID, fmt.Sprintf("\n%s takes %s.\n", player.Name, item.Name))

@@ -10,11 +10,16 @@ import (
 )
 
 type RemoveCommandHandler struct {
-	Notifier *notifications.Notifier
+	Notifier      *notifications.Notifier
+	PlayerService *players.Service
 }
 
 func (h *RemoveCommandHandler) SetNotifier(notifier *notifications.Notifier) {
 	h.Notifier = notifier
+}
+
+func (h *RemoveCommandHandler) SetPlayerService(playerService *players.Service) {
+	h.PlayerService = playerService
 }
 
 func (h *RemoveCommandHandler) Execute(ctx context.Context, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
@@ -23,5 +28,5 @@ func (h *RemoveCommandHandler) Execute(ctx context.Context, player *players.Play
 		return
 	}
 
-	player.Remove(ctx, db, arguments[0])
+	h.PlayerService.UnequipItem(ctx, player, arguments[0])
 }

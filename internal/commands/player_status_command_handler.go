@@ -7,20 +7,24 @@ import (
 	"github.com/adamking0126/mud/internal/display"
 	"github.com/adamking0126/mud/internal/game/areas"
 	"github.com/adamking0126/mud/internal/game/players"
+	"github.com/adamking0126/mud/internal/game/world_state"
 )
 
-type PlayerStatusCommandHandler struct{}
+type PlayerStatusCommandHandler struct {
+	WorldStateService *world_state.Service
+	PlayerService     *players.Service
+}
+
+func (h *PlayerStatusCommandHandler) SetWorldStateService(worldStateService *world_state.Service) {
+	h.WorldStateService = worldStateService
+}
+
+func (h *PlayerStatusCommandHandler) SetPlayerService(playerService *players.Service) {
+	h.PlayerService = playerService
+}
 
 func (h *PlayerStatusCommandHandler) Execute(ctx context.Context, player *players.Player, command string, arguments []string, currentChannel chan areas.Action, updateChannel func(string)) {
-	playerAbilities := &players.PlayerAbilities{}
-
-	query := "SELECT * FROM player_abilities WHERE player_uuid = ?"
-	err := db.QueryRow(ctx, query, player.UUID).Scan(&playerAbilities.UUID, &playerAbilities.PlayerUUID, &playerAbilities.Strength, &playerAbilities.Intelligence, &playerAbilities.Wisdom, &playerAbilities.Constitution, &playerAbilities.Charisma, &playerAbilities.Dexterity)
-	if err != nil {
-		display.PrintWithColor(player, fmt.Sprintf("%v", err), "danger")
-	}
-
-	player.PlayerAbilities = *playerAbilities
+	playerAbilities := h.PlayerService.GetPlayerAbilities(ctx, player)
 
 	display.PrintWithColor(player, fmt.Sprintf("%s\n", player.GetCharacterClass()), "danger")
 	display.PrintWithColor(player, fmt.Sprintf("%s\n", player.GetRace()), "danger")

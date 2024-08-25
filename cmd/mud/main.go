@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -44,61 +43,61 @@ func NewServer() *Server {
 }
 
 // WTF is this thing even used at all?
-func (s *Server) handleConnection(
-	ctx context.Context,
-	session ssh.Session,
-	router CommandRouterInterface,
-	db database.DB,
-	areaChannels map[string]chan areas.Action,
-	roomToAreaMap map[string]string,
-	worldState *worldState.WorldState,
-) {
-	defer session.Close()
+// func (s *Server) handleConnection(
+// 	ctx context.Context,
+// 	session ssh.Session,
+// 	router CommandRouterInterface,
+// 	db database.DB,
+// 	areaChannels map[string]chan areas.Action,
+// 	roomToAreaMap map[string]string,
+// 	worldState *worldState.WorldState,
+// ) {
+// 	defer session.Close()
 
-	player, err := players.LoginPlayer(ctx, session, db)
-	if err != nil {
-		fmt.Fprintf(session, "Error: %v\n", err)
-		return
-	}
-	if player == nil {
-		return
-	}
+// 	player, err := players.LoginPlayer(ctx, session, db)
+// 	if err != nil {
+// 		fmt.Fprintf(session, "Error: %v\n", err)
+// 		return
+// 	}
+// 	if player == nil {
+// 		return
+// 	}
 
-	defer func() {
-		err := player.Logout(ctx, db)
-		if err != nil {
-			fmt.Fprintf(session, "Error updating player logged_in status: %v\n", err)
-		}
-	}()
+// 	defer func() {
+// 		err := player.Logout(ctx, db)
+// 		if err != nil {
+// 			fmt.Fprintf(session, "Error updating player logged_in status: %v\n", err)
+// 		}
+// 	}()
 
-	s.connections[player.UUID] = player
-	defer delete(s.connections, player.UUID)
+// 	s.connections[player.UUID] = player
+// 	defer delete(s.connections, player.UUID)
 
-	currentRoom := worldState.GetRoom(ctx, player.RoomUUID, false)
-	currentRoom.AddPlayer(player)
+// 	currentRoom := worldState.GetRoom(ctx, player.RoomUUID, false)
+// 	currentRoom.AddPlayer(player)
 
-	notifyPlayersInRoomThatNewPlayerHasJoined(player, s.connections)
+// 	notifyPlayersInRoomThatNewPlayerHasJoined(player, s.connections)
 
-	ch := areaChannels[player.AreaUUID]
+// 	ch := areaChannels[player.AreaUUID]
 
-	updateChannel := func(newArea string) {
-		ch = areaChannels[newArea]
-	}
+// 	updateChannel := func(newArea string) {
+// 		ch = areaChannels[newArea]
+// 	}
 
-	router.HandleCommand(ctx, db, player, bytes.NewBufferString("look").Bytes(), ch, updateChannel)
+// 	router.HandleCommand(ctx, db, player, bytes.NewBufferString("look").Bytes(), ch, updateChannel)
 
-	for {
-		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mvt: %d> ", player.HP, player.Movement), "primary")
-		buf := make([]byte, 1024)
-		n, err := session.Read(buf)
-		if err != nil {
-			fmt.Println(err)
-			break
-		}
+// 	for {
+// 		display.PrintWithColor(player, fmt.Sprintf("\nHP: %d Mvt: %d> ", player.HP, player.Movement), "primary")
+// 		buf := make([]byte, 1024)
+// 		n, err := session.Read(buf)
+// 		if err != nil {
+// 			fmt.Println(err)
+// 			break
+// 		}
 
-		router.HandleCommand(ctx, db, player, buf[:n], ch, updateChannel)
-	}
-}
+// 		router.HandleCommand(ctx, db, player, buf[:n], ch, updateChannel)
+// 	}
+// }
 
 func notifyPlayersInRoomThatNewPlayerHasJoined(player *players.Player, connections map[string]*players.Player) {
 	var playersInRoom []*players.Player

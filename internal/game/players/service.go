@@ -69,7 +69,7 @@ func (s *Service) SetPlayerLoggedInStatus(ctx context.Context, player *Player, l
 	return s.repo.SetPlayerLoggedInStatus(ctx, player.UUID, loggedIn)
 }
 
-func (s *Service) AddItemToPlayer(ctx context.Context, player *Player, item *items.Item) error {
+func (s *Service) AddItemToPlayerInventory(ctx context.Context, player *Player, item *items.Item) error {
 	err := item.SetLocation(ctx, s.repo.db, player.UUID, "")
 	if err != nil {
 		return err
@@ -79,7 +79,7 @@ func (s *Service) AddItemToPlayer(ctx context.Context, player *Player, item *ite
 	return nil
 }
 
-func (s *Service) RemoveItemFromPlayer(ctx context.Context, player *Player, item *items.Item) error {
+func (s *Service) RemoveItemFromPlayerInventory(ctx context.Context, player *Player, item *items.Item) error {
 	itemIndex := -1
 	for idx := range player.Inventory {
 		if player.Inventory[idx].GetUUID() == item.UUID {
@@ -104,4 +104,36 @@ func (s *Service) LogoutAllPlayers(ctx context.Context) error {
 
 func (s *Service) LogoutPlayer(ctx context.Context, player *Player) error {
 	return s.repo.Logout(ctx, player)
+}
+
+func (s *Service) EquipItem(ctx context.Context, player *Player, item *items.Item) bool {
+	return s.repo.EquipItem(ctx, player, item)
+}
+
+func (s *Service) UnequipItem(ctx context.Context, player *Player, itemName string) bool {
+	// find the item in the player's current equipment
+	// set the current equipment slot to empty
+	// add the item to the player's inventory
+
+	// success := s.repo.UnequipItem(ctx, player, item)
+	// if success {
+	// 	s.AddItemToPlayerInventory(ctx, player, item)
+	// }
+	// return success
+	return false
+}
+
+func (s *Service) SetLocation(ctx context.Context, player *Player, roomUUID string) error {
+	return s.repo.SetLocation(ctx, player, roomUUID)
+}
+
+func (s *Service) GetPlayerAbilities(ctx context.Context, player *Player) *PlayerAbilities {
+	if player.PlayerAbilities == (PlayerAbilities{}) {
+		s.SetPlayerAbilities(ctx, player)
+	}
+	return &player.PlayerAbilities
+}
+
+func (s *Service) SetPlayerAbilities(ctx context.Context, player *Player) error {
+	return s.repo.SetPlayerAbilities(ctx, player)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 
 	"github.com/adamking0126/mud/internal/game/character_classes"
@@ -293,4 +294,137 @@ func (r *Repository) GetPlayersInRoom(ctx context.Context, roomUUID string) ([]*
 	}
 
 	return players, nil
+}
+
+func (r *Repository) EquipItem(ctx context.Context, player *Player, item *items.Item) bool {
+	// get the location where the thing goes
+	val := reflect.ValueOf(&player.Equipment).Elem()
+	itemEquipSlots := []string{}
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Type().Field(i)
+
+		for _, slot := range item.GetEquipmentSlots() {
+			if string(slot) == field.Name {
+				itemEquipSlots = append(itemEquipSlots, field.Name)
+			}
+		}
+
+	}
+	fmt.Println(itemEquipSlots)
+
+	// generate the query to retrieve columns from player_equipments table
+	queryString := "SELECT "
+	for i, slot := range itemEquipSlots {
+		if i > 0 {
+			queryString += ", "
+		}
+		queryString += slot
+	}
+	queryString += " FROM player_equipments WHERE player_uuid = ? LIMIT 1"
+	rows, err := r.db.Query(ctx, queryString, player.UUID)
+	if err != nil {
+		fmt.Printf("error retrieving player equipments: %v", err)
+		return false
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		fmt.Printf("error getting columns: %v", err)
+		return false
+	}
+
+	values := make([]interface{}, len(columns))
+	pointers := make([]interface{}, len(columns))
+
+	for i := range columns {
+		pointers[i] = &values[i]
+	}
+
+	if rows.Next() {
+		err = rows.Scan(pointers...)
+		if err != nil {
+			fmt.Printf("error scanning row: %v", err)
+			return false
+		}
+	}
+
+	// iterate through the values
+	// get the index of the first empty value, equip the item there and then break
+	for idx, val := range values {
+		if val == "" {
+			itemUUID := item.GetUUID()
+			queryString := "UPDATE player_equipments SET "
+			queryString += columns[idx]
+			queryString += " = ? WHERE player_uuid = ?"
+			rows.Close()
+			err = r.db.Exec(ctx, queryString, itemUUID, player.UUID)
+			if err != nil {
+				fmt.Printf("error inserting into player_equipments: %v", err)
+				return false
+			}
+			if columns[idx] == "DominantHand" {
+				equippedItem := EquippedItem{
+					Item:         item,
+					EquippedSlot: columns[idx],
+				}
+				player.Equipment.DominantHand = &equippedItem
+			}
+			return true
+		}
+	}
+	return true
+}
+
+func (r *Repository) SetLocation(ctx context.Context, player *Player, roomUUID string) error {
+	area_rows, err := r.db.Query(ctx, "SELECT area_uuid FROM rooms WHERE uuid=?", roomUUID)
+	if err != nil {
+		return fmt.Errorf("error retrieving area: %v", err)
+	}
+	defer area_rows.Close()
+
+	if !area_rows.Next() {
+		return fmt.Errorf("room with UUID %s does not have an area", roomUUID)
+	}
+
+	var areaUUID string
+	err = area_rows.Scan(&areaUUID)
+	if err != nil {
+		return err
+	}
+
+	player.AreaUUID = areaUUID
+	player.RoomUUID = roomUUID
+
+	area_rows.Close()
+
+	stmt, err := r.db.Prepare(ctx, "UPDATE players SET area = ?, room = ?, movement = ? WHERE uuid = ?")
+	if err != nil {
+		return err
+	}
+
+	defer stmt.Close()
+
+	player.Movement--
+	err = stmt.Exec(ctx, areaUUID, roomUUID, player.Movement, player.UUID)
+	if err != nil {
+		return err
+	}
+
+	stmt.Close()
+	return nil
+}
+
+func (r *Repository) SetPlayerAbilities(ctx context.Context, player *Player) error {
+	playerAbilities := &PlayerAbilities{}
+
+	query := "SELECT * FROM player_abilities WHERE player_uuid = ?"
+	err := r.db.QueryRow(ctx, query, player.UUID).Scan(&playerAbilities.UUID, &playerAbilities.PlayerUUID, &playerAbilities.Strength, &playerAbilities.Intelligence, &playerAbilities.Wisdom, &playerAbilities.Constitution, &playerAbilities.Charisma, &playerAbilities.Dexterity)
+	if err != nil {
+		return fmt.Errorf("error retrieving player abilities: %v", err)
+	}
+
+	player.PlayerAbilities = *playerAbilities
+
+	return nil
 }

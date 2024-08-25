@@ -3,7 +3,6 @@ package players
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/adamking0126/mud/internal/display"
 	"github.com/adamking0126/mud/internal/game/character_classes"
@@ -87,86 +86,6 @@ func (player *Player) Remove(ctx context.Context, db database.DB, itemName strin
 
 		display.PrintWithColor(player, fmt.Sprintf("You remove %s.\n", equippedItem.GetName()), "reset")
 	}
-}
-
-func (player *Player) Equip(ctx context.Context, db database.DB, item *items.Item) bool {
-	// get the location where the thing goes
-	val := reflect.ValueOf(&player.Equipment).Elem()
-	itemEquipSlots := []string{}
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Type().Field(i)
-
-		for _, slot := range item.GetEquipmentSlots() {
-			if string(slot) == field.Name {
-				itemEquipSlots = append(itemEquipSlots, field.Name)
-			}
-		}
-
-	}
-	fmt.Println(itemEquipSlots)
-
-	// generate the query to retrieve columns from player_equipments table
-	queryString := "SELECT "
-	for i, slot := range itemEquipSlots {
-		if i > 0 {
-			queryString += ", "
-		}
-		queryString += slot
-	}
-	queryString += " FROM player_equipments WHERE player_uuid = ? LIMIT 1"
-	rows, err := db.Query(ctx, queryString, player.UUID)
-	if err != nil {
-		fmt.Printf("error retrieving player equipments: %v", err)
-		return false
-	}
-	defer rows.Close()
-
-	columns, err := rows.Columns()
-	if err != nil {
-		fmt.Printf("error getting columns: %v", err)
-		return false
-	}
-
-	values := make([]interface{}, len(columns))
-	pointers := make([]interface{}, len(columns))
-
-	for i := range columns {
-		pointers[i] = &values[i]
-	}
-
-	if rows.Next() {
-		err = rows.Scan(pointers...)
-		if err != nil {
-			fmt.Printf("error scanning row: %v", err)
-			return false
-		}
-	}
-
-	// iterate through the values
-	// get the index of the first empty value, equip the item there and then break
-	for idx, val := range values {
-		if val == "" {
-			itemUUID := item.GetUUID()
-			queryString := "UPDATE player_equipments SET "
-			queryString += columns[idx]
-			queryString += " = ? WHERE player_uuid = ?"
-			rows.Close()
-			err = db.Exec(ctx, queryString, itemUUID, player.UUID)
-			if err != nil {
-				fmt.Printf("error inserting into player_equipments: %v", err)
-				return false
-			}
-			if columns[idx] == "DominantHand" {
-				equippedItem := EquippedItem{
-					Item:         item,
-					EquippedSlot: columns[idx],
-				}
-				player.Equipment.DominantHand = &equippedItem
-			}
-			return true
-		}
-	}
-	return true
 }
 
 func printEquipmentElement(player *Player, partName string, getterFunc func() *EquippedItem) {

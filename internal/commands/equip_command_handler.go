@@ -29,7 +29,7 @@ func (h *EquipHandler) Execute(ctx context.Context, player *players.Player, comm
 				if h.PlayerService.EquipItem(ctx, player, item) {
 					display.PrintWithColor(player, fmt.Sprintf("You wield %s.\n", item.GetName()), "reset")
 					h.Notifier.NotifyRoom(player.RoomUUID, player.UUID, fmt.Sprintf("\n%s wields %s.\n", player.Name, item.Name))
-					h.PlayerService.RemoveItemFromPlayer(ctx, player, item)
+					h.PlayerService.RemoveItemFromPlayerInventory(ctx, player, item)
 				}
 				break
 			}

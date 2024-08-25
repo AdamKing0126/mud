@@ -76,7 +76,22 @@ func (s *Service) GetAreaByUUID(ctx context.Context, areaUUID string) *Area {
 }
 
 func (s *Service) AddItemToRoom(ctx context.Context, room *Room, item *items.Item) error {
-	return s.repo.AddItemToRoom(ctx, room, item)
+	err := s.repo.AddItemToRoom(ctx, room, item)
+	if err != nil {
+		return err
+	}
+	room.Items = append(room.Items, item)
+	return nil
+}
+
+func (s *Service) RemoveItemFromRoom(ctx context.Context, room *Room, item *items.Item) error {
+	for i, elem := range room.Items {
+		if elem.UUID == item.UUID {
+			room.Items = append(room.Items[:i], room.Items[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("item not found in room")
 }
 
 func (s *Service) RunAreaActions(ctx context.Context, areaUUID string, ch chan Action) {
@@ -211,5 +226,16 @@ func (s *Service) RemovePlayerFromRoom(ctx context.Context, roomUUID string, pla
 			room.Players = append(room.Players[:i], room.Players[i+1:]...)
 		}
 	}
+	return nil
+}
+
+func (s *Service) AddPlayerToRoom(ctx context.Context, roomUUID string, player *players.Player) error {
+	room := s.GetRoomByUUID(ctx, roomUUID)
+	if room == nil {
+		return fmt.Errorf("room not found")
+	}
+	room.Players = append(room.Players, player)
+	s.playerService.SetLocation(ctx, player, roomUUID)
+
 	return nil
 }
