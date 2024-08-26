@@ -33,3 +33,11 @@ build:
 
 run_server:
 	go run ./cmd/mud/main.go	
+
+
+run_character:
+		go run ./cmd/character/main.go 
+
+
+run_ui_list_viewport:
+		go run ./cmd/ui_component_testing/list-viewport/main.go
