@@ -7,4 +7,5 @@ type Component interface {
 	Update(msg tea.Msg) (tea.Model, tea.Cmd)
 	View() string
 	SetSize(width, height int)
+	GetSelected() []map[string]string
 }

@@ -41,3 +41,6 @@ run_character:
 
 run_ui_list_viewport:
 		go run ./cmd/ui_component_testing/list-viewport/main.go
+
+run_ui_tabs_with_list_viewport:
+		go run ./cmd/ui_component_testing/tabs/tabs_with_list-viewport/main.go
