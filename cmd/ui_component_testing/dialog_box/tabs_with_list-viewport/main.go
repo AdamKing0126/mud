@@ -42,19 +42,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.dialogBoxWrapper.SetSize(m.width, m.height)
+
 	case components.SelectedMessage:
 		if msg.Selected == nil || len(msg.Selected) == 0 {
 			fmt.Println("No data available")
 			return m, nil
 		}
 
-    chosen := make([]map[string]string, len(msg.Selected))
+		chosen := make([]map[string]string, len(msg.Selected))
 		for i, item := range msg.Selected {
 			chosen[i] = map[string]string{
-        "id": item["id"],
-        "fieldName": item["fieldName"],
-        "title": item["title"],
-      }
+				"id":        item["id"],
+				"fieldName": item["fieldName"],
+				"title":     item["title"],
+			}
 		}
 		m.logger.Debug("selected:", "chosen", chosen)
 		return m, tea.Quit

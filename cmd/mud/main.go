@@ -145,7 +145,7 @@ type playState struct {
 }
 
 func (m mudModel) Init() tea.Cmd {
-	return nil
+	return tea.EnterAltScreen // force a render
 }
 
 func (m mudModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

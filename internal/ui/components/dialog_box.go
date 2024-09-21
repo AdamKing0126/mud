@@ -1,6 +1,7 @@
 package components
 
 import (
+  "fmt"
 	"log/slog"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -34,34 +35,31 @@ var (
 				Underline(true)
 )
 
-type SelectedMessage struct {
-	Selected []map[string]string
-}
-
 type DialogBoxWrapper struct {
-	width                int
-	height               int
-	confirmationQuestion string
-	confirmText          string
-	cancelText           string
-	message              string
-	isActive             bool
-	component            Component
-	logger               *slog.Logger
-	acceptButtonActive   bool
+	Width                int
+	Height               int
+	ConfirmationQuestion string
+	ConfirmText          string
+	CancelText           string
+	Message              string
+	IsActive             bool
+	Component            Component
+	Logger               *slog.Logger
+	AcceptButtonActive   bool
+  Data                 []FieldData
 }
 
-func NewDialogBox(width, height int, confirmationQuestion string, confirmText string, cancelText string, logger *slog.Logger, component Component, isActive bool) *DialogBoxWrapper {
+func NewDialogBox(Width, Height int, ConfirmationQuestion string, ConfirmText string, CancelText string, logger *slog.Logger, component Component, IsActive bool) *DialogBoxWrapper {
 	return &DialogBoxWrapper{
-		width:                width,
-		height:               height,
-		confirmationQuestion: confirmationQuestion,
-		confirmText:          confirmText,
-		cancelText:           cancelText,
-		component:            component,
-		isActive:             isActive,
-		logger:               logger,
-		acceptButtonActive:   true,
+		Width:                Width,
+		Height:               Height,
+		ConfirmationQuestion: ConfirmationQuestion,
+		ConfirmText:          ConfirmText,
+		CancelText:           CancelText,
+		Component:            component,
+		IsActive:             IsActive,
+		Logger:               logger,
+		AcceptButtonActive:   true,
 	}
 
 }
@@ -71,67 +69,86 @@ func (d *DialogBoxWrapper) Init() tea.Cmd {
 }
 
 func (d *DialogBoxWrapper) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if !d.isActive {
-		// check for specific key to activate the dialog box
+	d.Logger.Debug("DialogBoxWrapper Update", "msg", fmt.Sprintf("%T", msg))
+
+	if !d.IsActive {
+    d.Logger.Debug("DialogBoxWrapper message received:", "msg", fmt.Sprintf("%T", msg)) 
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			if msg.String() == "enter" {
-				d.ToggleActive()
-				return d, nil
-			}
+		case SubmitMessage:
+			d.Logger.Debug("DialogBoxWrapper received SubmitMessage when Inactive", "msg", msg)
+      d.IsActive = true
+      data, ok := msg.Data.([]FieldData)
+      if !ok {
+        d.Logger.Error("Type assertion failed: msg.Data is not of type []FieldData")
+        return d, nil
+      }
+      d.Data = data
+      return d, nil
 		}
 
-		// pass the message to the nested component if the dialog box is not activated
-		newComponent, cmd := d.component.Update(msg)
-		d.component = newComponent.(Component)
+		newComponent, cmd := d.Component.Update(msg)
+		d.Component = newComponent.(Component)
+
+		d.Logger.Debug("DialogBoxWrapper Returning", "model", d)
 		return d, cmd
 	}
 
 	// handle dialog box-specific messages when it is active
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		d.Logger.Debug("DialogBoxWrapper Received KeyMessage when Active", "msg", msg)
 		switch msg.String() {
 		case "left", "right", "tab", "l", "h":
-			d.acceptButtonActive = !d.acceptButtonActive
+			d.AcceptButtonActive = !d.AcceptButtonActive
+			d.Logger.Debug("returning", "ret", "nothing2")
 			return d, nil
 		case "enter":
-			d.isActive = false
-			if d.acceptButtonActive {
-				return d, func() tea.Msg {
-					return SelectedMessage{Selected: d.component.GetSelected()}
-				}
+      d.Logger.Debug("DialogBoxWrapper.AcceptButtonActive", "val", d.AcceptButtonActive)
+			if d.AcceptButtonActive {
+        d.Logger.Debug("DialogBoxWrapper handling 'submit'", "msg", msg)
+        d.IsActive = false
+        // TODO: return a DialogBoxSubmitMessage or something
+        return d, tea.Quit
 			}
+      d.AcceptButtonActive = !d.AcceptButtonActive
+      d.Component.GoToBeginning(0)
+			d.IsActive = false
 			return d, nil
 		case "esc":
-			if d.IsActive() {
+			if d.IsActive {
 				d.SetActive(false)
 			}
 		}
 	}
 
+	d.Logger.Debug("returning", "ret", "nothing")
 	return d, nil
 }
 
 func (d *DialogBoxWrapper) View() string {
-	if !d.isActive {
-		return d.component.View()
+	if !d.IsActive {
+		return d.Component.View()
 	}
 
 	var okButton, cancelButton string
-	if d.acceptButtonActive {
-		okButton = activeButtonStyle.Render(d.confirmText)
-		cancelButton = buttonStyle.Render(d.cancelText)
+	if d.AcceptButtonActive {
+		okButton = activeButtonStyle.Render(d.ConfirmText)
+		cancelButton = buttonStyle.Render(d.CancelText)
 	} else {
-		okButton = buttonStyle.Render(d.confirmText)
-		cancelButton = activeButtonStyle.Render(d.cancelText)
+		okButton = buttonStyle.Render(d.ConfirmText)
+		cancelButton = activeButtonStyle.Render(d.CancelText)
 	}
 
-	question := lipgloss.NewStyle().Align(lipgloss.Center).Render(d.confirmationQuestion)
-	choiceMessage := lipgloss.NewStyle().Align(lipgloss.Center).Render(d.message)
+	question := lipgloss.NewStyle().Align(lipgloss.Center).Render(d.ConfirmationQuestion)
+  var messages []string
+  for _, entry := range d.Data {
+    messages = append(messages, fmt.Sprintf("* %s: %s (id %s)", entry.FieldName, entry.FieldDescription, entry.Value))
+  }
+	choiceMessage := lipgloss.NewStyle().Align(lipgloss.Center).Render(lipgloss.JoinVertical(lipgloss.Left, messages...))
 	buttons := lipgloss.JoinHorizontal(lipgloss.Top, okButton, cancelButton)
 	ui := lipgloss.JoinVertical(lipgloss.Center, question, choiceMessage, buttons)
 
-	return lipgloss.Place(d.width, d.height,
+	return lipgloss.Place(d.Width, d.Height,
 		lipgloss.Center, lipgloss.Center,
 		dialogBoxStyle.Render(ui),
 		lipgloss.WithWhitespaceChars("╬"),
@@ -139,43 +156,44 @@ func (d *DialogBoxWrapper) View() string {
 	)
 }
 
-func (d *DialogBoxWrapper) SetSize(width, height int) {
-	d.width = width
-	d.height = height
-	if d.component != nil {
-		d.component.SetSize(d.width, d.height)
+func (d *DialogBoxWrapper) SetSize(Width, Height int) {
+	d.Width = Width
+	d.Height = Height
+	if d.Component != nil {
+		d.Component.SetSize(d.Width, d.Height)
 	}
 }
 
 func (d *DialogBoxWrapper) Activate() {
-	d.isActive = true
+	d.IsActive = true
 }
 
-func (d *DialogBoxWrapper) SetActive(isActive bool) {
-	d.isActive = isActive
+func (d *DialogBoxWrapper) SetActive(IsActive bool) {
+	d.IsActive = IsActive
 }
 
 func (d *DialogBoxWrapper) ToggleActive() {
-	d.isActive = !d.isActive
-	if d.isActive {
-		d.acceptButtonActive = true
+	d.IsActive = !d.IsActive
+	if d.IsActive {
+		d.AcceptButtonActive = true
 		d.SetMessageFromSelection()
 	}
 }
 
-func (d *DialogBoxWrapper) IsActive() bool {
-	return d.isActive
-}
-
 func (d *DialogBoxWrapper) SetMessageFromSelection() {
-	selected := d.component.GetSelected()
+	selected := d.Component.GetSelected()
 	if len(selected) == 1 {
-		d.message = lipgloss.NewStyle().Width(50).Align(lipgloss.Center).Render(selected[0]["title"])
+		d.Message = lipgloss.NewStyle().Width(50).Align(lipgloss.Left).Render(selected[0]["title"])
 	} else {
 		l := lipglossList.New()
 		for _, elem := range selected {
 			l.Item(elem["title"])
 		}
-		d.message = l.String()
+		d.Message = l.String()
 	}
 }
+
+func (m *DialogBoxWrapper) GetValue() any {
+  return m.Data
+}
+

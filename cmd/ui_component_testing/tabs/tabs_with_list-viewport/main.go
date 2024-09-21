@@ -188,7 +188,7 @@ The Cloak of Shadows has changed hands countless times throughout history, often
 
 	for _, tab := range tabData {
 		tabNames = append(tabNames, tab.name)
-		tabContent = append(tabContent, components.NewListViewportModel(tab.items, logger))
+		tabContent = append(tabContent, components.NewListViewportModel(tab.name, tab.items, logger))
 	}
 
 	tabsComponent := components.NewTabsModel(tabNames, tabContent, logger)

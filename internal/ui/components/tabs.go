@@ -106,7 +106,17 @@ func (m TabsModel) Init() tea.Cmd {
 	return nil
 }
 
+func (m *TabsModel) GoToBeginning(idx int) {
+  if idx >= len(m.Tabs) {
+    m.activeTab = 0
+  } else {
+    m.activeTab = idx
+  }
+}
+
 func (m *TabsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.logger.Debug("TabsModel Update", "msg", msg)
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
@@ -115,11 +125,27 @@ func (m *TabsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "tab":
 			if m.activeTab == len(m.Tabs)-1 {
 				m.activeTab = 0
-				return m, nil
 			} else {
 				m.activeTab = min(m.activeTab+1, len(m.Tabs)-1)
-				return m, nil
 			}
+      return m, nil
+    case "shift+tab":
+      if m.activeTab == 0 {
+        m.activeTab = len(m.Tabs) - 1
+      } else {
+        m.activeTab = m.activeTab - 1
+      }
+      return m, nil
+		case "enter":
+			if m.activeTab == len(m.Tabs)-1 {
+				value := m.GetValue()
+				m.logger.Debug("TabsModel Submitting message to DialogBoxWrapper(hopefully)", "value", value)
+				return m, tea.Cmd(func() tea.Msg {
+					return SubmitMessage{Data: value}
+				})
+			}
+			m.activeTab = m.activeTab + 1
+			return m, nil
 		}
 	}
 
@@ -217,3 +243,17 @@ func (m *TabsModel) GetSelected() []map[string]string {
 	}
 	return data
 }
+
+func (m *TabsModel) GetValue() any {
+	var valueList []FieldData
+	for _, elem := range m.TabContent {
+    val, ok := elem.GetValue().(FieldData)
+    if !ok {
+      m.logger.Error("Type assertion failed: msg.Data is not of type FieldData")
+    }
+		valueList = append(valueList, val)
+	}
+  m.logger.Debug("TabsModel returning data", "value", valueList)
+	return valueList
+}
+

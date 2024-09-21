@@ -20,6 +20,18 @@ which will allow the parent component to switch to a different view
 * create a dummy function that retrieves a list of the player objects from the database - right now it will return an empty list
 * if the list is empty, we know we need to create a new player character
 
+ok, now the next thing to do will be to display the dialogbox-wrapped component (tabs with list-viewport),
+pulling the character data from the database.
+
+Actually the thing might be to have a form which you can select:
+
+Name: <text input>
+Gender: <radio input?>
+Race: <display current selection or else allow them to edit current selection or whatevs>
+Class: <same as above>
+
+<submit button if all choices made already>
+
 */
 
 type componentState int
