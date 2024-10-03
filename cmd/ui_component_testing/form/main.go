@@ -4,15 +4,99 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+  "io"
 
   "github.com/charmbracelet/lipgloss"
 	"github.com/adamking0126/mud/internal/ui/components"
 	tea "github.com/charmbracelet/bubbletea"
+  "github.com/charmbracelet/bubbles/list"
 )
 
-type fooModel struct {
-	form []components.Component
-  selectedElement int
+// todo this is a hack that needs to be fixed.
+type localFieldData = components.FieldData
+
+func updateFunc(msg tea.Msg, m *list.Model) tea.Cmd {
+    index := m.Index()
+    component := m.SelectedItem().(components.Component)
+
+    if component.Zoomable() {
+      component.SetSize(m.Width(), m.Height())
+    }
+
+    switch msg := msg.(type) {
+    case tea.KeyMsg:
+      switch msg.String() {
+      case "enter":
+        if !component.GetZoom() && component.Zoomable(){
+          height := m.Height()
+          delegate := NewItemDelegate(height)
+          m.SetDelegate(delegate)
+          component.SetZoom(true)
+        }
+      case "up", "down", "j", "k":
+        if component.GetZoom() {
+          _, cmd := component.Update(msg)
+          return cmd
+        }
+      }
+    }
+
+    if component.GetZoom() {
+      updatedComponent, newMsg := component.Update(msg)
+      listItemComponent, ok := updatedComponent.(components.Component)
+      if !ok {
+        return nil
+      }
+
+      m.SetItem(index, listItemComponent)
+      return newMsg
+    }
+  return nil
+}
+
+
+type itemDelegate struct {
+  UpdateFunc func(mgs tea.Msg, m *list.Model) tea.Cmd
+  height int
+}
+
+func (d itemDelegate) Render (w io.Writer, m list.Model, index int, item list.Item) {
+
+  component := item.(components.Component)
+
+  isSelected := index == m.Index()
+
+  if !isSelected {
+    fmt.Fprint(w, component.UnfocusedView())
+  } else {
+    if component.GetZoom() {
+      fmt.Fprint(w, component.View())
+    } else {
+      fmt.Fprint(w, component.HighlightView())
+    }
+  }
+}
+
+func (d itemDelegate) Height() int {
+  return d.height
+}
+
+func (d itemDelegate) Spacing() int {
+  return 1
+}
+
+func (d itemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
+	return d.UpdateFunc(msg, m)
+}
+
+func NewItemDelegate(height int) itemDelegate {
+  delegate := itemDelegate{height: height}
+  delegate.UpdateFunc = updateFunc
+  return delegate
+}
+
+type FormModel struct {
+  list list.Model
   zoomed bool
 	width     int
 	height    int
@@ -20,143 +104,83 @@ type fooModel struct {
   data []*components.FieldData
 }
 
-// todo this is a hack that needs to be fixed.
-type localFieldData = components.FieldData
+func newModel(components []components.Component, logger *slog.Logger) *FormModel {
+  items := make([]list.Item, len(components))
+  for i, component := range components {
+    items[i] = component
+      
+  }
 
-func newModel(components []components.Component, logger *slog.Logger) *fooModel {
+  itemDelegate := NewItemDelegate(1)
+  l := list.New(items, itemDelegate, 0, 0)
+
+  l.Title = "Choose Your Fighter"
+
   data := make([]*localFieldData, len(components))
-  model := &fooModel{form: components, zoomed: false, selectedElement: 0, logger: logger, data: data}
+  model := &FormModel{list: l, zoomed: false, logger: logger, data: data}
   return model
 }
 
-func (m *fooModel) Init() tea.Cmd {
+func (m *FormModel) Init() tea.Cmd {
   return nil
 }
 
-func (m *fooModel) handleZoomUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
-  var cmd tea.Cmd
 
-  switch msg := msg.(type) {
-  case tea.WindowSizeMsg:
-    m.width = msg.Width
-    m.height = msg.Height
-    return m, cmd
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c":
-			return m, tea.Quit
-    }
-  }
-
-  updatedModel, cmd := m.form[m.selectedElement].Update(msg)
-  if updatedComponent, ok := updatedModel.(components.Component); ok {
-    m.form[m.selectedElement] = updatedComponent
-  } else {
-    m.logger.Error("Failed to cast updated model to Component")
-  }
-  return m, cmd
-} 
-
-func (m *fooModel) advance(num int, cmd tea.Cmd) (*fooModel, tea.Cmd) {
-  m.form[m.selectedElement].SetZoom(false)
-  m.form[m.selectedElement].SetHighlighted(false)
-
-  if num < 0 {
-    if m.selectedElement == 0 {
-      m.selectedElement = len(m.form) - 1
-    } else {
-      m.selectedElement = m.selectedElement - 1
-    }
-  } else {
-    if m.selectedElement == len(m.form) - 1 {
-      m.selectedElement = 0
-    } else {
-      m.selectedElement = m.selectedElement + 1
-    }
-  }
-
-  m.form[m.selectedElement].SetHighlighted(true)
-  return m, cmd
-}
-
-func (m *fooModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
   var cmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-    // TODO figure this out
-		// m.component.SetSize(m.width, m.height)
-    for _, component := range m.form {
-      component.SetSize(m.width, m.height)
-    }
-
-    return m, cmd
+    m.list.SetSize(m.width, m.height-5) // TODO fix this -5 stuff ! 
   case components.SubmitMessage:
     fieldData := msg.Data.(*components.FieldData)
     if fieldData != nil {
-      m.data[m.selectedElement] = fieldData
+      m.data[m.list.Index()] = fieldData
     }
     m.zoomed = false
-    m, cmd = m.advance(1, cmd)
-
+    component := m.list.SelectedItem().(components.Component)
+    component.SetZoom(false)
+    itemDelegate := NewItemDelegate(1)
+    m.list.SetDelegate(itemDelegate)
+    m.list.CursorDown()
 	case tea.KeyMsg:
     if m.zoomed {
-      return m.handleZoomUpdate(msg)
-    }
-		switch msg.String() {
-		case "ctrl+c":
-			return m, tea.Quit
-    case "up", "j":
-      return m.advance(-1, cmd)
-    case "down", "k":
-      return m.advance(1, cmd)
-    case "enter":
-      if !m.zoomed {
-        m.zoomed = true
-        m.form[m.selectedElement].SetZoom(true)
-        return m, nil
+      component := m.list.SelectedItem()
+      if updatedComponent, ok := component.(components.Component); ok {
+          component, cmd := updatedComponent.Update(msg)
+          listComponent := component.(list.Item)
+          m.list.SetItem(m.list.Index(), listComponent)
+          // m.zoomed = false // MAYBE NOT?
+          return m, cmd
       }
-		}
-
-    updatedModel, cmd := m.form[m.selectedElement].Update(msg)
-    if updatedComponent, ok := updatedModel.(components.Component); ok {
-      m.form[m.selectedElement] = updatedComponent
+      return m, cmd
     } else {
-      m.logger.Error("Failed to cast updated model to Component")
-    }
-    return m, cmd
+      switch msg.String() {
+      case "ctrl+c", "q":
+        return m, tea.Quit
+      case "enter":
+        m.zoomed = true
+        selected := m.list.SelectedItem().(components.Component)
+        selected.SetZoom(true)
 
+        if selected.Zoomable() {
+          delegate := NewItemDelegate(m.height)
+          m.list.SetDelegate(delegate)
+          m.list.SetItem(m.list.Index(), selected)
+        }
+        return m,cmd
+      }
+    }
 	}
 
+  m.list, cmd = m.list.Update(msg)
   return m, cmd
 }
 
-func (m *fooModel) View() string {
-  var zoomedView string
-  if m.zoomed {
-    zoomedView = m.form[m.selectedElement].ZoomableView()
-  }
-
-  if m.form[m.selectedElement].Zoomable() && m.form[m.selectedElement].GetZoom() {
-    return zoomedView
-  } else {
-    var views []string
-    for idx, component := range m.form {
-      if idx == m.selectedElement {
-        if m.zoomed {
-          views = append(views, zoomedView)
-        } else {
-          views = append(views, component.HighlightView())
-        }
-      } else {
-        views = append(views, component.UnfocusedView())
-      }
-    }
-    res := lipgloss.JoinVertical(lipgloss.Top, views...)
-    return res
-  }
+func (m *FormModel) View() string {
+  return m.list.View()
 }
 
 func main() {
@@ -221,5 +245,9 @@ For those who manage to befriend Zephyr, they can be an invaluable ally, offerin
 	listViewportComponent := components.NewListViewportModel(fieldName, items, highlightStyle, logger)
   elementsList := []components.Component{playerNameInput, listViewportComponent}
 
+	// _ = components.NewListViewportModel(fieldName, items, highlightStyle, logger)
+  // elementsList := []components.Component{playerNameInput}
+
   return elementsList
 }
+

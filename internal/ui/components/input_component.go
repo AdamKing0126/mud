@@ -47,11 +47,10 @@ func (i *InputComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
   case tea.KeyMsg:
     switch msg.String() {
     case "enter":
-      value := i.GetValue()
-      if !i.zoomed {
-        i.zoomed = false
+      if i.GetZoom() {
+        value := i.GetValue()
+        i.SetZoom(false)
         i.textInput.Blur()
-      } else {
         return i, func() tea.Msg {
           fieldData := &FieldData{
             FieldName: "foo",
@@ -59,35 +58,26 @@ func (i *InputComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
             FieldDescription: "bar",
           }
           return SubmitMessage{Data: fieldData}
-        }
+          }
+      } else {
+        i.SetZoom(true)
       }
-      return i, cmd
-    }
+    } 
   }
 
-  
+  if i.GetZoom() {
+    i.textInput, cmd = i.textInput.Update(msg)
+  }
 
-  i.textInput, cmd = i.textInput.Update(msg)
-
-  i.logger.Debug(i.textInput.Value())
+  i.logger.Debug(fmt.Sprintf("InputComponent value: %s", i.textInput.Value()))
   return i, cmd
 }
 
 func (i *InputComponent) View() string {
-  if i.highlighted {
-    return i.HighlightView()
-  } else if i.zoomed {
-    return i.ZoomableView()
-  } else {
-    return i.UnfocusedView()
-  }
+  return i.textInput.View()
 }
 
 // Component Interface-specific function 
-func (i *InputComponent) SetHighlighted(highlighted bool) {
-  i.highlighted = highlighted
-}
-
 func (i *InputComponent) SetFocus(focus bool) {
   if focus {
     i.textInput.Focus()
@@ -103,7 +93,7 @@ func (i *InputComponent) GetSelected() []map[string]string {
 func (i *InputComponent) GoToBeginning(_ int) {
 }
 
-func (i *InputComponent) SetSize(height int, width int) {
+func (i *InputComponent) SetSize(width, height int) {
   i.height = height
   i.width = width
 }
@@ -114,11 +104,6 @@ func (i *InputComponent) GetValue() any {
 
 func (i *InputComponent) Zoomable() bool {
   return false
-}
-
-func (i *InputComponent) ZoomableView() string {
-  thing := i.textInput.View()
-  return thing
 }
 
 func (i *InputComponent) GetHighlightStyle() lipgloss.Style {
@@ -150,11 +135,28 @@ func (i *InputComponent) UnfocusedView() string {
 }
 
 func (i *InputComponent) SetZoom(zoomed bool) {
-  i.zoomed = true
-  i.highlighted = false
-  i.textInput.Focus()
+  i.zoomed = zoomed
+  i.highlighted = !zoomed
+  if zoomed {
+    i.textInput.Focus()
+  } else {
+    i.textInput.Blur()
+  }
 }
 
 func (i *InputComponent) GetZoom() bool {
   return i.zoomed
 }
+
+func (i *InputComponent) FilterValue() string {
+  return i.textInput.View()
+}
+
+func (i *InputComponent) Title() string {
+  return ""
+}
+
+func (i *InputComponent) Description() string {
+  return ""
+}
+

@@ -90,19 +90,9 @@ func NewListViewportModel(label string, items []Item, highlightStyle lipgloss.St
 	return m
 }
 
+// Bubbletea 
 func (m *ListViewportModel) Init() tea.Cmd {
 	return nil
-}
-
-func (m *ListViewportModel) View() string {
-  if m.highlighted {
-    if m.zoomed {
-      return m.ZoomableView()
-    }
-    return m.HighlightView()
-  } else {
-    return m.UnfocusedView()
-  }
 }
 
 func (m *ListViewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -110,43 +100,50 @@ func (m *ListViewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.logger.Debug("ListViewportModel Update", "msg", msg)
 
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "left", "right", "h", "l":
-			if m.state == listFocused {
-				m.state = viewportFocused
-				m.updateViewportContent()
-			} else {
-				m.state = listFocused
-			}
-		case "enter":
-			return m, func() tea.Msg {
-				return SubmitMessage{Data: m.GetValue()}
-			}
-    // TODO: how do I back out of this component, into the parent component?
-    // - reset to listFocused
-    // - set list to 0th item
+  switch msg := msg.(type) {
+  case tea.KeyMsg:
+    switch msg.String() {
+      case "left", "right", "h", "l":
+        if m.state == listFocused {
+          m.state = viewportFocused
+          m.updateViewportContent()
+        } else {
+          m.state = listFocused
+        }
+      case "ctrl+c", "q":
+        return m, tea.Quit 
+      case "enter":
+        if m.zoomed {
+          return m, func() tea.Msg {
+            return SubmitMessage{Data: m.GetValue()}
+          }
+        } else {
+          m.zoomed = true
+          m.state = listFocused
+        }
     }
-	}
+  }
+  
+  // m.list, cmd = m.list.Update(msg)
+  if m.zoomed {
+    if m.state == listFocused {
+      oldIndex := m.list.Index()
+      m.selected = m.list.SelectedItem()
+      m.list, cmd = m.list.Update(msg)
 
-	if m.state == listFocused {
-		oldIndex := m.list.Index()
-		m.selected = m.list.SelectedItem()
-		m.list, cmd = m.list.Update(msg)
+      if m.list.Index() != oldIndex {
+        m.updateViewportContent()
+      }
+    } else {
+      m.viewport, cmd = m.viewport.Update(msg)
+    }
+  }
 
-		if m.list.Index() != oldIndex {
-			m.updateViewportContent()
-		}
-	} else {
-		m.viewport, cmd = m.viewport.Update(msg)
-	}
-
-	return m, cmd
+  return m, cmd
 }
-func (m *ListViewportModel) SetHighlighted(highlighted bool) {
-  m.highlighted = highlighted
-}
+
+
+// Custom
 
 func (m *ListViewportModel) Zoomable() bool {
   return true
@@ -156,12 +153,10 @@ func (m *ListViewportModel) SetLogger(logger *slog.Logger) {
 	m.logger = logger
 }
 
-
 func (m *ListViewportModel) GoToBeginning(_ int) {
   // m.state = listFocused
   m.list.ResetSelected()
 }
-
 
 func (m *ListViewportModel) updateViewportContent() {
 	if i, ok := m.list.SelectedItem().(Item); ok {
@@ -173,7 +168,7 @@ func (m *ListViewportModel) updateViewportContent() {
 	}
 }
 
-func (m *ListViewportModel) ZoomableView() string {
+func (m *ListViewportModel) View() string {
   listView := m.list.View()
   viewportView := m.viewport.View()
 
@@ -191,6 +186,7 @@ func (m *ListViewportModel) ZoomableView() string {
 
 func (m *ListViewportModel) SetSize(width, height int) {
 	componentHeaderHeight := 3 // 1 for title, 1 for padding
+
 	componentFooterHeight := 1 // for status bar
 
 	componentHeight := height - componentHeaderHeight - componentFooterHeight
@@ -265,4 +261,16 @@ func (m *ListViewportModel) SetZoom(zoomed bool) {
 
 func (m *ListViewportModel) GetZoom() bool {
   return m.zoomed
+}
+
+func (m *ListViewportModel) FilterValue() string {
+  return ""
+}
+
+func (m *ListViewportModel) Title() string {
+  return ""
+}
+
+func (m *ListViewportModel) Description() string {
+  return ""
 }
