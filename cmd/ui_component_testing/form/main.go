@@ -54,7 +54,6 @@ func updateFunc(msg tea.Msg, m *list.Model) tea.Cmd {
   return nil
 }
 
-
 type itemDelegate struct {
   UpdateFunc func(mgs tea.Msg, m *list.Model) tea.Cmd
   height int
@@ -121,10 +120,17 @@ func newModel(components []components.Component, logger *slog.Logger) *FormModel
   return model
 }
 
+func (m *FormModel) SetZoom(zoomed bool) {
+  m.zoomed = zoomed
+}
+
+func (m *FormModel) GetZoom() bool {
+  return m.zoomed
+}
+
 func (m *FormModel) Init() tea.Cmd {
   return nil
 }
-
 
 func (m *FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
   var cmd tea.Cmd
@@ -139,20 +145,19 @@ func (m *FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     if fieldData != nil {
       m.data[m.list.Index()] = fieldData
     }
-    m.zoomed = false
+    m.SetZoom(false)
     component := m.list.SelectedItem().(components.Component)
     component.SetZoom(false)
     itemDelegate := NewItemDelegate(1)
     m.list.SetDelegate(itemDelegate)
     m.list.CursorDown()
 	case tea.KeyMsg:
-    if m.zoomed {
+    if m.GetZoom() {
       component := m.list.SelectedItem()
       if updatedComponent, ok := component.(components.Component); ok {
           component, cmd := updatedComponent.Update(msg)
           listComponent := component.(list.Item)
           m.list.SetItem(m.list.Index(), listComponent)
-          // m.zoomed = false // MAYBE NOT?
           return m, cmd
       }
       return m, cmd
@@ -161,7 +166,7 @@ func (m *FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
       case "ctrl+c", "q":
         return m, tea.Quit
       case "enter":
-        m.zoomed = true
+        m.SetZoom(true)
         selected := m.list.SelectedItem().(components.Component)
         selected.SetZoom(true)
 

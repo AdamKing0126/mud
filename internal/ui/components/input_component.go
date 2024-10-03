@@ -74,7 +74,7 @@ func (i *InputComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (i *InputComponent) View() string {
-  return i.textInput.View()
+  return fmt.Sprintf("%s ", i.label) + i.textInput.View()
 }
 
 // Component Interface-specific function 

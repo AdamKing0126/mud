@@ -57,6 +57,7 @@ type ListViewportModel struct {
   highlightStyle lipgloss.Style
   highlighted bool
   zoomed bool
+  dirty bool
 }
 
 func NewListViewportModel(label string, items []Item, highlightStyle lipgloss.Style, logger *slog.Logger) Component {
@@ -81,6 +82,7 @@ func NewListViewportModel(label string, items []Item, highlightStyle lipgloss.St
     highlightStyle: highlightStyle,
     highlighted: false,
     zoomed: false,
+    dirty: false,
 	}
 
 	if len(m.list.Items()) > 0 {
@@ -113,19 +115,19 @@ func (m *ListViewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
       case "ctrl+c", "q":
         return m, tea.Quit 
       case "enter":
-        if m.zoomed {
+        if m.GetZoom() {
+          m.dirty = true
           return m, func() tea.Msg {
             return SubmitMessage{Data: m.GetValue()}
           }
         } else {
-          m.zoomed = true
+          m.SetZoom(true)
           m.state = listFocused
         }
     }
   }
   
-  // m.list, cmd = m.list.Update(msg)
-  if m.zoomed {
+  if m.GetZoom() {
     if m.state == listFocused {
       oldIndex := m.list.Index()
       m.selected = m.list.SelectedItem()
@@ -236,8 +238,9 @@ func (m *ListViewportModel) GetHighlightStyle() lipgloss.Style {
 func (m *ListViewportModel) HighlightView() string {
   var ret string
 
-  value := m.GetValue()
-  if fieldData, ok := value.(*FieldData); ok {
+  if m.dirty {
+    value := m.GetValue()
+    fieldData := value.(*FieldData)
     ret = fmt.Sprintf("%s (enter to change)", fieldData.FieldDescription)
   } else {
     ret = "(enter to set)"
@@ -249,10 +252,11 @@ func (m *ListViewportModel) HighlightView() string {
 }
 
 func (m *ListViewportModel) UnfocusedView() string {
-  val := m.GetValue().(*FieldData)
-
-  ret := fmt.Sprintf("%s: %s", m.label, val.FieldDescription)
-  return ret
+  if m.dirty {
+    val := m.GetValue().(*FieldData)
+    return fmt.Sprintf("%s: %s", m.label, val.FieldDescription)
+  }
+  return fmt.Sprintf("%s: (empty)", m.label)
 }
 
 func (m *ListViewportModel) SetZoom(zoomed bool) {
@@ -263,6 +267,7 @@ func (m *ListViewportModel) GetZoom() bool {
   return m.zoomed
 }
 
+/* statisfy list.Item interface */
 func (m *ListViewportModel) FilterValue() string {
   return ""
 }
