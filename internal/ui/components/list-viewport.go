@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wordwrap"
+  "github.com/google/uuid"
 )
 
 type Item struct {
@@ -47,6 +48,8 @@ var (
 )
 
 type ListViewportModel struct {
+  id       uuid.UUID
+  submitRecipientId *uuid.UUID
 	list     list.Model
 	viewport viewport.Model
 	state    focusedState
@@ -60,7 +63,7 @@ type ListViewportModel struct {
   dirty bool
 }
 
-func NewListViewportModel(label string, items []Item, highlightStyle lipgloss.Style, logger *slog.Logger) Component {
+func NewListViewportModel(submitRecipientId *uuid.UUID, label string, items []Item, highlightStyle lipgloss.Style, logger *slog.Logger) Component {
 	listItems := make([]list.Item, len(items))
 	for i, item := range items {
 		listItems[i] = item
@@ -73,6 +76,8 @@ func NewListViewportModel(label string, items []Item, highlightStyle lipgloss.St
 	l.DisableQuitKeybindings()
 
 	m := &ListViewportModel{
+    id: uuid.New(),
+    submitRecipientId: submitRecipientId,
 		list:     l,
 		viewport: viewport.New(0, 0),
 		state:    listFocused,
@@ -118,7 +123,11 @@ func (m *ListViewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         if m.GetZoom() {
           m.dirty = true
           return m, func() tea.Msg {
-            return SubmitMessage{Data: m.GetValue()}
+            return SubmitMessage{
+              SenderId: m.id,
+              RecipientId: *m.submitRecipientId,
+              Data: m.GetValue(),
+            }
           }
         } else {
           m.SetZoom(true)
@@ -265,6 +274,14 @@ func (m *ListViewportModel) SetZoom(zoomed bool) {
 
 func (m *ListViewportModel) GetZoom() bool {
   return m.zoomed
+}
+
+func (m *ListViewportModel) GetId() uuid.UUID {
+  return m.id
+}
+
+func (m *ListViewportModel) SetSubmitRecipientId(submitRecipientId *uuid.UUID) {
+  m.submitRecipientId = submitRecipientId
 }
 
 /* statisfy list.Item interface */

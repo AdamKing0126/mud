@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+  "github.com/google/uuid"
 )
 
 var (
@@ -78,6 +79,8 @@ func NewTabsModel(tabs []string, tabContent []Component, logger *slog.Logger) *T
 }
 
 type TabsModel struct {
+  id         uuid.UUID
+  submitRecipientId *uuid.UUID
 	Tabs       []string
 	TabContent []Component
 	activeTab  int
@@ -141,7 +144,11 @@ func (m *TabsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				value := m.GetValue()
 				m.logger.Debug("TabsModel Submitting message to DialogBoxWrapper(hopefully)", "value", value)
 				return m, tea.Cmd(func() tea.Msg {
-					return SubmitMessage{Data: value}
+					return SubmitMessage{
+            SenderId: m.id,
+            RecipientId: *m.submitRecipientId,
+            Data: value,
+          }
 				})
 			}
 			m.activeTab = m.activeTab + 1
@@ -255,5 +262,9 @@ func (m *TabsModel) GetValue() any {
 	}
   m.logger.Debug("TabsModel returning data", "value", valueList)
 	return valueList
+}
+
+func (m *TabsModel) GetId() uuid.UUID {
+  return m.id
 }
 

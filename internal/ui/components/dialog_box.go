@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	lipglossList "github.com/charmbracelet/lipgloss/list"
+  "github.com/google/uuid"
 )
 
 var (
@@ -36,6 +37,8 @@ var (
 )
 
 type DialogBoxWrapper struct {
+  id                   uuid.UUID
+  submitRecipientId    *uuid.UUID
 	Width                int
 	Height               int
 	ConfirmationQuestion string
@@ -49,8 +52,10 @@ type DialogBoxWrapper struct {
   Data                 []FieldData
 }
 
-func NewDialogBox(Width, Height int, ConfirmationQuestion string, ConfirmText string, CancelText string, logger *slog.Logger, component Component, IsActive bool) *DialogBoxWrapper {
+func NewDialogBox(submitRecipientId *uuid.UUID, Width, Height int, ConfirmationQuestion string, ConfirmText string, CancelText string, logger *slog.Logger, component Component, IsActive bool) *DialogBoxWrapper {
 	return &DialogBoxWrapper{
+    id:                   uuid.New(),
+    submitRecipientId:    submitRecipientId,
 		Width:                Width,
 		Height:               Height,
 		ConfirmationQuestion: ConfirmationQuestion,
@@ -197,3 +202,6 @@ func (m *DialogBoxWrapper) GetValue() any {
   return m.Data
 }
 
+func (m *DialogBoxWrapper) GetId() uuid.UUID {
+  return m.id
+}

@@ -10,6 +10,7 @@ import (
 	"github.com/adamking0126/mud/internal/ui/components"
 	tea "github.com/charmbracelet/bubbletea"
   "github.com/charmbracelet/bubbles/list"
+  "github.com/google/uuid"
 )
 
 // todo this is a hack that needs to be fixed.
@@ -101,13 +102,15 @@ type FormModel struct {
 	height    int
   logger *slog.Logger
   data []*components.FieldData
+  id uuid.UUID
 }
 
 func newModel(components []components.Component, logger *slog.Logger) *FormModel {
+  id := uuid.New()
   items := make([]list.Item, len(components))
   for i, component := range components {
+    component.SetSubmitRecipientId(&id)
     items[i] = component
-      
   }
 
   itemDelegate := NewItemDelegate(1)
@@ -116,7 +119,7 @@ func newModel(components []components.Component, logger *slog.Logger) *FormModel
   l.Title = "Choose Your Fighter"
 
   data := make([]*localFieldData, len(components))
-  model := &FormModel{list: l, zoomed: false, logger: logger, data: data}
+  model := &FormModel{id: id, list: l, zoomed: false, logger: logger, data: data}
   return model
 }
 
@@ -142,15 +145,26 @@ func (m *FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     m.list.SetSize(m.width, m.height-5) // TODO fix this -5 stuff ! 
   case components.SubmitMessage:
     fieldData := msg.Data.(*components.FieldData)
-    if fieldData != nil {
-      m.data[m.list.Index()] = fieldData
+    if m.id == msg.RecipientId {
+      if fieldData != nil {
+        m.data[m.list.Index()] = fieldData
+      }
+      m.SetZoom(false)
+      component := m.list.SelectedItem().(components.Component)
+      component.SetZoom(false)
+      itemDelegate := NewItemDelegate(1)
+      m.list.SetDelegate(itemDelegate)
+      m.list.CursorDown()
+    } else {
+      var cmds []tea.Cmd
+      for idx, item := range m.list.Items() {
+        component := item.(components.Component)
+        updatedItem, cmd := component.Update(msg)
+        m.list.SetItem(idx, updatedItem.(list.Item))
+        cmds = append(cmds, cmd)
+      }
+      return m, tea.Batch(cmds...)
     }
-    m.SetZoom(false)
-    component := m.list.SelectedItem().(components.Component)
-    component.SetZoom(false)
-    itemDelegate := NewItemDelegate(1)
-    m.list.SetDelegate(itemDelegate)
-    m.list.CursorDown()
 	case tea.KeyMsg:
     if m.GetZoom() {
       component := m.list.SelectedItem()
@@ -212,7 +226,7 @@ func CreateFormFields(logger *slog.Logger) []components.Component {
   highlightStyle := lipgloss.NewStyle().Bold(true).Foreground(
   lipgloss.Color("15")).Background(lipgloss.Color("22"))
 
-  playerNameInput := components.NewInputComponent(highlightStyle, "Name", "What's your name?", 255, 30, logger)
+  playerNameInput := components.NewInputComponent(nil, highlightStyle, "Name", "What's your name?", 255, 30, logger)
   fieldName := "Character"
 
 
@@ -247,7 +261,7 @@ Zephyr's motivations are as fluid as their form. Sometimes they use their abilit
 For those who manage to befriend Zephyr, they can be an invaluable ally, offering unique perspectives and abilities. However, their fluid nature and uncertain loyalties mean that trusting Zephyr completely is always a risk.`),
 	}
 
-	listViewportComponent := components.NewListViewportModel(fieldName, items, highlightStyle, logger)
+	listViewportComponent := components.NewListViewportModel(nil, fieldName, items, highlightStyle, logger)
   elementsList := []components.Component{playerNameInput, listViewportComponent}
 
 	// _ = components.NewListViewportModel(fieldName, items, highlightStyle, logger)

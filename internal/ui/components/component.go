@@ -4,6 +4,7 @@ import (
   tea "github.com/charmbracelet/bubbletea"
   "github.com/charmbracelet/lipgloss"
   "github.com/charmbracelet/bubbles/list"
+  "github.com/google/uuid"
 )
 
 
@@ -13,7 +14,9 @@ type Component interface {
 	SetSize(width, height int)
   SetZoom(bool) 
   SetFocus(bool) 
+  SetSubmitRecipientId(*uuid.UUID)
 
+  GetId() uuid.UUID
 	GetSelected() []map[string]string
   GetValue() any
   GetZoom() bool

@@ -6,9 +6,12 @@ import (
   "github.com/charmbracelet/bubbles/textinput"
   tea "github.com/charmbracelet/bubbletea"
   "github.com/charmbracelet/lipgloss"
+  "github.com/google/uuid"
 )
 
 type InputComponent struct {
+  id uuid.UUID
+  submitRecipientId *uuid.UUID
   textInput textinput.Model
   label string
   logger *slog.Logger
@@ -19,13 +22,15 @@ type InputComponent struct {
   zoomed bool
 }
 
-func NewInputComponent(highlightStyle lipgloss.Style, label string, placeholder string, charlimit int, width int, logger *slog.Logger) *InputComponent {
+func NewInputComponent(submitRecipientId *uuid.UUID, highlightStyle lipgloss.Style, label string, placeholder string, charlimit int, width int, logger *slog.Logger) *InputComponent {
   ti := textinput.New()
   ti.Placeholder = placeholder
   ti.CharLimit = charlimit
   ti.Width = width
 
   return &InputComponent{
+    id: uuid.New(),
+    submitRecipientId: submitRecipientId,
     textInput: ti,
     logger: logger,
     highlightStyle: highlightStyle,
@@ -57,7 +62,11 @@ func (i *InputComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
             Value: value,
             FieldDescription: "bar",
           }
-          return SubmitMessage{Data: fieldData}
+          return SubmitMessage{
+              SenderId: i.id,
+              RecipientId: *i.submitRecipientId,
+              Data: fieldData,
+            }
           }
       } else {
         i.SetZoom(true)
@@ -160,3 +169,10 @@ func (i *InputComponent) Description() string {
   return ""
 }
 
+func (i *InputComponent) GetId() uuid.UUID {
+  return i.id
+}
+
+func (i *InputComponent) SetSubmitRecipientId(submitRecipientId *uuid.UUID) {
+  i.submitRecipientId = submitRecipientId
+}
